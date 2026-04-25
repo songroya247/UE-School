@@ -1,0 +1,16 @@
+# Netlify / Cloudflare Pages — force UTF-8 so emojis & arrows render
+# correctly. Place this file at the web root.
+/*
+  X-Content-Type-Options: nosniff
+
+/*.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.css
+  Content-Type: text/css; charset=utf-8
+  Cache-Control: public, max-age=604800
+
+/*.js
+  Content-Type: application/javascript; charset=utf-8
+  Cache-Control: public, max-age=604800

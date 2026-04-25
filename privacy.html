@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy &mdash; UE School</title>
+<meta name="description" content="UE School Privacy Policy &mdash; how we collect, use, and protect your personal data.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>
+/* ── MOBILE NAV &mdash; matches index.html professional slide-down ── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px; height: 40px;
+  padding: 8px;
+  background: rgba(26,86,255,.06);
+  border: 1.5px solid var(--border2);
+  border-radius: 9px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  z-index: 210;
+  transition: background .2s, border-color .2s;
+}
+.nav-hamburger:hover { background: rgba(26,86,255,.12); border-color: var(--accent); }
+.nav-hamburger span {
+  display: block; width: 18px; height: 2px;
+  background: var(--text); border-radius: 2px;
+  transition: transform .3s ease, opacity .3s ease;
+  transform-origin: center center;
+}
+.nav-mobile-open .nav-hamburger { background: rgba(26,86,255,.1); border-color: var(--accent); }
+.nav-mobile-open .nav-hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-mobile-open .nav-hamburger span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-mobile-open .nav-hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 768px) {
+  .ue-nav { height: auto; }
+  .ue-nav .container { flex-wrap: wrap; height: auto; padding: 0 16px; }
+  .nav-logo { padding: 14px 0; flex: 1; }
+  .nav-hamburger { display: flex; }
+  .nav-links, .nav-right {
+    display: flex !important;
+    flex-direction: column; width: 100%;
+    overflow: hidden; max-height: 0; opacity: 0; pointer-events: none;
+    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, padding .3s ease;
+  }
+  .nav-links { gap: 2px; padding: 0; order: 3; }
+  .nav-right  { gap: 8px; padding: 0; order: 4; border-top: 1px solid var(--border); }
+  .nav-mobile-open .nav-links {
+    max-height: 300px; opacity: 1; pointer-events: auto;
+    padding: 8px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .nav-mobile-open .nav-right {
+    max-height: 120px; opacity: 1; pointer-events: auto; padding: 10px 0 14px;
+  }
+  .nav-links a {
+    display: flex; align-items: center;
+    padding: 11px 14px; font-size: .92rem; font-weight: 600;
+    color: var(--text); border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .nav-links a:hover, .nav-links a.active { background: rgba(26,86,255,.07); color: var(--accent); }
+  .nav-right .btn { width: 100%; justify-content: center; height: 44px; }
+}
+</style>
+
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+
+
+
+<style>
+  .legal-hero {
+    background: linear-gradient(135deg, #0a0f1e 0%, #111827 100%);
+    padding: 80px 0 60px;
+    text-align: center;
+  }
+  .legal-hero h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    color: #fff;
+    margin-bottom: 16px;
+  }
+  .legal-hero .meta {
+    color: rgba(255,255,255,.45);
+    font-size: .88rem;
+  }
+  .legal-body { padding: 72px 0; }
+  .legal-body .container { max-width: 760px; }
+  .legal-body h2 {
+    font-family: var(--font-head);
+    font-size: 1.7rem;
+    margin: 48px 0 14px;
+    color: var(--text);
+  }
+  .legal-body h2:first-child { margin-top: 0; }
+  .legal-body h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 24px 0 10px;
+  }
+  .legal-body p, .legal-body li {
+    color: var(--muted);
+    line-height: 1.85;
+    font-size: .96rem;
+  }
+  .legal-body ul { padding-left: 20px; margin: 12px 0 20px; }
+  .legal-body li { margin-bottom: 8px; }
+  .legal-toc {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 48px;
+  }
+  .legal-toc h3 { margin: 0 0 14px; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .legal-toc ol { padding-left: 18px; margin: 0; }
+  .legal-toc li { margin-bottom: 6px; }
+  .legal-toc a { color: var(--accent); text-decoration: none; font-size: .9rem; font-weight: 600; }
+  .legal-toc a:hover { text-decoration: underline; }
+  .legal-highlight {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: .92rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="ue-nav">
+  <div class="container">
+    <a href="index.html" class="nav-logo">UE School</a>
+    <div class="nav-links">
+      <a href="classroom.html">Classroom</a>
+      <a href="cbt.html">Practice (CBT)</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="pricing.html">Pricing</a>
+    </div>
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu"
+            onclick="this.closest('.ue-nav').classList.toggle('nav-mobile-open')">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-right" id="nav-right-public">
+      <a href="login.html" class="btn btn-primary" id="nav-login-btn">Login / Sign Up</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="legal-hero">
+  <div class="container">
+    <h1>Privacy Policy</h1>
+    <div class="meta">Last updated: April 2026</div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="legal-body">
+  <div class="container">
+
+    <div class="legal-toc">
+      <h3>Contents</h3>
+      <ol>
+        <li><a href="#who-we-are">Who We Are</a></li>
+        <li><a href="#data-we-collect">Data We Collect</a></li>
+        <li><a href="#how-we-use">How We Use Your Data</a></li>
+        <li><a href="#data-sharing">Data Sharing</a></li>
+        <li><a href="#data-security">Data Security</a></li>
+        <li><a href="#your-rights">Your Rights</a></li>
+        <li><a href="#cookies">Cookies</a></li>
+        <li><a href="#minors">Children &amp; Minors</a></li>
+        <li><a href="#changes">Changes to This Policy</a></li>
+        <li><a href="#contact-privacy">Contact Us</a></li>
+      </ol>
+    </div>
+
+    <div class="legal-highlight">
+      We respect your privacy. We do not sell your personal data to third parties. Ever.
+    </div>
+
+    <h2 id="who-we-are">1. Who We Are</h2>
+    <p>UE School ("we", "us", "our") is an online exam preparation platform serving Nigerian secondary and post-secondary students. This Privacy Policy explains how we collect, use, and protect the personal information you provide when you use our website and platform at <strong>ueschool.ng</strong>.</p>
+
+    <h2 id="data-we-collect">2. Data We Collect</h2>
+    <h3>Information you provide</h3>
+    <ul>
+      <li><strong>Account data</strong> &mdash; your full name, email address, and password (stored as a secure hash via Supabase Auth).</li>
+      <li><strong>Academic profile</strong> &mdash; the exams you are sitting, your target score, preferred subjects, and exam date. You provide this during sign-up and may update it at any time.</li>
+      <li><strong>Payment data</strong> &mdash; when you subscribe, payment is processed by Paystack. We receive only a transaction reference and your plan status. We never store card details.</li>
+      <li><strong>Support communications</strong> &mdash; messages you send us via email or the contact form.</li>
+    </ul>
+    <h3>Data we collect automatically</h3>
+    <ul>
+      <li><strong>Usage data</strong> &mdash; which topics you practise, CBT session scores, time spent, streak data, and XP accumulated. This data is central to how our adaptive engine works.</li>
+      <li><strong>Device &amp; browser data</strong> &mdash; browser type, operating system, screen size, and approximate location (country/region level only) collected via server logs.</li>
+      <li><strong>Cookies &amp; local storage</strong> &mdash; for authentication sessions and user preferences. See the <a href="#cookies">Cookies</a> section below.</li>
+    </ul>
+
+    <h2 id="how-we-use">3. How We Use Your Data</h2>
+    <ul>
+      <li>To create and manage your account and verify your identity.</li>
+      <li>To personalise your study experience &mdash; tracking gaps, surfacing weak topics, and adjusting difficulty via SmartPath™.</li>
+      <li>To process subscription payments and send receipts.</li>
+      <li>To send you important service emails (password resets, billing confirmations). We do not send unsolicited marketing emails without your consent.</li>
+      <li>To improve the platform &mdash; aggregated, anonymised usage data helps us identify the questions most students struggle with.</li>
+      <li>To comply with applicable Nigerian data protection regulations (NDPR).</li>
+    </ul>
+
+    <h2 id="data-sharing">4. Data Sharing</h2>
+    <p>We share personal data only in these limited circumstances:</p>
+    <ul>
+      <li><strong>Supabase</strong> &mdash; our database and authentication provider. Data is stored on servers located within GDPR-compliant regions.</li>
+      <li><strong>Paystack</strong> &mdash; payment processing. Governed by Paystack's own Privacy Policy.</li>
+      <li><strong>Legal obligation</strong> &mdash; if required by Nigerian law or a valid court order.</li>
+    </ul>
+    <p>We do <strong>not</strong> sell, rent, or trade your personal data to advertisers, data brokers, or any other third parties.</p>
+
+    <h2 id="data-security">5. Data Security</h2>
+    <p>We take reasonable technical and organisational steps to protect your data:</p>
+    <ul>
+      <li>All data is transmitted over HTTPS (TLS 1.2+).</li>
+      <li>Passwords are hashed and salted by Supabase Auth &mdash; we cannot read your password.</li>
+      <li>Access to the production database is restricted to authorised staff only.</li>
+    </ul>
+    <p>No system is 100% secure. If you believe your account has been compromised, please <a href="contact.html" style="color:var(--accent);font-weight:600;">contact us</a> immediately.</p>
+
+    <h2 id="your-rights">6. Your Rights</h2>
+    <p>Under the Nigeria Data Protection Regulation (NDPR) and applicable law, you have the right to:</p>
+    <ul>
+      <li>Access the personal data we hold about you.</li>
+      <li>Correct inaccurate data.</li>
+      <li>Request deletion of your account and associated data.</li>
+      <li>Withdraw consent where processing is based on consent.</li>
+      <li>Lodge a complaint with the Nigeria Data Protection Bureau (NDPB).</li>
+    </ul>
+    <p>To exercise any of these rights, visit our <a href="contact.html" style="color:var(--accent);font-weight:600;">Contact page</a> with "Data Request" in the subject line. We will respond within 30 days.</p>
+
+    <h2 id="cookies">7. Cookies</h2>
+    <p>We use strictly necessary cookies and browser local storage to keep you logged in and remember your preferences. We do not use advertising or third-party tracking cookies. You can clear cookies via your browser settings at any time; doing so will log you out.</p>
+
+    <h2 id="minors">8. Children &amp; Minors</h2>
+    <p>Our platform is primarily used by students aged 14&ndash;20. We do not knowingly collect data from children under 13. If a parent or guardian believes their child under 13 has registered, please <a href="contact.html" style="color:var(--accent);font-weight:600;">contact us</a> and we will promptly delete the account.</p>
+
+    <h2 id="changes">9. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. When we do, we will revise the "Last updated" date at the top of this page. Significant changes will be communicated via email to registered users.</p>
+
+    <h2 id="contact-privacy">10. Contact Us</h2>
+    <p>For any privacy-related questions, please visit our <a href="contact.html" style="color:var(--accent);font-weight:600;">Contact page</a>.</p>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo">UE School</div>
+        <div class="footer-tagline">The cockpit for your exam preparation. Pass your JAMB, WAEC, and NECO exams with confidence.</div>
+      </div>
+      <div>
+        <div class="footer-heading">Platform</div>
+        <ul class="footer-links">
+          <li><a href="classroom.html">Classroom</a></li>
+          <li><a href="cbt.html">Practice CBT</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="pricing.html">Pricing</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Company</div>
+        <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-divider">&copy; 2026 UE School. All rights reserved.</div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+      const nav = document.querySelector('.ue-nav');
+      nav && nav.classList.remove('nav-mobile-open');
+      const btn = document.getElementById('nav-toggle');
+      btn && btn.setAttribute('aria-expanded', 'false');
+    });
+  });
+});
+</script>
+<script src="js/app.js"></script>
+
+<script>
+// Auth-aware nav for public pages
+(async function() {
+  try {
+    // sb/SB is set by js/supabase.js shim \u2014 credentials live only in js/config.js
+const SB = window.sb;
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const navRight = document.getElementById('nav-right-public');
+      if (navRight) {
+        const { data: p } = await sb.from('profiles').select('full_name,total_xp').eq('id', session.user.id).single();
+        const initials = (p?.full_name || 'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        navRight.innerHTML = `
+          <div class="nav-user-pill" style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1.5px solid var(--border2);border-radius:999px;padding:4px 14px 4px 4px">
+            <div class="nav-avatar" style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem">${initials}</div>
+            <span style="font-weight:700;font-size:.9rem">${(p?.full_name||'').split(' ')[0]}</span>
+            <span style="font-size:.78rem;color:var(--muted)">${p?.total_xp||0} XP</span>
+          </div>
+          <a href="dashboard.html" class="btn btn-primary" style="margin-left:8px">Dashboard</a>
+          <button class="btn btn-outline btn-sm" onclick="(window.sb||window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL,window.UE_CONFIG.SUPABASE_ANON)).auth.signOut().then(()=>location.reload())" style="margin-left:4px">Logout</button>
+        `;
+      }
+    }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login / Sign Up &mdash; UE School</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.auth-wrap { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg); padding:24px; }
+.auth-logo { font-family:var(--font-head); font-size:1.6rem; color:var(--accent); letter-spacing:.07em; margin-bottom:28px; }
+.auth-card { background:var(--surface); border:1.5px solid var(--border); border-radius:18px; box-shadow:var(--shadow-lg); width:100%; max-width:520px; padding:40px; }
+.auth-tabs { display:flex; background:var(--bg); border-radius:10px; padding:4px; margin-bottom:28px; }
+.auth-tab { flex:1; padding:9px; border-radius:8px; font-weight:700; font-size:.92rem; color:var(--muted); transition:all .15s; text-align:center; cursor:pointer; }
+.auth-tab.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
+
+.step-indicator { font-size:.8rem; color:var(--muted); margin-bottom:4px; font-weight:600; }
+.step-bar { height:4px; background:var(--border); border-radius:999px; margin-bottom:24px; overflow:hidden; }
+.step-bar-fill { height:100%; background:var(--accent); border-radius:999px; transition:width .4s ease; }
+
+.exam-checks { display:flex; flex-wrap:wrap; gap:10px; }
+.exam-check-label { display:flex; align-items:center; gap:8px; padding:9px 16px; border:1.5px solid var(--border2); border-radius:8px; font-weight:600; font-size:.88rem; cursor:pointer; transition:all .15s; }
+.exam-check-label:has(input:checked) { border-color:var(--accent); background:var(--accent-glow); color:var(--accent); }
+.exam-check-label input { display:none; }
+
+.subject-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px; max-height:320px; overflow-y:auto; padding-right:4px; }
+.subj-card { border:2px solid var(--border2); border-radius:10px; padding:14px 10px; text-align:center; cursor:pointer; transition:all .15s; position:relative; }
+.subj-card.selected { border-color:var(--accent); background:var(--accent-glow); }
+.subj-card-icon { font-size:1.5rem; margin-bottom:6px; }
+.subj-card-name { font-weight:700; font-size:.82rem; }
+.subj-check { position:absolute; top:6px; right:6px; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:.65rem; display:none; align-items:center; justify-content:center; }
+.subj-card.selected .subj-check { display:flex; }
+
+.study-pref-option { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border:2px solid var(--border2); border-radius:10px; cursor:pointer; transition:all .15s; margin-bottom:10px; }
+.study-pref-option input[type=radio] { margin-top:3px; accent-color:var(--accent); }
+.study-pref-option:has(input:checked) { border-color:var(--accent); background:var(--accent-glow); }
+
+.jamb-hint { font-size:.82rem; color:var(--muted); padding:8px 12px; border-radius:7px; background:var(--bg); border:1px solid var(--border); margin-bottom:14px; }
+.jamb-hint.ok { color:#065f46; background:#d1fae5; border-color:#6ee7b7; }
+
+#auth-error { display:none; background:#fee2e2; color:#991b1b; padding:12px 16px; border-radius:8px; font-size:.88rem; font-weight:600; margin-bottom:16px; border:1px solid #fca5a5; }
+
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.password-wrap { position:relative; }
+.password-wrap .form-input { padding-right:44px; }
+.pw-toggle { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.1rem; color:var(--muted); padding:0; line-height:1; }
+
+.strength-bar { height:3px; border-radius:999px; margin-top:6px; transition:all .3s; }
+.strength-weak   { background:#ef4444; width:30%; }
+.strength-fair   { background:#f59e0b; width:60%; }
+.strength-strong { background:#22c55e; width:100%; }
+
+.divider { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:.82rem; margin:20px 0; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <a href="index.html" class="auth-logo">UE School</a>
+
+  <div class="auth-card">
+    <div class="auth-tabs" id="auth-tabs">
+      <button class="auth-tab" id="tab-login"  onclick="switchTab('login')">Login</button>
+      <button class="auth-tab active" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <div id="auth-error"></div>
+
+    <!-- ══════════ LOGIN FORM ══════════ -->
+    <div id="login-form" style="display:none">
+      <h2 style="font-family:var(--font-head);font-size:1.9rem;margin-bottom:6px">Welcome back</h2>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:24px">Log in to continue your exam prep.</p>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" placeholder="chioma@example.com" id="login-email" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="password-wrap">
+          <input type="password" class="form-input" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" id="login-password" autocomplete="current-password">
+          <button type="button" class="pw-toggle" onclick="togglePw('login-password',this)">&#x1F441;</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-lg" id="btn-login" style="margin-top:8px" onclick="doLogin()">Login</button>
+
+      <div style="text-align:center;margin-top:16px;display:flex;justify-content:space-between">
+        <a href="forgot-password.html" style="font-size:.85rem;color:var(--muted)">Forgot Password?</a>
+        <a href="#" style="font-size:.85rem;color:var(--accent)" onclick="switchTab('signup');return false">Create account &rarr;</a>
+      </div>
+    </div>
+
+    <!-- ══════════ SIGNUP MULTI-STEP ══════════ -->
+    <div id="signup-form">
+
+      <!-- Step 1 &mdash; Account details -->
+      <div id="step-1">
+        <div class="step-indicator">Step 1 of 4 &mdash; Account Details</div>
+        <div class="step-bar"><div class="step-bar-fill" style="width:25%"></div></div>
+        <h2 style="font-family:var(--font-head);font-size:1.9rem;margin-bottom:6px">Create your account</h2>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:24px">Join 12,000+ students already preparing smarter.</p>
+
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" placeholder="Chioma Adebayo" id="su-name" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" placeholder="chioma@example.com" id="su-email" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone (WhatsApp) <span style="color:var(--muted);font-weight:400">(optional &mdash; lets our coaches reach you)</span></label>
+          <input type="tel" class="form-input" placeholder="+234 803 000 0000" id="su-phone" autocomplete="tel">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="password-wrap">
+            <input type="password" class="form-input" placeholder="Min. 8 characters" id="su-pass"
+              autocomplete="new-password" oninput="checkStrength(this.value)">
+            <button type="button" class="pw-toggle" onclick="togglePw('su-pass',this)">&#x1F441;</button>
+          </div>
+          <div class="strength-bar" id="strength-bar" style="display:none"></div>
+          <div class="form-hint" id="strength-label"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <div class="password-wrap">
+            <input type="password" class="form-input" placeholder="Repeat password" id="su-pass2" autocomplete="new-password" oninput="checkPasswordMatch()">
+            <button type="button" class="pw-toggle" onclick="togglePw('su-pass2',this)">&#x1F441;</button>
+          </div>
+          <div id="pw-match-msg" style="font-size:.82rem;margin-top:5px;font-weight:600;display:none"></div>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" onclick="goStep(2)">Continue &rarr;</button>
+      </div>
+
+      <!-- Step 2 &mdash; Exam goals -->
+      <div id="step-2" style="display:none">
+        <div class="step-indicator">Step 2 of 4 &mdash; Exam Goals</div>
+        <div class="step-bar"><div class="step-bar-fill" style="width:50%"></div></div>
+        <h2 style="font-family:var(--font-head);font-size:1.9rem;margin-bottom:6px">Your exam goals</h2>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:24px">Help us personalise your learning plan.</p>
+
+        <div class="form-group">
+          <label class="form-label">Which exams are you sitting?</label>
+          <div class="exam-checks">
+            <label class="exam-check-label"><input type="checkbox" value="JAMB" id="chk-jamb" onchange="updateGoalFields()"> JAMB / UTME</label>
+            <label class="exam-check-label"><input type="checkbox" value="WAEC" id="chk-waec" onchange="updateGoalFields()"> WAEC / GCE</label>
+            <label class="exam-check-label"><input type="checkbox" value="NECO" id="chk-neco" onchange="updateGoalFields()"> NECO</label>
+            <label class="exam-check-label"><input type="checkbox" value="Post-UTME" id="chk-postutme" onchange="updateGoalFields()"> Post-UTME</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">When is your exam? <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <select class="form-select" id="su-date">
+            <option value="">Select month…</option>
+            <option>May 2026</option><option>June 2026</option><option>July 2026</option>
+            <option>August 2026</option><option>September 2026</option><option>October 2026</option>
+            <option>November 2026</option><option>December 2026</option>
+            <option>January 2027</option><option>February 2027</option>
+            <option>March 2027</option><option>April 2027</option>
+          </select>
+        </div>
+        <!-- JAMB-only: Target Score -->
+        <div class="form-group" id="goal-jamb" style="display:none">
+          <label class="form-label">Target JAMB Score</label>
+          <select class="form-select" id="su-target">
+            <option>200&ndash;220</option><option>221&ndash;240</option><option>241&ndash;260</option>
+            <option>261&ndash;280</option><option selected>281&ndash;300</option>
+            <option>301&ndash;320</option><option>320+</option>
+          </select>
+        </div>
+
+        <!-- WAEC/NECO only: Target Grade -->
+        <div class="form-group" id="goal-waec" style="display:none">
+          <label class="form-label">Target WAEC/NECO Grade (per subject)</label>
+          <select class="form-select" id="su-target-grade">
+            <option value="A1">A1 &mdash; Excellent (90%+)</option>
+            <option value="B2">B2 &mdash; Very Good (80&ndash;89%)</option>
+            <option value="B3" selected>B3 &mdash; Good (75&ndash;79%)</option>
+            <option value="C4">C4 &mdash; Credit (65&ndash;74%)</option>
+            <option value="C5">C5 &mdash; Credit (55&ndash;64%)</option>
+            <option value="C6">C6 &mdash; Credit (50&ndash;54%) &mdash; minimum pass</option>
+          </select>
+        </div>
+
+        <!-- Post-UTME: Target percentage -->
+        <div class="form-group" id="goal-postutme" style="display:none">
+          <label class="form-label">Target Post-UTME Score</label>
+          <select class="form-select" id="su-target-postutme">
+            <option>50&ndash;60%</option><option selected>61&ndash;70%</option>
+            <option>71&ndash;80%</option><option>81&ndash;90%</option><option>90%+</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline" onclick="goStep(1)">&larr; Back</button>
+          <button class="btn btn-primary" style="flex:1" onclick="goStep(3)">Continue &rarr;</button>
+        </div>
+      </div>
+
+      <!-- Step 3 &mdash; Subjects -->
+      <div id="step-3" style="display:none">
+        <div class="step-indicator">Step 3 of 4 &mdash; Your Subjects</div>
+        <div class="step-bar"><div class="step-bar-fill" style="width:75%"></div></div>
+        <h2 style="font-family:var(--font-head);font-size:1.9rem;margin-bottom:6px">Your subjects</h2>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:8px">Select all subjects you are sitting for.</p>
+
+        <div class="jamb-hint" id="jamb-hint" style="display:none">
+          JAMB requires exactly 4 subjects (including English). You've selected <span id="jamb-count">0</span>/4.
+        </div>
+
+        <div class="subject-grid" id="subj-grid">
+          <div class="subj-card" onclick="toggleSubj(this,'mathematics')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">📐</div>
+            <div class="subj-card-name" style="color:#1a56ff">Mathematics</div>
+          </div>
+          <div class="subj-card selected" onclick="toggleSubj(this,'english')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">📖</div>
+            <div class="subj-card-name" style="color:#00c97a">English Language</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'physics')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">⚛️</div>
+            <div class="subj-card-name" style="color:#7c3aed">Physics</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'chemistry')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🧪</div>
+            <div class="subj-card-name" style="color:#ff6b35">Chemistry</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'biology')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🌿</div>
+            <div class="subj-card-name" style="color:#0891b2">Biology</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'economics')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">&#x1F4C8;</div>
+            <div class="subj-card-name" style="color:#f59e0b">Economics</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'government')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🏛️</div>
+            <div class="subj-card-name" style="color:#6366f1">Government</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'literature')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">📚</div>
+            <div class="subj-card-name" style="color:#ec4899">Literature</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'geography')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🌍</div>
+            <div class="subj-card-name" style="color:#10b981">Geography</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'commerce')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🏪</div>
+            <div class="subj-card-name" style="color:#8b5cf6">Commerce</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'accounts')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">💼</div>
+            <div class="subj-card-name" style="color:#14b8a6">Accounts</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'crk')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">✝️</div>
+            <div class="subj-card-name" style="color:#6d28d9">CRK</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-outline" onclick="goStep(2)">&larr; Back</button>
+          <button class="btn btn-primary" style="flex:1" onclick="goStep(4)">Continue &rarr;</button>
+        </div>
+      </div>
+
+      <!-- Step 4 &mdash; Study mode -->
+      <div id="step-4" style="display:none">
+        <div class="step-indicator">Step 4 of 4 &mdash; Study Preference</div>
+        <div class="step-bar"><div class="step-bar-fill" style="width:100%"></div></div>
+        <h2 style="font-family:var(--font-head);font-size:1.9rem;margin-bottom:6px">How do you like to study?</h2>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:20px">You can change this later in your settings.</p>
+
+        <label class="study-pref-option">
+          <input type="radio" name="study_mode" value="drill" checked>
+          <div>
+            <div style="font-weight:700">Mix of video + practice drills</div>
+            <div style="font-size:.82rem;color:var(--muted)">Watch lessons, then practise with guided drills. Recommended for most students.</div>
+          </div>
+        </label>
+        <label class="study-pref-option">
+          <input type="radio" name="study_mode" value="cbt_only">
+          <div>
+            <div style="font-weight:700">CBT practice only</div>
+            <div style="font-size:.82rem;color:var(--muted)">Skip drills, go straight to full CBT sessions. The algorithm still tracks your progress.</div>
+          </div>
+        </label>
+
+        <div style="margin:16px 0;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;font-size:.85rem;">
+          <strong>📧 Almost done!</strong> After you click "Create Account", we'll send a confirmation email.
+          Click the link in it to activate your account.
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-outline" onclick="goStep(3)">&larr; Back</button>
+          <button class="btn btn-success btn-lg" style="flex:1" id="btn-create-account" onclick="doSignup()">Create Account</button>
+        </div>
+      </div>
+
+    </div><!-- /signup-form -->
+  </div><!-- /auth-card -->
+
+  <p style="margin-top:20px;font-size:.82rem;color:var(--muted);text-align:center">
+    By signing up, you agree to our
+    <a href="#" style="color:var(--accent)">Terms of Service</a> and
+    <a href="#" style="color:var(--accent)">Privacy Policy</a>.
+  </p>
+</div>
+
+<div id="toast"></div>
+
+<!-- Supabase CDN -->
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+// ── Initialise Supabase ──
+// window.sb is set by js/supabase.js \u2014 credentials live only in js/config.js
+
+// Redirect already-logged-in users.
+// Uses replace() so the login page is NOT in browser history.
+// The onAuthStateChange listener below is suppressed on this page so
+// a SIGNED_IN event fired by the SDK init never double-redirects.
+let _loginChecked = false;
+(async () => {
+  try {
+    const { data: { session } } = await window.sb.auth.getSession();
+    if (session && !_loginChecked) {
+      _loginChecked = true;
+      window.location.replace('dashboard.html');
+    } else {
+      _loginChecked = true; // mark done even if no session
+    }
+  } catch (e) {
+    _loginChecked = true;
+    console.warn('[login] getSession error:', e);
+  }
+})();
+
+// ── State ──
+let jambSelected = false;
+const selectedSubjects = new Set(['english']); // English pre-selected
+
+// ── Tab Switch ──
+function switchTab(tab) {
+  document.getElementById('login-form').style.display  = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+// ── Step Navigation ──
+function goStep(n) {
+  // Validate before advancing
+  if (n === 2) {
+    const name  = document.getElementById('su-name').value.trim();
+    const email = document.getElementById('su-email').value.trim();
+    const pass  = document.getElementById('su-pass').value;
+    const pass2 = document.getElementById('su-pass2').value;
+    if (!name)  { showStepError('Please enter your full name.'); return; }
+    if (!email || !email.includes('@')) { showStepError('Please enter a valid email.'); return; }
+    if (pass.length < 8) { showStepError('Password must be at least 8 characters.'); return; }
+    if (pass !== pass2)  { showStepError('Passwords do not match.'); return; }
+  }
+  if (n === 4) {
+    if (selectedSubjects.size === 0) { showStepError('Please select at least one subject.'); return; }
+  }
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step-' + i);
+    if (el) el.style.display = i === n ? 'block' : 'none';
+  }
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+function showStepError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── Password helpers ──
+function checkPasswordMatch() {
+  const pass  = document.getElementById('su-pass').value;
+  const pass2 = document.getElementById('su-pass2').value;
+  const msg   = document.getElementById('pw-match-msg');
+  if (!msg || !pass2) return;
+  if (pass2.length === 0) { msg.style.display = 'none'; return; }
+  msg.style.display = 'block';
+  if (pass === pass2) {
+    msg.textContent = '\u2713 Passwords match';
+    msg.style.color = '#16a34a';
+  } else {
+    msg.textContent = '\u2717 Passwords do not match';
+    msg.style.color = '#dc2626';
+  }
+}
+
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '\uD83D\uDE48'; }
+  else                         { inp.type = 'password'; btn.textContent = '\uD83D\uDC41'; }
+}
+
+function checkStrength(pw) {
+  const bar   = document.getElementById('strength-bar');
+  const label = document.getElementById('strength-label');
+  bar.style.display = pw.length ? 'block' : 'none';
+  if (pw.length < 6) {
+    bar.className = 'strength-bar strength-weak';
+    label.textContent = 'Weak password';
+    label.style.color = '#ef4444';
+  } else if (pw.length < 10 || !/[0-9!@#$%]/.test(pw)) {
+    bar.className = 'strength-bar strength-fair';
+    label.textContent = 'Fair \u2014 add numbers or symbols';
+    label.style.color = '#f59e0b';
+  } else {
+    bar.className = 'strength-bar strength-strong';
+    label.textContent = 'Strong password \u2713';
+    label.style.color = '#22c55e';
+  }
+}
+
+// ── Exam goal fields \u2014 show/hide based on selection ──
+function updateGoalFields() {
+  const hasJAMB     = document.getElementById('chk-jamb')?.checked;
+  const hasWAEC     = document.getElementById('chk-waec')?.checked;
+  const hasNECO     = document.getElementById('chk-neco')?.checked;
+  const hasPostUTME = document.getElementById('chk-postutme')?.checked;
+
+  document.getElementById('goal-jamb').style.display     = hasJAMB ? 'block' : 'none';
+  document.getElementById('goal-waec').style.display     = (hasWAEC || hasNECO) ? 'block' : 'none';
+  document.getElementById('goal-postutme').style.display = hasPostUTME ? 'block' : 'none';
+
+  // Keep JAMB hint in step-3 in sync
+  jambSelected = !!hasJAMB;
+  updateJAMBHint();
+}
+
+// ── Legacy alias so any remaining onchange="checkJAMB()" calls still work ──
+function checkJAMB() { updateGoalFields(); }
+
+function toggleSubj(el, id) {
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) selectedSubjects.add(id);
+  else selectedSubjects.delete(id);
+  updateJAMBHint();
+}
+
+function updateJAMBHint() {
+  const hint    = document.getElementById('jamb-hint');
+  const countEl = document.getElementById('jamb-count');
+  if (jambSelected) {
+    hint.style.display = 'block';
+    countEl.textContent = selectedSubjects.size;
+    hint.classList.toggle('ok', selectedSubjects.size === 4);
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+// ── Target score parse ──
+function parseTargetScore(str) {
+  const map = { '200\u2013220':210,'221\u2013240':230,'241\u2013260':250,'261\u2013280':270,'281\u2013300':290,'301\u2013320':310,'320+':330 };
+  return map[str] || 250;
+}
+
+// ── DO SIGNUP ──
+async function doSignup() {
+  const examTypes = Array.from(document.querySelectorAll('.exam-checks input:checked')).map(c => c.value);
+  const studyMode = document.querySelector('input[name=study_mode]:checked').value;
+
+  const hasJAMB = examTypes.includes('JAMB');
+  const hasGrade = examTypes.includes('WAEC') || examTypes.includes('NECO');
+
+  const formData = {
+    fullName:    document.getElementById('su-name').value.trim(),
+    email:       document.getElementById('su-email').value.trim(),
+    phone:       (document.getElementById('su-phone')?.value || '').trim(),
+    password:    document.getElementById('su-pass').value,
+    examTypes,
+    examDate:    document.getElementById('su-date').value || null,
+    targetScore: hasJAMB ? parseTargetScore(document.getElementById('su-target')?.value) : null,
+    targetGrade: hasGrade ? (document.getElementById('su-target-grade')?.value || 'B3') : null,
+    subjects:    Array.from(selectedSubjects),
+    studyMode
+  };
+
+  await AUTH.handleSignup(formData);
+}
+
+// ── DO LOGIN ──
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) { showStepError('Please fill in all fields.'); return; }
+  await AUTH.handleLogin(email, password);
+}
+
+// ── Enter key support ──
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const loginVisible = document.getElementById('login-form').style.display !== 'none';
+  if (loginVisible) doLogin();
+});
+
+// ── Check URL param \u2014 open login tab if ?tab=login ──
+const urlTab = new URLSearchParams(window.location.search).get('tab');
+if (urlTab === 'login') switchTab('login');
+else switchTab('signup');
+</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsubscribe &mdash; UE School</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/main.css">
+<style>
+body { background: var(--bg, #f0f5ff); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 20px; font-family: 'DM Sans', system-ui, sans-serif; color: #0f1c3f; }
+.unsub-card { background: #fff; border: 1.5px solid rgba(59,130,246,.18); border-radius: 18px; padding: 44px 36px; max-width: 480px; width: 100%; box-shadow: 0 8px 40px rgba(26,86,255,.10); text-align: center; }
+.unsub-card .brand { font-family: 'Syne', sans-serif; font-weight: 800; letter-spacing: .08em; color: #1a56ff; font-size: .9rem; text-transform: uppercase; margin-bottom: 14px; }
+.unsub-card h1 { font-family: 'Syne', sans-serif; font-size: 1.7rem; line-height: 1.25; margin-bottom: 12px; }
+.unsub-card p { color: #3a4f7a; font-size: .95rem; line-height: 1.55; margin-bottom: 18px; }
+.unsub-card .muted { color: #6b82b0; font-size: .85rem; }
+.unsub-card .icon-circle { width: 64px; height: 64px; border-radius: 50%; background: rgba(26,86,255,.08); color: #1a56ff; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+.unsub-card .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+.unsub-btn { display: inline-block; padding: 11px 22px; border-radius: 10px; font-weight: 700; font-size: .9rem; cursor: pointer; transition: transform .15s, box-shadow .15s; border: none; font-family: inherit; }
+.unsub-btn-primary { background: #1a56ff; color: #fff; box-shadow: 0 4px 14px rgba(26,86,255,.25); }
+.unsub-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,86,255,.32); }
+.unsub-btn-outline { background: #fff; color: #1a56ff; border: 1.5px solid rgba(26,86,255,.30); }
+.unsub-btn-outline:hover { background: rgba(26,86,255,.06); }
+.unsub-btn:disabled { opacity: .55; cursor: wait; transform: none; }
+.state-success .icon-circle { background: rgba(16,185,129,.12); color: #047857; }
+.state-error   .icon-circle { background: rgba(239,68,68,.12);  color: #b91c1c; }
+.spinner { width: 36px; height: 36px; border: 3px solid rgba(59,130,246,.2); border-top-color: #1a56ff; border-radius: 50%; animation: ueSpin .8s linear infinite; margin: 0 auto 18px; }
+@keyframes ueSpin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<noscript>
+  <div style="padding:40px;text-align:center;font-family:system-ui">
+    <h2>JavaScript is required</h2>
+    <p>Please enable JavaScript to manage your e-mail preferences.</p>
+  </div>
+</noscript>
+
+<div class="unsub-card" id="card">
+  <div class="brand">UE School</div>
+
+  <!-- Loading -->
+  <div id="state-loading">
+    <div class="spinner"></div>
+    <h1>Updating your preferences&hellip;</h1>
+    <p class="muted">One moment.</p>
+  </div>
+
+  <!-- Confirm step (default for one-click unsub from email) -->
+  <div id="state-confirm" style="display:none">
+    <div class="icon-circle">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    </div>
+    <h1>Unsubscribe from weekly e-mails?</h1>
+    <p>You&rsquo;ll stop receiving the Saturday performance report. Your account, progress and report-share link are not affected.</p>
+    <div class="actions">
+      <button class="unsub-btn unsub-btn-primary" id="btn-confirm">Yes, unsubscribe</button>
+      <a class="unsub-btn unsub-btn-outline" href="dashboard.html">Keep them, take me back</a>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="state-success" style="display:none" class="state-success">
+    <div class="icon-circle">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1>You&rsquo;re unsubscribed</h1>
+    <p>We won&rsquo;t e-mail you the weekly report any more. <span id="success-email" class="muted"></span></p>
+    <p class="muted">Changed your mind?</p>
+    <div class="actions">
+      <button class="unsub-btn unsub-btn-outline" id="btn-resub">Re-subscribe</button>
+      <a class="unsub-btn unsub-btn-primary" href="dashboard.html">Open dashboard</a>
+    </div>
+  </div>
+
+  <!-- Re-subscribed -->
+  <div id="state-resub" style="display:none" class="state-success">
+    <div class="icon-circle">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1>You&rsquo;re back on the list</h1>
+    <p>The next weekly report will land in your inbox on Saturday.</p>
+    <div class="actions">
+      <a class="unsub-btn unsub-btn-primary" href="dashboard.html">Open dashboard</a>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div id="state-error" style="display:none" class="state-error">
+    <div class="icon-circle">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <h1>This link is invalid or expired</h1>
+    <p>If you keep getting our e-mails by mistake, sign in and turn the toggle off on your dashboard, or reply to any of our messages and we&rsquo;ll handle it.</p>
+    <div class="actions">
+      <a class="unsub-btn unsub-btn-primary" href="dashboard.html">Open dashboard</a>
+      <a class="unsub-btn unsub-btn-outline" href="contact.html">Contact us</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function show(id) {
+    ['state-loading','state-confirm','state-success','state-resub','state-error']
+      .forEach(function (s) {
+        var el = document.getElementById(s);
+        if (el) el.style.display = (s === id) ? 'block' : 'none';
+      });
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var token  = (params.get('token') || '').trim();
+  // ?confirm=1 = single-click unsubscribe straight from the e-mail
+  var oneClick = params.get('confirm') === '1';
+
+  if (!token) { show('state-error'); return; }
+
+  // Wait for window.sb (set by js/supabase.js)
+  function whenReady(cb, tries) {
+    tries = tries || 30;
+    if (window.sb) return cb();
+    if (tries <= 0) { show('state-error'); return; }
+    setTimeout(function () { whenReady(cb, tries - 1); }, 100);
+  }
+
+  function callRpc(fn, cb) {
+    window.sb.rpc(fn, { p_token: token }).then(function (res) {
+      if (res.error) return cb(res.error, null);
+      cb(null, res.data);
+    });
+  }
+
+  whenReady(function () {
+    if (oneClick) {
+      // straight from the e-mail "Unsubscribe" link
+      callRpc('unsubscribe_weekly_report', function (err, data) {
+        if (err || !data || data.ok !== true) { show('state-error'); return; }
+        var em = document.getElementById('success-email');
+        if (em && data.email) em.textContent = '(' + data.email + ')';
+        show('state-success');
+      });
+    } else {
+      // Confirm step \u2014 user clicked an in-app link
+      show('state-confirm');
+    }
+  });
+
+  document.getElementById('btn-confirm').addEventListener('click', function () {
+    var btn = this; btn.disabled = true; show('state-loading');
+    callRpc('unsubscribe_weekly_report', function (err, data) {
+      btn.disabled = false;
+      if (err || !data || data.ok !== true) { show('state-error'); return; }
+      var em = document.getElementById('success-email');
+      if (em && data.email) em.textContent = '(' + data.email + ')';
+      show('state-success');
+    });
+  });
+
+  document.getElementById('btn-resub').addEventListener('click', function () {
+    var btn = this; btn.disabled = true; show('state-loading');
+    callRpc('resubscribe_weekly_report', function (err, data) {
+      btn.disabled = false;
+      if (err || !data || data.ok !== true) { show('state-error'); return; }
+      show('state-resub');
+    });
+  });
+})();
+</script>
+</body>
+</html>

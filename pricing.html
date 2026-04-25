@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plans & Pricing &mdash; UE School</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+.pricing-wrap {
+  min-height: 100vh;
+  background: var(--bg);
+}
+.pricing-hero {
+  background: linear-gradient(135deg, #0f1c3f 0%, #1a3a8f 100%);
+  padding: 72px 0 56px;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.pricing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+.pricing-hero h1 {
+  font-family: var(--font-head);
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  margin-bottom: 14px;
+  position: relative;
+}
+.pricing-hero p {
+  font-size: 1.05rem;
+  color: rgba(255,255,255,.7);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.6;
+  position: relative;
+}
+
+.pricing-section {
+  padding: 60px 0 80px;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.pricing-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 36px;
+  position: relative;
+}
+.pricing-card.featured {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px);
+}
+.pricing-badge {
+  position: absolute;
+  top: -14px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 4px 16px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.pricing-price {
+  font-family: var(--font-head);
+  font-size: 2.6rem;
+  margin: 8px 0 4px;
+}
+.pricing-save { color: var(--accent2); font-size: .85rem; font-weight: 700; margin-bottom: 20px; }
+.pricing-features { list-style: none; margin-bottom: 28px; }
+.pricing-features li { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: .9rem; }
+.pricing-check { color: var(--accent2); }
+
+/* Current plan badge */
+.current-plan-badge {
+  display: none;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: .75rem;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 999px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* Auth state banner */
+#auth-state-banner {
+  text-align: center;
+  padding: 16px 24px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  margin-bottom: 40px;
+  font-size: .92rem;
+  color: #1e40af;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#auth-state-banner a { color: var(--accent); font-weight: 700; }
+
+/* FAQ */
+.faq-section { background: rgba(240,244,255,.5); padding: 60px 0; }
+.faq-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; max-width: 860px; margin: 0 auto; }
+.faq-item { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 24px; }
+.faq-q { font-weight: 700; margin-bottom: 8px; font-size: .95rem; }
+.faq-a { font-size: .88rem; color: var(--muted); line-height: 1.6; }
+
+/* Guarantee */
+.guarantee-strip {
+  background: linear-gradient(135deg, #1a56ff, #6366f1);
+  color: #fff;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+@media (max-width: 768px) {
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+  .pricing-card.featured { transform: none; }
+  .faq-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Mobile nav hamburger (matches index/about/dashboard) ── */
+.nav-hamburger {
+  display: none; flex-direction: column; justify-content: center; align-items: center;
+  gap: 5px; width: 40px; height: 40px; padding: 8px;
+  background: rgba(26,86,255,.06); border: 1.5px solid var(--border2);
+  border-radius: 9px; cursor: pointer; margin-left: auto; flex-shrink: 0;
+  z-index: 210; transition: background .2s, border-color .2s;
+}
+.nav-hamburger:hover { background: rgba(26,86,255,.12); border-color: var(--accent); }
+.nav-hamburger span {
+  display: block; width: 18px; height: 2px; background: var(--text);
+  border-radius: 2px; transition: transform .3s ease, opacity .3s ease;
+  transform-origin: center center;
+}
+.nav-mobile-open .nav-hamburger { background: rgba(26,86,255,.1); border-color: var(--accent); }
+.nav-mobile-open .nav-hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-mobile-open .nav-hamburger span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-mobile-open .nav-hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 768px) {
+  .ue-nav { height: auto; }
+  .ue-nav .container { flex-wrap: wrap; height: auto; padding: 0 16px; }
+  .nav-logo { padding: 14px 0; flex: 1; }
+  .nav-hamburger { display: flex; }
+  .nav-links, .nav-right {
+    display: flex !important; flex-direction: column; width: 100%;
+    overflow: hidden; max-height: 0; opacity: 0; pointer-events: none;
+    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, padding .3s ease;
+  }
+  .nav-links { gap: 2px; padding: 0; order: 3; }
+  .nav-right  { gap: 8px; padding: 0; order: 4; }
+  .nav-mobile-open .nav-links {
+    max-height: 320px; opacity: 1; pointer-events: auto;
+    padding: 8px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .nav-mobile-open .nav-right {
+    max-height: 120px; opacity: 1; pointer-events: auto; padding: 10px 0 14px;
+  }
+  .nav-links a {
+    display: flex; align-items: center; padding: 11px 14px; font-size: .92rem;
+    font-weight: 600; color: var(--text); border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .nav-links a:hover, .nav-links a.active { background: rgba(26,86,255,.07); color: var(--accent); }
+  .nav-right .btn { width: 100%; justify-content: center; height: 44px; }
+}
+</style>
+</head>
+<body class="pricing-wrap">
+
+<nav class="ue-nav">
+  <div class="container">
+    <a href="index.html" class="nav-logo">UE School</a>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="classroom.html">Classroom</a>
+      <a href="cbt.html">Practice</a>
+    </div>
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu"
+            onclick="this.closest('.ue-nav').classList.toggle('nav-mobile-open')">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-right" id="nav-right">
+      <a href="login.html" class="btn btn-primary" id="nav-login-btn">Login / Sign Up</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="pricing-hero">
+  <div class="container">
+    <h1>Invest in Your Future</h1>
+    <p>Less than the cost of a data bundle. Cancel anytime. No hidden fees.</p>
+  </div>
+</div>
+
+<!-- Pricing cards -->
+<section class="pricing-section">
+  <div class="container">
+
+    <div id="auth-state-banner" style="display:none">
+      <span id="auth-banner-text"></span>
+    </div>
+
+    <div class="pricing-grid" id="pricing-grid">
+      <!-- Populated by PAYMENT.renderPricingSection() -->
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
+        Loading plans…
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:28px;font-size:.82rem;color:var(--muted)">
+      &#x1F512; Secured by Paystack &nbsp;·&nbsp; &#x20A6; NGN &nbsp;·&nbsp; Instant activation after payment
+    </p>
+
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="container">
+    <h2 class="section-title" style="text-align:center;margin-bottom:32px">Frequently Asked Questions</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <div class="faq-q">Can I cancel anytime?</div>
+        <div class="faq-a">Yes. Your subscription is active until the end of the billing period. No automatic renewal unless you opt in.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What payment methods are accepted?</div>
+        <div class="faq-a">We accept all Nigerian bank cards (Visa, Mastercard), bank transfers, and USSD via Paystack &mdash; Nigeria's most trusted payment gateway.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Is there a free trial?</div>
+        <div class="faq-a">Yes! You can create a free account and take practice sessions. Premium unlocks all video lessons and full SmartPath™ analysis.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What if I have payment issues?</div>
+        <div class="faq-a">Contact us immediately with your payment reference number. We resolve all payment disputes within 24 hours.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Can I upgrade my plan?</div>
+        <div class="faq-a">Yes. Subscribing to a higher plan simply extends your access. The new expiry is calculated from the current date.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Is my data secure?</div>
+        <div class="faq-a">All data is stored securely in Supabase with row-level security. Payments are handled entirely by Paystack &mdash; we never see your card details.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Guarantee -->
+<div class="guarantee-strip">
+  <div style="font-size:2.5rem;margin-bottom:12px">&#x1F3AF;</div>
+  <h2 style="font-family:var(--font-head);font-size:1.9rem;margin-bottom:10px;color:#fff">Pass or We Help You Retry</h2>
+  <p style="color:rgba(255,255,255,.75);max-width:480px;margin:0 auto 24px;font-size:.95rem;line-height:1.6">
+    If you complete 80% of your SmartPath™ plan and don't improve your mock score, contact us and we'll extend your subscription for free.
+  </p>
+  <a href="login.html" class="btn btn-white btn-lg">Get Started Free</a>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:32px">
+      <div>
+        <div class="footer-logo">UE School</div>
+        <div class="footer-tagline" style="margin-top:8px">The cockpit for your exam preparation.</div>
+      </div>
+      <div style="display:flex;gap:48px;flex-wrap:wrap">
+        <div>
+          <div class="footer-heading">Platform</div>
+          <ul class="footer-links">
+            <li><a href="classroom.html">Classroom</a></li>
+            <li><a href="cbt.html">Practice CBT</a></li>
+            <li><a href="dashboard.html">Dashboard</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-heading">Company</div>
+          <ul class="footer-links">
+            <li><a href="about.html">About Us</a></li>
+            <li><a href="contact.html">Contact Us</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-divider">&copy; 2026 UE School. All rights reserved.</div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<!--
+  SCRIPT LOAD ORDER &mdash; do not reorder:
+  1. config.js    &mdash; window.UE_CONFIG (URL + anon key, no hardcoding)
+  2. supabase CDN &mdash; SDK must load before shim
+  3. supabase.js  &mdash; sets window.sb using UE_CONFIG
+  4. Paystack CDN &mdash; payment popup library
+  5. app.js       &mdash; utilities
+  6. auth-guard.js
+  7. payment.js   &mdash; PAYMENT module
+-->
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase.js"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/payment.js"></script>
+
+<script>
+// window.sb is set by supabase.js shim \u2014 no credentials here
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Keep banner hidden until auth state is resolved to prevent flash
+  // ── Render tiered pricing cards (Basic / Pro / Elite) ──────────
+  // PAYMENT.renderPricingSection reads plan definitions from payment.js
+  // so features are always in sync \u2014 no separate HTML to maintain.
+  PAYMENT.renderPricingSection('pricing-grid');
+
+  // ── Auth-aware UI ───────────────────────────────────────────────
+  const { data: { session } } = await window.sb.auth.getSession();
+
+  const banner   = document.getElementById('auth-state-banner');
+  const bannerTx = document.getElementById('auth-banner-text');
+  const navRight = document.getElementById('nav-right');
+
+  // Reveal banner now that we know the auth state \u2014 prevents flash
+  banner.style.display = 'block';
+
+  // ── Toast: surface the reason we were redirected here from a
+  //    premium page (set by auth-guard.js / head-gatekeeper.js) ──
+  try {
+    const redirectMsg = sessionStorage.getItem('ue_premium_redirect_msg');
+    if (redirectMsg) {
+      sessionStorage.removeItem('ue_premium_redirect_msg');
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = redirectMsg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 5000);
+      }
+    }
+  } catch (_) {}
+
+  if (session) {
+    const { data: profile } = await window.sb
+      .from('profiles')
+      .select('full_name, is_premium, subscription_expiry')
+      .eq('id', session.user.id)
+      .single();
+
+    // ── Nav: show user pill + dashboard link ──────────────────────
+    if (navRight) {
+      const initials  = (profile?.full_name || 'U')
+        .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      const firstName = (profile?.full_name || '').split(' ')[0];
+      navRight.innerHTML = `
+        <div class="nav-user-pill">
+          <div class="nav-avatar">${initials}</div>
+          <span style="font-weight:700;font-size:.9rem">${firstName}</span>
+        </div>
+        <a href="dashboard.html" class="btn btn-outline btn-sm">Dashboard</a>
+        <button class="btn btn-outline btn-sm"
+          onclick="window.sb.auth.signOut().then(()=>location.reload())">Logout</button>
+      `;
+    }
+
+    // ── Auth-state banner ─────────────────────────────────────────
+    const isPremium = profile?.is_premium;
+    const expiry    = profile?.subscription_expiry ? new Date(profile.subscription_expiry) : null;
+    const isActive  = isPremium && expiry && expiry > new Date();
+    const isExpired = isPremium && expiry && expiry <= new Date();
+
+    if (isActive) {
+      const daysLeft = Math.ceil((expiry - new Date()) / 86400000);
+      banner.style.background   = '#d1fae5';
+      banner.style.borderColor  = '#6ee7b7';
+      bannerTx.style.color      = '#065f46';
+      bannerTx.innerHTML = `\u2705 <strong>Your subscription is active</strong> \u2014 ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining. <a href="dashboard.html">Go to Dashboard \u2192</a>`;
+      markCurrentPlan(daysLeft);
+    } else if (isExpired) {
+      banner.style.background   = '#fee2e2';
+      banner.style.borderColor  = '#fca5a5';
+      bannerTx.style.color      = '#991b1b';
+      bannerTx.innerHTML = `\u26A0\uFE0F Your subscription expired. Renew a plan below to restore full access.`;
+    } else {
+      const firstName = (profile?.full_name || '').split(' ')[0];
+      bannerTx.innerHTML = `\uD83D\uDC4B Welcome back, ${firstName}! Subscribe below to unlock full access.`;
+    }
+
+    PAYMENT.checkPendingPlan();
+
+  } else {
+    bannerTx.innerHTML = `\uD83D\uDD12 <a href="login.html">Sign in</a> or <a href="login.html#signup">create a free account</a> to get started.`;
+  }
+  // Defaulter banner is intentionally absent on pricing.html
+});
+
+function markCurrentPlan(daysLeft) {
+  const planKey = daysLeft > 180 ? 'annual' : daysLeft > 60 ? 'quarterly' : 'monthly';
+  const btn = document.querySelector(`[data-plan="${planKey}"]`);
+  if (btn) {
+    btn.textContent = '\u2713 Current Plan';
+    btn.disabled    = true;
+    btn.style.opacity = '.65';
+  }
+}
+</script>
+</body>
+</html>

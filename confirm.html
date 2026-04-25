@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm Your Email &mdash; UE School</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+body { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); padding:24px; }
+.confirm-card {
+  background:var(--surface); border:1.5px solid var(--border); border-radius:18px;
+  box-shadow:var(--shadow-lg); max-width:500px; width:100%; padding:48px 40px; text-align:center;
+}
+.confirm-icon { font-size:4rem; margin-bottom:20px; animation: bounce 1.5s infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.confirm-title { font-family:var(--font-head); font-size:2.2rem; margin-bottom:12px; }
+.confirm-desc  { font-size:.95rem; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+.email-badge {
+  display:inline-block; background:var(--accent-glow); color:var(--accent);
+  font-weight:700; font-size:.9rem; padding:6px 18px; border-radius:999px; margin-bottom:24px;
+}
+.resend-link { font-size:.85rem; color:var(--muted); margin-top:16px; }
+.resend-link a { color:var(--accent); cursor:pointer; }
+.resend-link a.disabled { color:var(--muted); pointer-events:none; }
+
+.status-checking { display:flex; align-items:center; justify-content:center; gap:10px; font-size:.88rem; color:var(--muted); margin-top:20px; }
+.dot-pulse { display:flex; gap:4px; }
+.dot-pulse span { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.2s ease infinite; }
+.dot-pulse span:nth-child(2) { animation-delay:.2s; }
+.dot-pulse span:nth-child(3) { animation-delay:.4s; }
+@keyframes pulse { 0%,80%,100%{opacity:.2;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+</style>
+</head>
+<body>
+
+<div class="confirm-card">
+  <div id="state-waiting">
+    <div class="confirm-icon">📧</div>
+    <div class="confirm-title">Check Your Email</div>
+
+    <div id="email-badge-wrap">
+      <div class="email-badge" id="email-display">your email</div>
+    </div>
+
+    <div class="confirm-desc">
+      We sent a confirmation link to your email address.<br>
+      Click the link to activate your account and start preparing for your exams.
+    </div>
+
+    <a href="login.html" class="btn btn-outline btn-block">&larr; Back to Login</a>
+
+    <div class="status-checking">
+      <div class="dot-pulse"><span></span><span></span><span></span></div>
+      Waiting for confirmation…
+    </div>
+
+    <div class="resend-link">
+      Didn't receive it? Check your spam folder or
+      <a id="resend-link" onclick="resendConfirmation()">resend the email</a>.
+      <span id="resend-countdown"></span>
+    </div>
+  </div>
+
+  <div id="state-confirmed" style="display:none">
+    <div class="confirm-icon" style="animation:none">&#x2705;</div>
+    <div class="confirm-title">Email Confirmed!</div>
+    <div class="confirm-desc">
+      Your account is now active. Setting up your profile…
+    </div>
+    <div class="status-checking">
+      <div class="dot-pulse"><span></span><span></span><span></span></div>
+      Redirecting to your dashboard…
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+
+<script>
+// window.sb is set by js/supabase.js — credentials live only in js/config.js
+
+// ── Display the email they signed up with ──
+const params = new URLSearchParams(window.location.search);
+const emailParam = params.get('email');
+if (emailParam) {
+  document.getElementById('email-display').textContent = decodeURIComponent(emailParam);
+}
+
+// ── CRITICAL: Handle the Supabase email confirmation token ───────────
+// Supabase redirects with one of two formats:
+//   PKCE  : confirm.html?code=XXXX
+//   Hash  : confirm.html#access_token=XXX&type=signup
+// The Supabase SDK detects and exchanges both automatically. We just
+// need to wait briefly and then call getSession(), or react to the
+// onAuthStateChange event — whichever fires first.
+
+// IMPORTANT — set the guard flag BEFORE the await. Both the SDK event
+// and the timed IIFE can race, and `await` releases the event loop, so
+// we must claim the lock synchronously.
+let _confirmHandled = false;
+
+async function handleConfirmation() {
+  if (_confirmHandled) return;
+  _confirmHandled = true;          // claim the lock SYNCHRONOUSLY
+  showConfirmed();
+  try {
+    await AUTH.handlePostConfirm();
+  } catch (err) {
+    console.error('[CONFIRM] handlePostConfirm error:', err);
+    window.location.replace('dashboard.html');
+  }
+}
+
+// Listen for auth-state changes (fires when the SDK exchanges the token)
+window.sb.auth.onAuthStateChange((event, session) => {
+  if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+    handleConfirmation();
+  }
+});
+
+// Fallback: if the SDK already exchanged the token before we attached
+// the listener, getSession() will return it directly.
+(async () => {
+  await new Promise(r => setTimeout(r, 500));
+  const { data: { session } } = await window.sb.auth.getSession();
+  if (session) handleConfirmation();
+})();
+
+function showConfirmed() {
+  const waiting   = document.getElementById('state-waiting');
+  const confirmed = document.getElementById('state-confirmed');
+  if (waiting)   waiting.style.display   = 'none';
+  if (confirmed) confirmed.style.display = 'block';
+}
+
+// ── Resend confirmation ──
+let resendCooldown = 0;
+
+async function resendConfirmation() {
+  if (resendCooldown > 0) return;
+  const email = emailParam
+    ? decodeURIComponent(emailParam)
+    : prompt('Enter your email address:');
+  if (!email) return;
+
+  const { error } = await window.sb.auth.resend({ type: 'signup', email });
+  if (error) { toast('Error: ' + error.message); return; }
+
+  toast('Confirmation email resent! Check your inbox and spam folder.');
+  startCooldown(60);
+}
+
+function startCooldown(seconds) {
+  resendCooldown = seconds;
+  const link      = document.getElementById('resend-link');
+  const countdown = document.getElementById('resend-countdown');
+  link.classList.add('disabled');
+
+  const timer = setInterval(() => {
+    resendCooldown--;
+    countdown.textContent = ` (${resendCooldown}s)`;
+    if (resendCooldown <= 0) {
+      clearInterval(timer);
+      countdown.textContent = '';
+      link.classList.remove('disabled');
+    }
+  }, 1000);
+}
+</script>
+</body>
+</html>

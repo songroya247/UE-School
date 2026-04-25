@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UE School &mdash; Admin Command Centre</title>
+<meta name="robots" content="noindex,nofollow">
+
+<!-- Security block — must run BEFORE any rendering. Blocks the page
+     for unauthenticated visitors and for non-admin users. -->
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: rgba(255,255,255,0.07);
+    --accent: #1a56ff;
+    --accent2: #00c97a;
+    --accent3: #f59e0b;
+    --accent4: #e93b81;
+    --text: #f0f2f7;
+    --muted: #6b7280;
+    --danger: #ef4444;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .layout { display:flex; min-height:100vh; }
+
+  .sidebar {
+    width: 230px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-head);
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .sidebar-logo span { color: var(--accent); }
+
+  .admin-badge {
+    display: inline-block;
+    font-size: .65rem;
+    background: rgba(26,86,255,.2);
+    color: var(--accent);
+    border: 1px solid rgba(26,86,255,.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+
+  .sidebar-nav { flex:1; padding: 10px 0; overflow-y:auto; }
+  .nav-section-label {
+    padding: 14px 20px 6px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px;
+    color: var(--muted);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+    font-size: .85rem;
+    font-weight: 500;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(26,86,255,.08); }
+  .nav-icon { font-size: 1rem; width: 18px; text-align:center; }
+
+  .sidebar-bottom {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: .8rem;
+  }
+  .admin-info { color: var(--muted); }
+  .admin-info strong { color: var(--text); display:block; font-weight:600; }
+
+  .main { margin-left: 230px; flex:1; display:flex; flex-direction:column; min-height:100vh; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items:center; justify-content:space-between;
+    position: sticky; top:0; z-index:50;
+  }
+  .topbar-title {
+    font-family: var(--font-head);
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .topbar-actions { display:flex; gap:10px; align-items:center; }
+
+  .btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: .82rem;
+    font-weight: 600;
+    transition: all .15s;
+  }
+  .btn-primary { background: var(--accent); color:#fff; }
+  .btn-primary:hover { background: #1344d4; }
+  .btn-ghost { background: rgba(255,255,255,.06); color:var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: rgba(255,255,255,.1); }
+  .btn-danger-ghost { background: transparent; color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+  .btn-danger-ghost:hover { background: rgba(239,68,68,.1); }
+
+  .content { padding: 24px 28px; flex:1; }
+
+  /* ── KPI Cards ── */
+  .kpi-grid { display:grid; grid-template-columns: repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kpi-card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: var(--kpi-color, var(--accent));
+  }
+  .kpi-label { font-size:.75rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.7px; margin-bottom:8px; }
+  .kpi-value { font-family:var(--font-head); font-size:1.9rem; font-weight:800; line-height:1; margin-bottom:4px; }
+  .kpi-sub { font-size:.75rem; color:var(--muted); }
+  .kpi-sub .up { color:var(--accent2); }
+  .kpi-sub .down { color:var(--danger); }
+
+  /* ── Section header ── */
+  .section-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .section-title { font-family:var(--font-head); font-size:1rem; font-weight:700; }
+
+  /* ── Users table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .table-toolbar {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  }
+  .search-input {
+    flex:1; min-width:180px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: .83rem;
+    outline:none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+  .filter-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: .82rem;
+    outline:none;
+    cursor:pointer;
+  }
+
+  table { width:100%; border-collapse:collapse; }
+  thead tr { background: rgba(255,255,255,.03); }
+  th {
+    text-align:left;
+    padding: 10px 16px;
+    font-size:.72rem; font-weight:700;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.7px;
+    border-bottom: 1px solid var(--border);
+    white-space:nowrap;
+  }
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align:middle;
+    font-size:.83rem;
+  }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .user-cell { display:flex; align-items:center; gap:10px; }
+  .avatar {
+    width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:.75rem; flex-shrink:0;
+  }
+  .user-name { font-weight:600; color:var(--text); }
+  .user-email { font-size:.74rem; color:var(--muted); }
+
+  .exam-pill {
+    display:inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size:.7rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.4px;
+    margin-right:3px; margin-bottom:2px;
+  }
+  .pill-jamb { background:rgba(26,86,255,.18); color:#6b9fff; border:1px solid rgba(26,86,255,.25); }
+  .pill-waec { background:rgba(0,201,122,.15); color:#00c97a; border:1px solid rgba(0,201,122,.2); }
+  .pill-neco { background:rgba(245,158,11,.15); color:#f59e0b; border:1px solid rgba(245,158,11,.2); }
+  .pill-postutme { background:rgba(233,59,129,.15); color:#e93b81; border:1px solid rgba(233,59,129,.2); }
+
+  .plan-badge {
+    display:inline-block; padding:2px 9px; border-radius:20px; font-size:.7rem; font-weight:700;
+  }
+  .plan-premium { background:rgba(245,158,11,.15); color:#f59e0b; border:1px solid rgba(245,158,11,.25); }
+  .plan-free { background:rgba(255,255,255,.06); color:var(--muted); border:1px solid var(--border); }
+
+  .status-dot {
+    display:inline-flex; align-items:center; gap:5px; font-size:.75rem; font-weight:600;
+  }
+  .dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .dot-active { background:var(--accent2); box-shadow:0 0 6px var(--accent2); }
+  .dot-inactive { background:var(--muted); }
+  .dot-at-risk { background:var(--danger); box-shadow:0 0 6px var(--danger); }
+
+  .score-bar-wrap { width:90px; }
+  .score-bar {
+    height:4px; border-radius:2px; background:rgba(255,255,255,.08);
+    overflow:hidden; margin-top:4px;
+  }
+  .score-bar-fill { height:100%; border-radius:2px; transition:width .3s; }
+
+  .action-btn {
+    background:transparent;
+    border: 1px solid var(--border);
+    color:var(--muted);
+    border-radius:6px;
+    padding:4px 9px;
+    font-size:.72rem; font-weight:600;
+    cursor:pointer;
+    transition:all .15s;
+    font-family:var(--font-body);
+    margin-right:4px;
+  }
+  .action-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .action-btn.call { border-color:rgba(0,201,122,.3); color:var(--accent2); }
+  .action-btn.call:hover { background:rgba(0,201,122,.1); }
+  .action-btn.flag { border-color:rgba(245,158,11,.3); color:var(--accent3); }
+  .action-btn.flag:hover { background:rgba(245,158,11,.1); }
+
+  /* ── Help-needed panel ── */
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px; }
+
+  .panel {
+    background:var(--surface);
+    border: 1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-header {
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel-title { font-family:var(--font-head); font-size:.88rem; font-weight:700; }
+  .panel-body { padding:14px 18px; }
+
+  .alert-item {
+    display:flex; gap:12px; align-items:flex-start;
+    padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .alert-item:last-child { border-bottom:none; }
+  .alert-icon {
+    width:32px; height:32px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.9rem; flex-shrink:0;
+  }
+  .alert-icon.warn { background:rgba(245,158,11,.15); }
+  .alert-icon.danger { background:rgba(239,68,68,.15); }
+  .alert-icon.info { background:rgba(26,86,255,.15); }
+  .alert-body { flex:1; }
+  .alert-name { font-weight:600; font-size:.83rem; }
+  .alert-desc { color:var(--muted); font-size:.75rem; margin-top:1px; }
+  .alert-time { font-size:.7rem; color:var(--muted); flex-shrink:0; }
+
+  .tag { display:inline-block; padding:1px 7px; border-radius:4px; font-size:.68rem; font-weight:700; margin-left:6px; }
+  .tag-warn { background:rgba(245,158,11,.2); color:#f59e0b; }
+  .tag-danger { background:rgba(239,68,68,.2); color:#ef4444; }
+  .tag-info { background:rgba(26,86,255,.2); color:#6b9fff; }
+
+  /* ── Login as user modal note ── */
+  .impersonate-note {
+    background: rgba(26,86,255,.08);
+    border: 1px solid rgba(26,86,255,.2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 22px;
+    display:flex; gap:14px; align-items:flex-start;
+  }
+  .impersonate-icon { font-size:1.5rem; flex-shrink:0; }
+  .impersonate-body { flex:1; }
+  .impersonate-body strong { font-family:var(--font-head); font-size:.9rem; display:block; margin-bottom:4px; }
+  .impersonate-body p { font-size:.8rem; color:var(--muted); line-height:1.5; }
+  .impersonate-body code {
+    background:rgba(255,255,255,.08); padding:1px 6px; border-radius:4px; font-size:.78rem; color:#93c5fd;
+  }
+
+  /* ── Pagination ── */
+  .pagination { display:flex; gap:6px; justify-content:center; padding:14px; border-top:1px solid var(--border); }
+  .page-btn {
+    width:30px; height:30px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--border);
+    color:var(--muted); cursor:pointer; font-size:.78rem; font-weight:600;
+    font-family:var(--font-body);
+    transition:all .15s;
+  }
+  .page-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .page-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  /* ── User drawer ── */
+  .drawer-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .drawer-overlay.open { opacity:1; pointer-events:all; }
+  .drawer {
+    position:fixed; top:0; right:0; bottom:0; width:420px;
+    background:var(--surface);
+    border-left:1px solid var(--border);
+    z-index:201;
+    transform:translateX(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .drawer.open { transform:translateX(0); }
+  .drawer-header {
+    padding:20px 22px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .drawer-title { font-family:var(--font-head); font-size:1rem; font-weight:700; }
+  .drawer-close {
+    background:transparent; border:1px solid var(--border); color:var(--muted);
+    width:30px; height:30px; border-radius:7px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:1rem;
+  }
+  .drawer-body { flex:1; overflow-y:auto; padding:20px 22px; }
+  .drawer-footer { padding:14px 22px; border-top:1px solid var(--border); display:flex; gap:8px; }
+
+  .info-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
+  .info-row:last-child { border-bottom:none; }
+  .info-key { color:var(--muted); font-size:.78rem; font-weight:600; }
+  .info-val { font-size:.82rem; font-weight:500; }
+
+  .subject-prog { margin-top:14px; }
+  .subj-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .subj-name { font-size:.78rem; width:90px; flex-shrink:0; color:var(--muted); }
+  .prog-track { flex:1; height:5px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden; }
+  .prog-fill { height:100%; border-radius:3px; }
+  .prog-pct { font-size:.75rem; font-weight:700; width:36px; text-align:right; }
+
+  /* ── Loading state ── */
+  .loading-shimmer {
+    background: linear-gradient(90deg, var(--surface2) 25%, rgba(255,255,255,.05) 50%, var(--surface2) 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.4s infinite;
+    border-radius:6px;
+    height:14px;
+    margin-bottom:6px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ── Mobile sidebar overlay ── */
+  .sidebar-overlay {
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.6);
+    z-index:99;
+  }
+  .sidebar-overlay.open { display:block; }
+
+  /* ── Hamburger button ── */
+  .hamburger {
+    display:none;
+    background:transparent;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:6px 10px;
+    color:var(--text);
+    font-size:1.1rem;
+    cursor:pointer;
+    line-height:1;
+  }
+
+  /* ── Mobile bottom nav ── */
+  .mobile-nav {
+    display:none;
+    position:fixed; bottom:0; left:0; right:0;
+    background:var(--surface);
+    border-top:1px solid var(--border);
+    z-index:90;
+    padding:8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  .mobile-nav-items {
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+  }
+  .mobile-nav-item {
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:4px 12px;
+    cursor:pointer;
+    color:var(--muted);
+    font-size:.62rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:.4px;
+    border:none; background:transparent;
+    transition:color .15s;
+    font-family:var(--font-body);
+  }
+  .mobile-nav-item.active { color:var(--accent); }
+  .mobile-nav-item .mnav-icon { font-size:1.25rem; }
+
+  /* ── Mobile user card (replaces table rows on small screens) ── */
+  .user-card {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:10px;
+    cursor:pointer;
+    transition:border-color .15s;
+  }
+  .user-card:hover { border-color:var(--accent); }
+  .user-card:active { opacity:.85; }
+  .user-card-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .user-card-info { flex:1; min-width:0; }
+  .user-card-name { font-weight:700; font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .user-card-email { font-size:.74rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .user-card-meta { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .user-card-actions { display:flex; gap:8px; margin-top:10px; }
+  .user-card-actions .action-btn { flex:1; text-align:center; padding:7px 0; font-size:.78rem; }
+
+  /* ── Responsive breakpoints ── */
+  @media(max-width:900px) {
+    .kpi-grid { grid-template-columns:1fr 1fr; }
+    .two-col { grid-template-columns:1fr; }
+  }
+
+  @media(max-width:640px) {
+    /* Sidebar becomes a slide-in drawer */
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+      z-index:100;
+    }
+    .sidebar.mobile-open { transform: translateX(0); }
+
+    /* Main takes full width */
+    .main { margin-left:0; padding-bottom:70px; }
+
+    /* Topbar */
+    .topbar { padding:12px 16px; }
+    .hamburger { display:block; }
+    .topbar-actions .btn-ghost { display:none; } /* hide Refresh on mobile, use pull-to-refresh */
+    .topbar-actions .btn-primary { padding:7px 12px; font-size:.78rem; }
+
+    /* Content padding */
+    .content { padding:14px 14px; }
+
+    /* KPIs &mdash; 2&times;2 grid on mobile */
+    .kpi-grid { grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .kpi-value { font-size:1.5rem; }
+    .kpi-card { padding:14px; }
+
+    /* Hide impersonate note on mobile (too much text) */
+    .impersonate-note { display:none; }
+
+    /* Table toolbar stacks */
+    .table-toolbar { flex-direction:column; align-items:stretch; gap:8px; }
+    .search-input { min-width:unset; width:100%; }
+    .filter-select { width:100%; }
+
+    /* Hide desktop table, show cards */
+    #users-table { display:none; }
+    #user-cards { display:block; padding:14px; }
+
+    /* Drawer full width on mobile */
+    .drawer { width:100%; border-left:none; border-top:1px solid var(--border); top:auto; height:88vh; border-radius:16px 16px 0 0; }
+
+    /* Show mobile nav */
+    .mobile-nav { display:block; }
+
+    /* Section header */
+    .section-header { flex-direction:column; align-items:flex-start; gap:4px; }
+  }
+
+  @media(max-width:380px) {
+    .kpi-grid { grid-template-columns:1fr 1fr; gap:8px; }
+    .kpi-value { font-size:1.3rem; }
+    .pin-box { padding:24px 18px; }
+    .pin-key { padding:12px 0; font-size:1rem; }
+  }
+
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:#1a56ff; color:#fff; padding:11px 20px; border-radius:10px;
+    font-size:.83rem; font-weight:600; z-index:999;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    pointer-events:none;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* ── PIN Gate ── */
+  #pin-gate {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  #pin-gate.unlocked {
+    animation: gateOut .4s cubic-bezier(.4,0,.2,1) forwards;
+    pointer-events: none;
+  }
+  @keyframes gateOut {
+    to { opacity: 0; transform: scale(1.04); }
+  }
+  .pin-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 32px;
+    width: 340px;
+    max-width: 92vw;
+    text-align: center;
+    box-shadow: 0 32px 80px rgba(0,0,0,.6);
+  }
+  .pin-logo {
+    font-family: var(--font-head);
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .pin-logo span { color: var(--accent); }
+  .pin-sub {
+    font-size: .78rem;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+  .pin-dots {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .pin-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    transition: all .15s;
+  }
+  .pin-dot.filled {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(26,86,255,.5);
+  }
+  .pin-dot.error {
+    background: var(--danger);
+    border-color: var(--danger);
+    box-shadow: 0 0 10px rgba(239,68,68,.5);
+    animation: dotShake .3s ease;
+  }
+  @keyframes dotShake {
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-4px)}
+    75%{transform:translateX(4px)}
+  }
+  .pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .pin-key {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 0;
+    font-family: var(--font-head);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: all .12s;
+    user-select: none;
+  }
+  .pin-key:hover { background: rgba(26,86,255,.15); border-color: var(--accent); color: var(--accent); }
+  .pin-key:active { transform: scale(.94); }
+  .pin-key.del { font-size: .85rem; color: var(--muted); font-family: var(--font-body); }
+  .pin-key.zero { grid-column: 2; }
+  .pin-error-msg {
+    font-size: .75rem;
+    color: var(--danger);
+    margin-top: 14px;
+    height: 18px;
+    font-weight: 600;
+  }
+  .pin-attempts {
+    font-size: .7rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .pin-locked-msg {
+    font-size: .8rem;
+    color: var(--danger);
+    margin-top: 16px;
+    font-weight: 600;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── PIN Gate ─────────────────────────────────── -->
+<div id="pin-gate">
+  <div class="pin-box">
+    <div class="pin-logo">UE School <span>ADMIN</span></div>
+    <div class="pin-sub">Enter your 6-digit admin PIN to continue</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+      <div class="pin-dot" id="d4"></div>
+      <div class="pin-dot" id="d5"></div>
+    </div>
+    <div class="pin-keypad">
+      <div class="pin-key" onclick="pinPress('1')">1</div>
+      <div class="pin-key" onclick="pinPress('2')">2</div>
+      <div class="pin-key" onclick="pinPress('3')">3</div>
+      <div class="pin-key" onclick="pinPress('4')">4</div>
+      <div class="pin-key" onclick="pinPress('5')">5</div>
+      <div class="pin-key" onclick="pinPress('6')">6</div>
+      <div class="pin-key" onclick="pinPress('7')">7</div>
+      <div class="pin-key" onclick="pinPress('8')">8</div>
+      <div class="pin-key" onclick="pinPress('9')">9</div>
+      <div class="pin-key del" onclick="pinDel()">⌫ Del</div>
+      <div class="pin-key zero" onclick="pinPress('0')">0</div>
+    </div>
+    <div class="pin-error-msg" id="pin-error"></div>
+    <div class="pin-attempts" id="pin-attempts"></div>
+    <div class="pin-locked-msg" id="pin-locked">&#x1F512; Too many attempts. Try again in <span id="pin-countdown">30</span>s.</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      UE School <span class="admin-badge">ADMIN</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item active" onclick="switchView('overview')">
+        <span class="nav-icon">&#x1F4CA;</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="switchView('users')">
+        <span class="nav-icon">👥</span> All Users
+      </div>
+      <div class="nav-item" onclick="switchView('alerts')">
+        <span class="nav-icon">🔔</span> Help Alerts
+        <span style="margin-left:auto;background:var(--danger);color:#fff;font-size:.65rem;padding:1px 6px;border-radius:10px;font-weight:700">3</span>
+      </div>
+      <div class="nav-section-label">Tools</div>
+      <div class="nav-item" onclick="switchView('impersonate')">
+        <span class="nav-icon">&#x1F511;</span> Login as User
+      </div>
+      <div class="nav-item" onclick="switchView('payments')">
+        <span class="nav-icon">💳</span> Payments
+      </div>
+      <div class="nav-item" onclick="switchView('contact')">
+        <span class="nav-icon">📬</span> Contact Submissions
+      </div>
+      <div class="nav-section-label">System</div>
+      <div class="nav-item" onclick="openSupabase()">
+        <span class="nav-icon">🗄️</span> Supabase Console &#x2197;
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="admin-info">
+        <strong id="admin-name">Loading…</strong>
+        Admin / Maintenance Officer
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="hamburger" onclick="toggleMobileSidebar()" aria-label="Menu">&#x2630;</button>
+        <div class="topbar-title" id="page-title">Command Centre</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="refreshData()">↻ Refresh</button>
+        <button class="btn btn-primary" onclick="exportCSV()">⬇ Export</button>
+      </div>
+    </div>
+
+    <div class="content" id="main-content">
+
+      <!-- KPI Row -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card" style="--kpi-color:#1a56ff">
+          <div class="kpi-label">Total Users</div>
+          <div class="kpi-value" id="kpi-total">&mdash;</div>
+          <div class="kpi-sub"><span class="up" id="kpi-total-sub">Loading…</span></div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#00c97a">
+          <div class="kpi-label">Premium Users</div>
+          <div class="kpi-value" id="kpi-premium">&mdash;</div>
+          <div class="kpi-sub" id="kpi-premium-sub">Loading…</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#f59e0b">
+          <div class="kpi-label">Active (7d)</div>
+          <div class="kpi-value" id="kpi-active">&mdash;</div>
+          <div class="kpi-sub">Users with activity in last 7 days</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#e93b81">
+          <div class="kpi-label">Need Help</div>
+          <div class="kpi-value" id="kpi-help">&mdash;</div>
+          <div class="kpi-sub">Users at risk / low activity</div>
+        </div>
+      </div>
+
+      <!-- Impersonate note -->
+      <div class="impersonate-note">
+        <div class="impersonate-icon">&#x1F511;</div>
+        <div class="impersonate-body">
+          <strong>Developer / Admin Access &mdash; How to see what users see</strong>
+          <p>
+            In <strong>Supabase Dashboard &rarr; Authentication &rarr; Users</strong>, find any user and click <strong>"Send magic link"</strong> &mdash; paste that link in an incognito window to log in as them.<br>
+            For a permanent admin account: create a normal user, then run <code>UPDATE profiles SET is_premium = true WHERE email = 'your@email.com';</code> in the SQL Editor. Full setup instructions are in the guide document.
+          </p>
+        </div>
+      </div>
+
+      <!-- Two-col: alerts + top users -->
+      <div class="two-col">
+
+        <!-- Help Alerts -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🚨 Users Needing Support</div>
+            <span style="font-size:.72rem;color:var(--muted)">CS Priority Queue</span>
+          </div>
+          <div class="panel-body" id="alerts-panel">
+            <div style="color:var(--muted);font-size:.82rem;text-align:center;padding:20px 0">
+              Connect to Supabase to load live alerts
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Performers -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">&#x1F3C6; Top Performers</div>
+            <span style="font-size:.72rem;color:var(--muted)">By XP this week</span>
+          </div>
+          <div class="panel-body" id="top-panel">
+            <div style="color:var(--muted);font-size:.82rem;text-align:center;padding:20px 0">
+              Connect to Supabase to load leaderboard
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Users Table -->
+      <div class="section-header">
+        <div class="section-title">All Registered Users</div>
+        <span style="font-size:.78rem;color:var(--muted)" id="user-count-label">&mdash;</span>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="search-input" type="text" placeholder="🔍  Search by name, email or phone…" oninput="filterTable(this.value)" id="search-box">
+          <select class="filter-select" onchange="filterExam(this.value)">
+            <option value="">All Exams</option>
+            <option value="JAMB">JAMB</option>
+            <option value="WAEC">WAEC</option>
+            <option value="NECO">NECO</option>
+            <option value="Post-UTME">Post-UTME</option>
+          </select>
+          <select class="filter-select" onchange="filterPlan(this.value)">
+            <option value="">All Plans</option>
+            <option value="premium">Premium</option>
+            <option value="free">Free</option>
+          </select>
+          <select class="filter-select" onchange="filterStatus(this.value)">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="at-risk">At Risk</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div style="overflow-x:auto">
+          <table id="users-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Phone / Contact</th>
+                <th>Exams</th>
+                <th>Plan</th>
+                <th>Score / Grade</th>
+                <th>XP</th>
+                <th>Activity</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody">
+              <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:40px">
+                <div>Connect your Supabase credentials to load live user data.</div>
+                <div style="margin-top:8px"><button class="btn btn-primary" onclick="showConfigModal()">&#x2699; Configure Supabase</button></div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- User Detail Drawer -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="user-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title" id="drawer-username">User Profile</div>
+    <button class="drawer-close" onclick="closeDrawer()">&#x2715;</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-footer">
+    <button class="btn btn-ghost" style="flex:1" onclick="copyContact()">&#x1F4CB; Copy Contact Info</button>
+    <button class="btn btn-primary" style="flex:1" onclick="openImpersonate()">&#x1F511; Login as User</button>
+  </div>
+</div>
+
+<!-- Config Modal -->
+<div id="config-modal" style="
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.7);
+  z-index:300; align-items:center; justify-content:center;
+">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:460px;max-width:95vw;">
+    <h2 style="font-family:var(--font-head);font-size:1.1rem;margin-bottom:4px">Connect to Supabase</h2>
+    <p style="color:var(--muted);font-size:.82rem;margin-bottom:20px">Enter your project credentials to load live data.</p>
+    <div style="margin-bottom:14px">
+      <label style="font-size:.78rem;font-weight:700;color:var(--muted);display:block;margin-bottom:5px">SUPABASE URL</label>
+      <input id="cfg-url" type="text" placeholder="https://xxxx.supabase.co" style="
+        width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+        padding:9px 12px;color:var(--text);font-family:var(--font-body);font-size:.83rem;outline:none;
+      ">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:.78rem;font-weight:700;color:var(--muted);display:block;margin-bottom:5px">ANON KEY (safe to use here)</label>
+      <input id="cfg-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIs…" style="
+        width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+        padding:9px 12px;color:var(--text);font-family:var(--font-body);font-size:.83rem;outline:none;
+      ">
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeConfigModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="connectSupabase()">Connect & Load Data</button>
+    </div>
+    <div id="cfg-error" style="color:var(--danger);font-size:.78rem;margin-top:10px;display:none"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Authoritative auth + admin role check. Will redirect away non-admins
+     before the PIN gate is even visible. -->
+<script src="js/auth-guard.js"></script>
+
+<script>
+// ════════════════════════════════════════════════
+//  UE School \u2014 Admin Dashboard
+//  Connects to Supabase via Service-Role-safe anon
+//  (for full admin access, use service_role key only
+//   from a server-side proxy, never in browser)
+// ════════════════════════════════════════════════
+
+// Run the authoritative AUTH_GUARD check before anything else.
+// This validates the session and the is_admin flag against the DB.
+// Non-admins are redirected to dashboard.html.
+(async () => {
+  try {
+    const ok = await AUTH_GUARD.init();
+    if (!ok) return; // redirect in progress
+  } catch (e) {
+    console.error('[admin-dashboard] AUTH_GUARD failed:', e);
+    window.location.replace('login.html?next=admin-dashboard.html');
+  }
+})();
+
+let sb = null;
+let allUsers = [];
+let filteredUsers = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let activeUser = null;
+
+// ── Saved config ─────────────────────────────────
+function loadConfig() {
+  const url = localStorage.getItem('ue_admin_url');
+  const key = localStorage.getItem('ue_admin_key');
+  if (url && key) {
+    document.getElementById('cfg-url').value = url;
+    document.getElementById('cfg-key').value = key;
+    return { url, key };
+  }
+  return null;
+}
+
+// ── Init ─────────────────────────────────────────
+async function init() {
+  const cfg = loadConfig();
+  if (cfg) {
+    await connectSupabase(true);
+  } else {
+    showConfigModal();
+  }
+}
+
+// ── Connect ──────────────────────────────────────
+async function connectSupabase(silent = false) {
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if (!url || !key) {
+    showCfgError('Both URL and key are required.');
+    return;
+  }
+  try {
+    sb = supabase.createClient(url, key);
+    localStorage.setItem('ue_admin_url', url);
+    localStorage.setItem('ue_admin_key', key);
+    closeConfigModal();
+    await loadAllData();
+  } catch(e) {
+    showCfgError('Failed to connect: ' + e.message);
+  }
+}
+
+// ── Load all data ─────────────────────────────────
+async function loadAllData() {
+  showLoading();
+  try {
+    // Load profiles \u2014 admin must have a policy that allows SELECT *
+    // (Run: CREATE POLICY "admin_read_all" ON profiles FOR SELECT USING (true);
+    //  after verifying this page is only accessible to your team)
+    const { data: profiles, error } = await sb
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      if (error.message.includes('insufficient_privilege') || error.code === '42501') {
+        showTableError('RLS is blocking admin reads. See the guide document for the admin policy SQL to run in Supabase.');
+      } else {
+        showTableError(error.message);
+      }
+      return;
+    }
+
+    // Load session scores for score data
+    const { data: scores } = await sb
+      .from('session_scores')
+      .select('user_id, score, total_questions, accuracy, exam_type, created_at')
+      .order('created_at', { ascending: false });
+
+    // Merge score data into profiles
+    allUsers = (profiles || []).map(p => {
+      const userScores = (scores || []).filter(s => s.user_id === p.id);
+      const latestScore = userScores[0] || null;
+      const avgAccuracy = userScores.length > 0
+        ? Math.round(userScores.reduce((s,x)=>s+parseFloat(x.accuracy||0),0)/userScores.length*100)
+        : null;
+      return { ...p, _scores: userScores, _latestScore: latestScore, _avgAccuracy: avgAccuracy };
+    });
+
+    filteredUsers = [...allUsers];
+    renderKPIs();
+    renderTable();
+    renderAlerts();
+    renderTopUsers();
+
+    // Admin name
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user?.email) {
+      document.getElementById('admin-name').textContent = session.user.email;
+    } else {
+      document.getElementById('admin-name').textContent = 'Admin';
+    }
+
+  } catch(e) {
+    showTableError(e.message);
+  }
+}
+
+// ── KPIs ─────────────────────────────────────────
+function renderKPIs() {
+  const total = allUsers.length;
+  const premium = allUsers.filter(u => u.is_premium).length;
+  const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+  const active = allUsers.filter(u => {
+    const logs = u.usage_logs || [];
+    return logs.some(l => l.ts > sevenDaysAgo);
+  }).length;
+  const atRisk = allUsers.filter(u => classifyUser(u) === 'at-risk').length;
+
+  document.getElementById('kpi-total').textContent = total.toLocaleString();
+  document.getElementById('kpi-total-sub').innerHTML = `<span class="up">${allUsers.filter(u=>{
+    const d=new Date(u.created_at); return d>new Date(Date.now()-30*24*60*60*1000);
+  }).length} new this month</span>`;
+  document.getElementById('kpi-premium').textContent = premium.toLocaleString();
+  document.getElementById('kpi-premium-sub').innerHTML = `${total>0?Math.round(premium/total*100):0}% conversion rate`;
+  document.getElementById('kpi-active').textContent = active.toLocaleString();
+  document.getElementById('kpi-help').textContent = atRisk.toLocaleString();
+  document.getElementById('user-count-label').textContent = `${total.toLocaleString()} users total`;
+}
+
+// ── Classify user activity ────────────────────────
+function classifyUser(u) {
+  const logs = u.usage_logs || [];
+  if (logs.length === 0) return 'inactive';
+  const lastTs = Math.max(...logs.map(l => new Date(l.ts).getTime()));
+  const daysSince = (Date.now() - lastTs) / 86400000;
+  if (daysSince > 14) return 'inactive';
+  if (daysSince > 5 || (u._avgAccuracy !== null && u._avgAccuracy < 35)) return 'at-risk';
+  return 'active';
+}
+
+// ── Score display logic ───────────────────────────
+function renderScore(user) {
+  const exams = user.exam_types || [];
+  const hasJAMB = exams.includes('JAMB');
+  const hasWAEC = exams.includes('WAEC') || exams.includes('NECO');
+  const acc = user._avgAccuracy;
+
+  if (acc === null) return '<span style="color:var(--muted)">No data</span>';
+
+  if (hasJAMB && !hasWAEC) {
+    // Show estimated JAMB score (400-point scale)
+    const est = Math.round(acc * 4);
+    const color = est >= 280 ? '#00c97a' : est >= 220 ? '#f59e0b' : '#ef4444';
+    return `<div style="font-weight:700;color:${color}">${est}/400</div>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${acc}%;background:${color}"></div></div>`;
+  } else if (!hasJAMB && hasWAEC) {
+    // Show WAEC-style grade
+    const grade = accToGrade(acc);
+    const color = grade.startsWith('A') ? '#00c97a' : grade.startsWith('B') ? '#f59e0b' : '#ef4444';
+    return `<span style="font-weight:700;color:${color}">${grade}</span>`;
+  } else {
+    // Both \u2014 show acc%
+    return `<span style="font-weight:600">${acc}%</span>`;
+  }
+}
+
+function accToGrade(acc) {
+  if (acc >= 90) return 'A1';
+  if (acc >= 80) return 'B2';
+  if (acc >= 75) return 'B3';
+  if (acc >= 65) return 'C4';
+  if (acc >= 55) return 'C5';
+  if (acc >= 50) return 'C6';
+  if (acc >= 40) return 'D7';
+  if (acc >= 30) return 'E8';
+  return 'F9';
+}
+
+// ── Table render ──────────────────────────────────
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageUsers = filteredUsers.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('users-tbody');
+
+  if (pageUsers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">No users match this filter.</td></tr>';
+    renderPagination();
+    return;
+  }
+
+  tbody.innerHTML = pageUsers.map(u => {
+    const initials = (u.full_name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const colors = ['#1a56ff','#00c97a','#e93b81','#f59e0b','#7c3aed','#0891b2'];
+    const col = colors[(u.full_name||'').charCodeAt(0)%colors.length];
+    const exams = u.exam_types || [];
+    const status = classifyUser(u);
+    const lastLog = (u.usage_logs||[]).length > 0
+      ? new Date(Math.max(...(u.usage_logs).map(l=>new Date(l.ts).getTime()))).toLocaleDateString()
+      : 'Never';
+
+    return `<tr onclick="openDrawer('${u.id}')" style="cursor:pointer">
+      <td>
+        <div class="user-cell">
+          <div class="avatar" style="background:${col}20;color:${col}">${initials}</div>
+          <div>
+            <div class="user-name">${escHtml(u.full_name||'Unknown')}</div>
+            <div class="user-email">${escHtml(u.email||'')}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--muted)">${u.phone || '\u2014'}</td>
+      <td>${exams.map(e=>examPill(e)).join('')}</td>
+      <td><span class="plan-badge ${u.is_premium?'plan-premium':'plan-free'}">${u.is_premium?'Premium':'Free'}</span></td>
+      <td>${renderScore(u)}</td>
+      <td style="font-weight:600">${(u.total_xp||0).toLocaleString()} XP</td>
+      <td style="color:var(--muted);font-size:.75rem">${lastLog}</td>
+      <td>${statusDot(status)}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="action-btn call" onclick="callUser('${u.id}')">\uD83D\uDCDE Call</button>
+        <button class="action-btn flag" onclick="flagUser('${u.id}')">\u2691</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPagination();
+}
+
+function examPill(e) {
+  const cls = {JAMB:'pill-jamb',WAEC:'pill-waec',NECO:'pill-neco','Post-UTME':'pill-postutme'}[e]||'pill-jamb';
+  return `<span class="exam-pill ${cls}">${e}</span>`;
+}
+
+function statusDot(s) {
+  const map = {
+    active: ['dot-active','Active'],
+    'at-risk': ['dot-at-risk','At Risk'],
+    inactive: ['dot-inactive','Inactive']
+  };
+  const [cls,label] = map[s]||['dot-inactive','Unknown'];
+  return `<span class="status-dot"><span class="dot ${cls}"></span>${label}</span>`;
+}
+
+// ── Alerts panel ─────────────────────────────────
+function renderAlerts() {
+  const atRisk = allUsers
+    .filter(u => classifyUser(u) === 'at-risk' || classifyUser(u) === 'inactive')
+    .slice(0, 8);
+
+  const panel = document.getElementById('alerts-panel');
+  if (atRisk.length === 0) {
+    panel.innerHTML = '<div style="color:var(--accent2);text-align:center;padding:20px">\u2705 No users currently need immediate support.</div>';
+    return;
+  }
+
+  panel.innerHTML = atRisk.map(u => {
+    const status = classifyUser(u);
+    const logs = u.usage_logs || [];
+    const lastActivity = logs.length > 0
+      ? timeSince(Math.max(...logs.map(l=>new Date(l.ts).getTime())))
+      : 'Never active';
+    const icon = status === 'inactive' ? '\uD83D\uDE34' : '\u26A0';
+    const iconClass = status === 'inactive' ? 'danger' : 'warn';
+    const reason = status === 'inactive'
+      ? 'No activity \u2014 may need a check-in call'
+      : (u._avgAccuracy !== null && u._avgAccuracy < 35)
+        ? `Low accuracy (${u._avgAccuracy}%) \u2014 struggling with content`
+        : 'Reduced activity in past 5 days';
+    const tag = status === 'inactive' ? 'tag-danger' : 'tag-warn';
+    const tagText = status === 'inactive' ? 'INACTIVE' : 'AT RISK';
+
+    return `<div class="alert-item" onclick="openDrawer('${u.id}')" style="cursor:pointer">
+      <div class="alert-icon ${iconClass}">${icon}</div>
+      <div class="alert-body">
+        <div class="alert-name">${escHtml(u.full_name||'Unknown')}<span class="tag ${tag}">${tagText}</span></div>
+        <div class="alert-desc">${reason}</div>
+        <div style="margin-top:5px;display:flex;gap:6px">
+          <button class="action-btn call" onclick="event.stopPropagation();callUser('${u.id}')">\uD83D\uDCDE ${u.phone||u.email}</button>
+        </div>
+      </div>
+      <div class="alert-time">${lastActivity}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('kpi-help').textContent = atRisk.length;
+}
+
+// ── Top users panel ───────────────────────────────
+function renderTopUsers() {
+  const top = [...allUsers]
+    .sort((a,b)=>(b.total_xp||0)-(a.total_xp||0))
+    .slice(0,8);
+  const medals = ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'];
+  const panel = document.getElementById('top-panel');
+  panel.innerHTML = top.map((u,i) => `
+    <div class="alert-item" onclick="openDrawer('${u.id}')" style="cursor:pointer">
+      <div style="width:28px;text-align:center;font-size:1.1rem">${medals[i]||`#${i+1}`}</div>
+      <div class="alert-body">
+        <div class="alert-name">${escHtml(u.full_name||'Unknown')}</div>
+        <div class="alert-desc">${(u.exam_types||[]).join(' · ')||'\u2014'}</div>
+      </div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:.88rem;color:var(--accent3)">${(u.total_xp||0).toLocaleString()} XP</div>
+    </div>`).join('');
+}
+
+// ── User Drawer ───────────────────────────────────
+function openDrawer(userId) {
+  activeUser = allUsers.find(u => u.id === userId);
+  if (!activeUser) return;
+  document.getElementById('drawer-username').textContent = activeUser.full_name || 'User';
+
+  const u = activeUser;
+  const exams = u.exam_types || [];
+  const hasJAMB = exams.includes('JAMB');
+  const hasWAEC = exams.includes('WAEC') || exams.includes('NECO') || exams.includes('Post-UTME');
+  const logs = u.usage_logs || [];
+  const streak = calcStreak(logs);
+  const status = classifyUser(u);
+
+  // Build score section based on exam type
+  let scoreSection = '';
+  if (hasJAMB && !hasWAEC) {
+    const est = u._avgAccuracy !== null ? Math.round(u._avgAccuracy * 4) : null;
+    scoreSection = `<div class="info-row"><span class="info-key">Est. JAMB Score</span><span class="info-val" style="color:var(--accent);font-weight:800">${est !== null ? est+' / 400' : '\u2014'}</span></div>
+    <div class="info-row"><span class="info-key">Target Score</span><span class="info-val">${u.target_score||'\u2014'}</span></div>`;
+  } else if (!hasJAMB && hasWAEC) {
+    const grade = u._avgAccuracy !== null ? accToGrade(u._avgAccuracy) : null;
+    scoreSection = `<div class="info-row"><span class="info-key">Est. WAEC Grade</span><span class="info-val" style="color:var(--accent2);font-weight:800">${grade||'\u2014'}</span></div>
+    <div class="info-row"><span class="info-key">Avg. Accuracy</span><span class="info-val">${u._avgAccuracy !== null ? u._avgAccuracy+'%' : '\u2014'}</span></div>`;
+  } else {
+    scoreSection = `<div class="info-row"><span class="info-key">Avg. Accuracy</span><span class="info-val">${u._avgAccuracy !== null ? u._avgAccuracy+'%' : '\u2014'}</span></div>`;
+  }
+
+  document.getElementById('drawer-body').innerHTML = `
+    <div style="margin-bottom:18px">
+      <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">Contact Info</div>
+      <div class="info-row"><span class="info-key">Email</span><span class="info-val">${escHtml(u.email)}</span></div>
+      <div class="info-row"><span class="info-key">Phone</span><span class="info-val">${u.phone||'<em style="color:var(--muted)">Not provided</em>'}</span></div>
+      <div class="info-row"><span class="info-key">Joined</span><span class="info-val">${new Date(u.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span></div>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">Exam Profile</div>
+      <div class="info-row"><span class="info-key">Exams</span><span class="info-val">${exams.map(e=>examPill(e)).join('')||'\u2014'}</span></div>
+      <div class="info-row"><span class="info-key">Exam Date</span><span class="info-val">${u.exam_date||'\u2014'}</span></div>
+      <div class="info-row"><span class="info-key">Subjects</span><span class="info-val" style="font-size:.75rem">${(u.exam_subjects||[]).join(', ')||'\u2014'}</span></div>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">Performance</div>
+      ${scoreSection}
+      <div class="info-row"><span class="info-key">Total XP</span><span class="info-val">${(u.total_xp||0).toLocaleString()}</span></div>
+      <div class="info-row"><span class="info-key">Study Streak</span><span class="info-val">${streak} day${streak!==1?'s':''}</span></div>
+      <div class="info-row"><span class="info-key">Sessions</span><span class="info-val">${(u._scores||[]).length}</span></div>
+      <div class="info-row"><span class="info-key">Status</span><span class="info-val">${statusDot(status)}</span></div>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">Plan</div>
+      <div class="info-row"><span class="info-key">Subscription</span><span class="info-val"><span class="plan-badge ${u.is_premium?'plan-premium':'plan-free'}">${u.is_premium?'Premium':'Free'}</span></span></div>
+      <div class="info-row"><span class="info-key">Expires</span><span class="info-val">${u.subscription_expiry?new Date(u.subscription_expiry).toLocaleDateString():'\u2014'}</span></div>
+    </div>
+
+    <div>
+      <div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">CS Notes</div>
+      <textarea id="cs-notes" placeholder="Add customer service notes about this user…"
+        onblur="saveCsNotes()" style="
+        width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border);
+        border-radius:8px;padding:10px;color:var(--text);font-family:var(--font-body);
+        font-size:.8rem;outline:none;resize:vertical;line-height:1.5
+      ">${u.cs_notes||''}</textarea>
+      <div id="cs-notes-status" style="font-size:.72rem;color:var(--muted);margin-top:6px">
+        Auto-saves when you click outside the box.
+      </div>
+    </div>
+  `;
+
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.getElementById('user-drawer').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.getElementById('user-drawer').classList.remove('open');
+  activeUser = null;
+}
+
+function copyContact() {
+  if (!activeUser) return;
+  const u = activeUser;
+  const text = `Name: ${u.full_name}\nEmail: ${u.email}\nPhone: ${u.phone||'N/A'}\nExams: ${(u.exam_types||[]).join(', ')}\nPlan: ${u.is_premium?'Premium':'Free'}\nStatus: ${classifyUser(u)}`;
+  navigator.clipboard.writeText(text).then(() => showToast('Contact info copied!'));
+}
+
+function callUser(userId) {
+  const u = allUsers.find(x=>x.id===userId);
+  if (!u) return;
+  if (u.phone) {
+    // Open the device dialer / WhatsApp prompt
+    window.location.href = 'tel:' + u.phone.replace(/\s+/g,'');
+    showToast(`\uD83D\uDCDE Dialling ${u.full_name}`);
+  } else if (u.email) {
+    window.location.href = 'mailto:' + u.email + '?subject=' +
+      encodeURIComponent('UE School \u2014 checking in');
+    showToast(`\u2709 No phone on file \u2014 opening email`);
+  }
+}
+
+function flagUser(userId) {
+  const u = allUsers.find(x=>x.id===userId);
+  if (!u) return;
+  const stamp = new Date().toLocaleDateString('en-NG');
+  const note  = `[FLAGGED ${stamp}] follow-up needed\n` + (u.cs_notes || '');
+  sb.from('profiles').update({ cs_notes: note }).eq('id', u.id).then(({error}) => {
+    if (error) { showToast('Flag failed: ' + error.message); return; }
+    u.cs_notes = note;
+    showToast(`\u2691 ${u.full_name} flagged for follow-up`);
+  });
+}
+
+// ── Save the drawer's CS notes back to Supabase ──────────────────
+async function saveCsNotes() {
+  if (!activeUser) return;
+  const ta = document.getElementById('cs-notes');
+  const status = document.getElementById('cs-notes-status');
+  if (!ta) return;
+  const value = ta.value;
+  if (status) { status.textContent = 'Saving…'; status.style.color = 'var(--muted)'; }
+  const { error } = await sb.from('profiles')
+    .update({ cs_notes: value })
+    .eq('id', activeUser.id);
+  if (error) {
+    if (status) { status.textContent = 'Could not save: ' + error.message; status.style.color = 'var(--danger)'; }
+    return;
+  }
+  activeUser.cs_notes = value;
+  // Reflect in the in-memory list so re-opening the drawer shows the new text
+  const i = allUsers.findIndex(x => x.id === activeUser.id);
+  if (i >= 0) allUsers[i].cs_notes = value;
+  if (status) {
+    status.textContent = 'Saved ' + new Date().toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'});
+    status.style.color = 'var(--accent2)';
+  }
+}
+
+function openImpersonate() {
+  showToast('See guide doc: use Supabase Dashboard \u2192 Auth \u2192 Magic Link to login as this user.');
+}
+
+// ── Filtering ─────────────────────────────────────
+let filterExamVal='', filterPlanVal='', filterStatusVal='', searchVal='';
+
+function filterTable(v) { searchVal=v.toLowerCase(); applyFilters(); }
+function filterExam(v) { filterExamVal=v; applyFilters(); }
+function filterPlan(v) { filterPlanVal=v; applyFilters(); }
+function filterStatus(v) { filterStatusVal=v; applyFilters(); }
+
+function applyFilters() {
+  filteredUsers = allUsers.filter(u => {
+    if (searchVal && !(
+      (u.full_name||'').toLowerCase().includes(searchVal) ||
+      (u.email||'').toLowerCase().includes(searchVal) ||
+      (u.phone||'').toLowerCase().includes(searchVal)
+    )) return false;
+    if (filterExamVal && !(u.exam_types||[]).includes(filterExamVal)) return false;
+    if (filterPlanVal === 'premium' && !u.is_premium) return false;
+    if (filterPlanVal === 'free' && u.is_premium) return false;
+    if (filterStatusVal && classifyUser(u) !== filterStatusVal) return false;
+    return true;
+  });
+  currentPage = 1;
+  document.getElementById('user-count-label').textContent = `${filteredUsers.length} of ${allUsers.length} users`;
+  renderTable();
+}
+
+// ── Pagination ────────────────────────────────────
+function renderPagination() {
+  const pages = Math.ceil(filteredUsers.length / PAGE_SIZE);
+  const pg = document.getElementById('pagination');
+  if (pages <= 1) { pg.innerHTML=''; return; }
+  let html = '';
+  for (let i=1;i<=pages;i++) {
+    html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  pg.innerHTML = html;
+}
+
+function goPage(n) { currentPage=n; renderTable(); }
+
+// ── Utilities ─────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'\u0026').replace(/</g,'\u003C').replace(/>/g,'\u003E').replace(/"/g,'\u0022');
+}
+
+function timeSince(ts) {
+  const s = Math.floor((Date.now()-ts)/1000);
+  if (s<60) return s+'s ago';
+  if (s<3600) return Math.floor(s/60)+'m ago';
+  if (s<86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+
+function calcStreak(logs) {
+  if (!logs||logs.length===0) return 0;
+  const days=new Set(logs.map(l=>new Date(l.ts).toDateString()));
+  let streak=0, d=new Date();
+  while(days.has(d.toDateString())){ streak++; d.setDate(d.getDate()-1); }
+  return streak;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function showLoading() {
+  document.getElementById('users-tbody').innerHTML =
+    Array(5).fill(`<tr>${Array(9).fill('<td><div class="loading-shimmer" style="width:80%"></div></td>').join('')}</tr>`).join('');
+}
+
+function showTableError(msg) {
+  document.getElementById('users-tbody').innerHTML =
+    `<tr><td colspan="9" style="text-align:center;color:var(--danger);padding:30px">${escHtml(msg)}</td></tr>`;
+}
+
+function showCfgError(msg) {
+  const el = document.getElementById('cfg-error');
+  el.textContent = msg; el.style.display='block';
+}
+
+function showConfigModal() {
+  document.getElementById('config-modal').style.display='flex';
+}
+function closeConfigModal() {
+  document.getElementById('config-modal').style.display='none';
+}
+
+function refreshData() { if(sb) loadAllData(); else showConfigModal(); }
+
+function exportCSV() {
+  if(!filteredUsers.length) { showToast('No data to export'); return; }
+  const rows = [['Name','Email','Phone','Exams','Plan','Avg Accuracy','XP','Status','Joined']];
+  filteredUsers.forEach(u => {
+    rows.push([
+      u.full_name||'',u.email||'',u.phone||'',
+      (u.exam_types||[]).join('|'),
+      u.is_premium?'Premium':'Free',
+      u._avgAccuracy!==null?u._avgAccuracy+'%':'\u2014',
+      u.total_xp||0,
+      classifyUser(u),
+      new Date(u.created_at).toLocaleDateString()
+    ]);
+  });
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='ue-school-users-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('CSV exported!');
+}
+
+function openSupabase() {
+  const url = localStorage.getItem('ue_admin_url')||'';
+  const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
+  if(match) window.open(`https://app.supabase.com/project/${match[1]}`, '_blank');
+  else window.open('https://app.supabase.com', '_blank');
+}
+
+function switchView(v) {
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  showToast('View: '+v+' (all data lives in main table above)');
+}
+
+// ── PIN Gate ─────────────────────────────────────
+// Change PIN_HASH below to your own PIN's SHA-256 hash.
+// To generate: open browser console and run:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_PIN'))
+//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+//
+// Default PIN is 482650 \u2014 CHANGE THIS BEFORE DEPLOYING.
+// SHA-256 of "482650":
+const PIN_HASH = 'f9963dcd58cbac9c306e202fc1dcf8fdc8deb974ab93b452aafca77009908d27';
+
+// To change: generate hash of your chosen PIN in console (instructions above),
+// paste it in place of the string above.
+
+let pinBuffer = '';
+let pinAttempts = 0;
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCKOUT_SECONDS = 30;
+let pinLocked = false;
+let pinLockTimer = null;
+
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
+  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+function pinPress(digit) {
+  if (pinLocked) return;
+  if (pinBuffer.length >= 6) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === 6) checkPin();
+}
+
+function pinDel() {
+  if (pinLocked) return;
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  clearPinError();
+}
+
+function updatePinDots(state) {
+  for (let i = 0; i < 6; i++) {
+    const dot = document.getElementById('d' + i);
+    dot.className = 'pin-dot';
+    if (state === 'error') { dot.classList.add('error'); }
+    else if (i < pinBuffer.length) { dot.classList.add('filled'); }
+  }
+}
+
+function clearPinError() {
+  document.getElementById('pin-error').textContent = '';
+}
+
+async function checkPin() {
+  const hash = await hashPin(pinBuffer);
+
+  // ── SESSION ALREADY UNLOCKED ──────────────────
+  // Also accept a session token so the PIN isn't
+  // needed every page refresh within the same session.
+  if (hash === PIN_HASH || sessionStorage.getItem('ue_admin_unlocked') === PIN_HASH) {
+    sessionStorage.setItem('ue_admin_unlocked', PIN_HASH);
+    unlock();
+    return;
+  }
+
+  // ── WRONG PIN ─────────────────────────────────
+  pinAttempts++;
+  pinBuffer = '';
+  updatePinDots('error');
+  setTimeout(() => updatePinDots(), 600);
+
+  const remaining = PIN_MAX_ATTEMPTS - pinAttempts;
+  if (remaining <= 0) {
+    startLockout();
+  } else {
+    document.getElementById('pin-error').textContent = 'Incorrect PIN.';
+    document.getElementById('pin-attempts').textContent =
+      remaining === 1 ? '\u26A0 1 attempt remaining' : `${remaining} attempts remaining`;
+  }
+}
+
+function unlock() {
+  const gate = document.getElementById('pin-gate');
+  gate.classList.add('unlocked');
+  gate.addEventListener('animationend', () => gate.remove(), { once: true });
+  // Keyboard support active now
+  document.addEventListener('keydown', pinKeyboard);
+  // Boot the dashboard
+  init();
+}
+
+function startLockout() {
+  pinLocked = true;
+  let secs = PIN_LOCKOUT_SECONDS;
+  document.getElementById('pin-locked').style.display = 'block';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-attempts').textContent = '';
+  document.getElementById('pin-countdown').textContent = secs;
+
+  pinLockTimer = setInterval(() => {
+    secs--;
+    document.getElementById('pin-countdown').textContent = secs;
+    if (secs <= 0) {
+      clearInterval(pinLockTimer);
+      pinLocked = false;
+      pinAttempts = 0;
+      document.getElementById('pin-locked').style.display = 'none';
+      updatePinDots();
+    }
+  }, 1000);
+}
+
+function pinKeyboard(e) {
+  if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+  else if (e.key === 'Backspace') pinDel();
+}
+
+// Check if already unlocked this session (page refresh)
+(async () => {
+  const token = sessionStorage.getItem('ue_admin_unlocked');
+  if (token && token === PIN_HASH) {
+    unlock();
+    return;
+  }
+  // Enable keyboard input right away for PIN screen
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('pin-gate')) return;
+    if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+    else if (e.key === 'Backspace') pinDel();
+  });
+})();
+
+// ── Boot ─────────────────────────────────────────
+// init() is now called by unlock() above, not directly
+// init();  \u2190 removed \u2014 PIN gate calls it after auth
+</script>
+</body>
+</html>

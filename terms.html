@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service &mdash; UE School</title>
+<meta name="description" content="UE School Terms of Service &mdash; the rules and conditions governing your use of the platform.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>
+/* ── MOBILE NAV &mdash; matches index.html professional slide-down ── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px; height: 40px;
+  padding: 8px;
+  background: rgba(26,86,255,.06);
+  border: 1.5px solid var(--border2);
+  border-radius: 9px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  z-index: 210;
+  transition: background .2s, border-color .2s;
+}
+.nav-hamburger:hover { background: rgba(26,86,255,.12); border-color: var(--accent); }
+.nav-hamburger span {
+  display: block; width: 18px; height: 2px;
+  background: var(--text); border-radius: 2px;
+  transition: transform .3s ease, opacity .3s ease;
+  transform-origin: center center;
+}
+.nav-mobile-open .nav-hamburger { background: rgba(26,86,255,.1); border-color: var(--accent); }
+.nav-mobile-open .nav-hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-mobile-open .nav-hamburger span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-mobile-open .nav-hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 768px) {
+  .ue-nav { height: auto; }
+  .ue-nav .container { flex-wrap: wrap; height: auto; padding: 0 16px; }
+  .nav-logo { padding: 14px 0; flex: 1; }
+  .nav-hamburger { display: flex; }
+  .nav-links, .nav-right {
+    display: flex !important;
+    flex-direction: column; width: 100%;
+    overflow: hidden; max-height: 0; opacity: 0; pointer-events: none;
+    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, padding .3s ease;
+  }
+  .nav-links { gap: 2px; padding: 0; order: 3; }
+  .nav-right  { gap: 8px; padding: 0; order: 4; border-top: 1px solid var(--border); }
+  .nav-mobile-open .nav-links {
+    max-height: 300px; opacity: 1; pointer-events: auto;
+    padding: 8px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .nav-mobile-open .nav-right {
+    max-height: 120px; opacity: 1; pointer-events: auto; padding: 10px 0 14px;
+  }
+  .nav-links a {
+    display: flex; align-items: center;
+    padding: 11px 14px; font-size: .92rem; font-weight: 600;
+    color: var(--text); border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .nav-links a:hover, .nav-links a.active { background: rgba(26,86,255,.07); color: var(--accent); }
+  .nav-right .btn { width: 100%; justify-content: center; height: 44px; }
+}
+</style>
+
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+
+
+
+<style>
+  .legal-hero {
+    background: linear-gradient(135deg, #0a0f1e 0%, #111827 100%);
+    padding: 80px 0 60px;
+    text-align: center;
+  }
+  .legal-hero h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    color: #fff;
+    margin-bottom: 16px;
+  }
+  .legal-hero .meta { color: rgba(255,255,255,.45); font-size: .88rem; }
+  .legal-body { padding: 72px 0; }
+  .legal-body .container { max-width: 760px; }
+  .legal-body h2 {
+    font-family: var(--font-head);
+    font-size: 1.7rem;
+    margin: 48px 0 14px;
+    color: var(--text);
+  }
+  .legal-body h2:first-child { margin-top: 0; }
+  .legal-body h3 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; }
+  .legal-body p, .legal-body li {
+    color: var(--muted);
+    line-height: 1.85;
+    font-size: .96rem;
+  }
+  .legal-body ul, .legal-body ol { padding-left: 20px; margin: 12px 0 20px; }
+  .legal-body li { margin-bottom: 8px; }
+  .legal-toc {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 48px;
+  }
+  .legal-toc h3 { margin: 0 0 14px; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .legal-toc ol { padding-left: 18px; margin: 0; }
+  .legal-toc li { margin-bottom: 6px; }
+  .legal-toc a { color: var(--accent); text-decoration: none; font-size: .9rem; font-weight: 600; }
+  .legal-toc a:hover { text-decoration: underline; }
+  .legal-highlight {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: .92rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="ue-nav">
+  <div class="container">
+    <a href="index.html" class="nav-logo">UE School</a>
+    <div class="nav-links">
+      <a href="classroom.html">Classroom</a>
+      <a href="cbt.html">Practice (CBT)</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="pricing.html">Pricing</a>
+    </div>
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu"
+            onclick="this.closest('.ue-nav').classList.toggle('nav-mobile-open')">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-right" id="nav-right-public">
+      <a href="login.html" class="btn btn-primary" id="nav-login-btn">Login / Sign Up</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="legal-hero">
+  <div class="container">
+    <h1>Terms of Service</h1>
+    <div class="meta">Last updated: April 2026 &nbsp;·&nbsp; Effective immediately</div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="legal-body">
+  <div class="container">
+
+    <div class="legal-toc">
+      <h3>Contents</h3>
+      <ol>
+        <li><a href="#acceptance">Acceptance of Terms</a></li>
+        <li><a href="#eligibility">Eligibility</a></li>
+        <li><a href="#accounts">Accounts &amp; Passwords</a></li>
+        <li><a href="#subscriptions">Subscriptions &amp; Payments</a></li>
+        <li><a href="#refunds">Refund Policy</a></li>
+        <li><a href="#acceptable-use">Acceptable Use</a></li>
+        <li><a href="#ip">Intellectual Property</a></li>
+        <li><a href="#disclaimers">Disclaimers</a></li>
+        <li><a href="#limitation">Limitation of Liability</a></li>
+        <li><a href="#termination">Termination</a></li>
+        <li><a href="#governing-law">Governing Law</a></li>
+        <li><a href="#contact-terms">Contact</a></li>
+      </ol>
+    </div>
+
+    <div class="legal-highlight">
+      By creating an account or using UE School, you agree to these Terms. Please read them carefully.
+    </div>
+
+    <h2 id="acceptance">1. Acceptance of Terms</h2>
+    <p>These Terms of Service ("Terms") govern your access to and use of the UE School platform, including our website, mobile interface, and all related services (collectively, the "Service"). By registering for an account or using any part of the Service, you agree to be bound by these Terms and our <a href="privacy.html" style="color:var(--accent);font-weight:600;">Privacy Policy</a>.</p>
+    <p>If you do not agree to these Terms, you must not use the Service.</p>
+
+    <h2 id="eligibility">2. Eligibility</h2>
+    <p>You must be at least 13 years old to use UE School. If you are under 18, you confirm that you have obtained parental or guardian consent. By using the Service you represent that you meet these requirements.</p>
+
+    <h2 id="accounts">3. Accounts &amp; Passwords</h2>
+    <ul>
+      <li>You are responsible for maintaining the confidentiality of your password and for all activities that occur under your account.</li>
+      <li>You must provide accurate, current, and complete information during registration and keep it up to date.</li>
+      <li>You may not share your account credentials with any other person or allow others to access the Service through your account.</li>
+      <li>You must <a href="contact.html" style="color:var(--accent);">notify us</a> immediately if you suspect any unauthorised use of your account.</li>
+    </ul>
+
+    <h2 id="subscriptions">4. Subscriptions &amp; Payments</h2>
+    <p>UE School offers free and paid subscription plans. Paid plans are billed on a monthly or annual basis as stated at the point of purchase.</p>
+    <ul>
+      <li>All payments are processed securely by Paystack in Nigerian Naira (&#x20A6;).</li>
+      <li>Your subscription renews automatically at the end of each billing cycle unless cancelled.</li>
+      <li>You may cancel your subscription at any time from your account settings. Cancellation takes effect at the end of your current billing period; you will retain access until then.</li>
+      <li>Prices may change. We will give at least 14 days' notice of any price increase before it takes effect on your account.</li>
+    </ul>
+
+    <h2 id="refunds">5. Refund Policy</h2>
+    <p>We offer a <strong>7-day money-back guarantee</strong> on your first monthly subscription payment. If you are unsatisfied within the first 7 days of a new paid subscription, visit our <a href="contact.html" style="color:var(--accent);">Contact page</a> to request a full refund. After 7 days, subscription fees are non-refundable.</p>
+    <p>Annual plans carry a 14-day refund window from the date of purchase.</p>
+
+    <h2 id="acceptable-use">6. Acceptable Use</h2>
+    <p>You agree not to:</p>
+    <ul>
+      <li>Use the Service for any unlawful purpose or in violation of any applicable regulation.</li>
+      <li>Share, redistribute, or resell platform content (questions, videos, materials) without our written permission.</li>
+      <li>Attempt to reverse-engineer, scrape, or extract content from the platform by automated means.</li>
+      <li>Upload or transmit viruses, malware, or other malicious code.</li>
+      <li>Impersonate any person, or misrepresent your affiliation with any person or entity.</li>
+      <li>Engage in any conduct that restricts or inhibits anyone's use or enjoyment of the Service.</li>
+    </ul>
+    <p>Violation of these rules may result in immediate account suspension or termination without refund.</p>
+
+    <h2 id="ip">7. Intellectual Property</h2>
+    <p>All content on UE School &mdash; including questions, explanations, video scripts, graphics, the SmartPath™ algorithm, and the UE School brand &mdash; is the intellectual property of UE School or its licensors and is protected by Nigerian and international copyright law.</p>
+    <p>We grant you a limited, non-exclusive, non-transferable licence to access and use the content solely for your personal, non-commercial educational purposes. No other rights are granted.</p>
+
+    <h2 id="disclaimers">8. Disclaimers</h2>
+    <p>The Service is provided "as is" and "as available" without warranties of any kind. We do not guarantee:</p>
+    <ul>
+      <li>That the Service will be uninterrupted, error-free, or free of viruses.</li>
+      <li>That our score predictions or readiness scores will accurately reflect your actual exam results.</li>
+      <li>That all practice questions will be free of errors (we correct reported errors promptly).</li>
+    </ul>
+    <p>UE School is a supplementary learning tool. We are not affiliated with JAMB, WAEC, NECO, or any examination body.</p>
+
+    <h2 id="limitation">9. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by applicable law, UE School shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including lost profits or exam failure, arising from your use of or inability to use the Service, even if we have been advised of the possibility of such damages. Our total liability to you for any claim arising from these Terms or the Service shall not exceed the amount you paid us in the 3 months preceding the claim.</p>
+
+    <h2 id="termination">10. Termination</h2>
+    <p>We reserve the right to suspend or terminate your account and access to the Service at our sole discretion, without notice, for conduct that we believe violates these Terms or is harmful to other users, us, third parties, or the integrity of the Service. Upon termination, your licence to use the Service ends immediately.</p>
+    <p>You may delete your account at any time from your account settings or by contacting us.</p>
+
+    <h2 id="governing-law">11. Governing Law</h2>
+    <p>These Terms are governed by and construed in accordance with the laws of the Federal Republic of Nigeria. Any dispute arising under these Terms shall be subject to the exclusive jurisdiction of the courts located in Nigeria.</p>
+
+    <h2 id="contact-terms">12. Contact</h2>
+    <p>Questions about these Terms? Visit our <a href="contact.html" style="color:var(--accent);font-weight:600;">Contact page</a>.</p>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo">UE School</div>
+        <div class="footer-tagline">The cockpit for your exam preparation. Pass your JAMB, WAEC, and NECO exams with confidence.</div>
+      </div>
+      <div>
+        <div class="footer-heading">Platform</div>
+        <ul class="footer-links">
+          <li><a href="classroom.html">Classroom</a></li>
+          <li><a href="cbt.html">Practice CBT</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="pricing.html">Pricing</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Company</div>
+        <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-divider">&copy; 2026 UE School. All rights reserved.</div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+      const nav = document.querySelector('.ue-nav');
+      nav && nav.classList.remove('nav-mobile-open');
+      const btn = document.getElementById('nav-toggle');
+      btn && btn.setAttribute('aria-expanded', 'false');
+    });
+  });
+});
+</script>
+<script src="js/app.js"></script>
+
+<script>
+// Auth-aware nav for public pages
+(async function() {
+  try {
+    // sb/SB is set by js/supabase.js shim \u2014 credentials live only in js/config.js
+const SB = window.sb;
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const navRight = document.getElementById('nav-right-public');
+      if (navRight) {
+        const { data: p } = await sb.from('profiles').select('full_name,total_xp').eq('id', session.user.id).single();
+        const initials = (p?.full_name || 'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        navRight.innerHTML = `
+          <div class="nav-user-pill" style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1.5px solid var(--border2);border-radius:999px;padding:4px 14px 4px 4px">
+            <div class="nav-avatar" style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem">${initials}</div>
+            <span style="font-weight:700;font-size:.9rem">${(p?.full_name||'').split(' ')[0]}</span>
+            <span style="font-size:.78rem;color:var(--muted)">${p?.total_xp||0} XP</span>
+          </div>
+          <a href="dashboard.html" class="btn btn-primary" style="margin-left:8px">Dashboard</a>
+          <button class="btn btn-outline btn-sm" onclick="(window.sb||window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL,window.UE_CONFIG.SUPABASE_ANON)).auth.signOut().then(()=>location.reload())" style="margin-left:4px">Logout</button>
+        `;
+      }
+    }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

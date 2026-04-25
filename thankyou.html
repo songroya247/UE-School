@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to UE School &mdash; Payment Confirmed</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/main.css">
+<style>
+/* ─── Page shell ───────────────────────────────────────────── */
+html, body {
+  min-height: 100vh;
+  background: var(--bg);
+}
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ─── Confetti particles ───────────────────────────────────── */
+.confetti-wrap {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.confetti-wrap span {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg);   opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ─── Card ─────────────────────────────────────────────────── */
+.ty-card {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-lg), 0 0 60px rgba(26,86,255,.08);
+  max-width: 540px;
+  width: 100%;
+  padding: 48px 44px 40px;
+  text-align: center;
+  animation: cardIn .6s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: scale(.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ─── Badge ────────────────────────────────────────────────── */
+.ty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 6px 18px;
+  border-radius: 999px;
+  border: 1px solid #6ee7b7;
+  margin-bottom: 20px;
+}
+.ty-badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+/* ─── Illustration ring ────────────────────────────────────── */
+.ty-ring {
+  width: 104px; height: 104px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 2px solid #bfdbfe;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3.4rem;
+  margin: 0 auto 22px;
+  animation: ringPop .7s cubic-bezier(.34,1.56,.64,1) .15s both;
+  box-shadow: 0 0 0 10px rgba(26,86,255,.07), 0 8px 24px rgba(26,86,255,.15);
+}
+@keyframes ringPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Typography ───────────────────────────────────────────── */
+.ty-title {
+  font-family: var(--font-head);
+  font-size: 2.6rem;
+  letter-spacing: .04em;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1;
+}
+.ty-sub {
+  font-size: .97rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 28px;
+  max-width: 380px;
+  margin-left: auto; margin-right: auto;
+}
+
+/* ─── Plan chip ────────────────────────────────────────────── */
+.ty-plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(26,86,255,.08), rgba(26,86,255,.04));
+  border: 1.5px solid rgba(26,86,255,.2);
+  border-radius: 14px;
+  padding: 14px 22px;
+  margin-bottom: 30px;
+  width: 100%;
+  justify-content: center;
+}
+.ty-plan-icon {
+  font-size: 1.6rem;
+}
+.ty-plan-label {
+  text-align: left;
+}
+.ty-plan-name {
+  font-family: var(--font-head);
+  font-size: 1.35rem;
+  letter-spacing: .04em;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.ty-plan-meta {
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+/* ─── What's unlocked ──────────────────────────────────────── */
+.ty-unlocked {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  text-align: left;
+}
+.ty-unlocked-title {
+  font-family: var(--font-head);
+  font-size: 1rem;
+  letter-spacing: .04em;
+  color: var(--text);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ty-unlocked-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ty-unlocked-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .9rem;
+  color: var(--text);
+}
+.ty-check {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: .65rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────── */
+.ty-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.btn-start {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: linear-gradient(135deg, var(--accent), #4f46e5);
+  color: #fff;
+  font-family: var(--font-head);
+  font-size: 1.15rem;
+  letter-spacing: .06em;
+  border: none; border-radius: 12px;
+  padding: 15px 28px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(26,86,255,.3);
+  transition: transform .2s, box-shadow .2s;
+}
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(26,86,255,.4);
+}
+.btn-dash {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  font-weight: 500;
+  border: 1.5px solid var(--border2);
+  border-radius: 12px;
+  padding: 12px 24px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.btn-dash:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(26,86,255,.04);
+}
+
+/* ─── Countdown bar ────────────────────────────────────────── */
+.ty-countdown {
+  margin-top: 20px;
+  font-size: .8rem;
+  color: var(--muted2);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.ty-countdown-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  width: 80px;
+}
+.ty-countdown-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+
+/* ─── Logo link ────────────────────────────────────────────── */
+.ty-logo {
+  position: fixed;
+  top: 20px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-family: var(--font-head);
+  font-size: 1.2rem;
+  letter-spacing: .12em;
+  color: var(--text);
+  text-decoration: none;
+  opacity: .7;
+  transition: opacity .2s;
+}
+.ty-logo:hover { opacity: 1; }
+
+@media (max-width: 520px) {
+  .ty-card { padding: 36px 24px 30px; }
+  .ty-title { font-size: 2rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Confetti canvas -->
+<div class="confetti-wrap" id="confetti-wrap"></div>
+
+<a href="index.html" class="ty-logo">UE SCHOOL</a>
+
+<div class="ty-card">
+
+  <div class="ty-badge">Payment Confirmed</div>
+
+  <div class="ty-ring" id="ty-emoji">&#x1F389;</div>
+
+  <h1 class="ty-title">You're all set!</h1>
+  <p class="ty-sub">
+    Your subscription is active. Every lesson, every practice question,
+    and every past-paper is now unlocked and ready for you.
+  </p>
+
+  <!-- Plan chip &mdash; filled by JS -->
+  <div class="ty-plan-chip" id="plan-chip" style="display:none">
+    <div class="ty-plan-icon" id="plan-icon">📚</div>
+    <div class="ty-plan-label">
+      <div class="ty-plan-name" id="plan-name">Plan</div>
+      <div class="ty-plan-meta" id="plan-meta">Active</div>
+    </div>
+  </div>
+
+  <!-- What's unlocked -->
+  <div class="ty-unlocked">
+    <div class="ty-unlocked-title">
+      <span>✨</span> What's now unlocked
+    </div>
+    <ul class="ty-unlocked-list" id="feature-list">
+      <li><div class="ty-check">&#x2713;</div> Full CBT practice engine &mdash; all subjects</li>
+      <li><div class="ty-check">&#x2713;</div> Video lessons across 7 subjects</li>
+      <li><div class="ty-check">&#x2713;</div> Adaptive Skill Chamber &mdash; 3-tier video routing</li>
+      <li><div class="ty-check">&#x2713;</div> JAMB, WAEC & NECO past-paper question banks</li>
+      <li><div class="ty-check">&#x2713;</div> Smart score predictions & progress tracking</li>
+    </ul>
+  </div>
+
+  <!-- CTA buttons -->
+  <div class="ty-btns">
+    <a href="classroom.html" class="btn-start">
+      Start Studying &rarr;
+    </a>
+    <a href="dashboard.html" class="btn-dash">
+      View my Dashboard
+    </a>
+  </div>
+
+  <!-- Auto-redirect countdown -->
+  <div class="ty-countdown">
+    <span id="countdown-text">Redirecting to dashboard in <strong id="countdown-num">10</strong>s</span>
+    <div class="ty-countdown-bar">
+      <div class="ty-countdown-fill" id="countdown-fill" style="width:100%"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── 1. Plan chip ────────────────────────────────────────── */
+const PLAN_META = {
+  monthly:   { name: 'Basic Plan',     icon: '📘', period: '1 month',   emoji: '\uD83C\uDF89' },
+  quarterly: { name: 'Pro Plan',       icon: '🚀', period: '3 months',  emoji: '\uD83C\uDFC6' },
+  yearly:    { name: 'Elite Plan',     icon: '💎', period: '1 year',    emoji: '👑' },
+};
+
+const EXTRA_FEATURES = {
+  quarterly: ['Priority support', 'Mock exam mode (40-question timed)'],
+  yearly:    ['Priority support', 'Mock exam mode', '1-on-1 tutor sessions (\u00D72)', 'Printed study guide'],
+};
+
+(function initPlanChip() {
+  const params = new URLSearchParams(window.location.search);
+  const planKey = params.get('plan') || '';
+  const meta = PLAN_META[planKey];
+  if (!meta) return;
+
+  // Chip
+  document.getElementById('plan-icon').textContent = meta.icon;
+  document.getElementById('plan-name').textContent = meta.name;
+  document.getElementById('ty-emoji').textContent  = meta.emoji;
+
+  // Expiry from session storage
+  let expiryStr = '';
+  try {
+    const cache = JSON.parse(sessionStorage.getItem('ue_profile_cache') || '{}');
+    if (cache.subscription_expiry) {
+      const d = new Date(cache.subscription_expiry);
+      expiryStr = 'Expires ' + d.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+  } catch (_) {}
+  document.getElementById('plan-meta').textContent = expiryStr || ('Active for ' + meta.period);
+  document.getElementById('plan-chip').style.display = 'flex';
+
+  // Extra features for pro/elite
+  const extras = EXTRA_FEATURES[planKey];
+  if (extras && extras.length) {
+    const list = document.getElementById('feature-list');
+    extras.forEach(text => {
+      const li = document.createElement('li');
+      li.innerHTML = '<div class="ty-check">\u2713</div> ' + text;
+      list.appendChild(li);
+    });
+  }
+})();
+
+/* ── 2. Confetti burst ───────────────────────────────────── */
+(function spawnConfetti() {
+  const wrap = document.getElementById('confetti-wrap');
+  const colors = ['#1a56ff','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+  for (let i = 0; i < 72; i++) {
+    const s = document.createElement('span');
+    const size = 7 + Math.random() * 9;
+    s.style.cssText = [
+      'left:'      + Math.random() * 100 + '%',
+      'width:'     + size + 'px',
+      'height:'    + size + 'px',
+      'background:'+ colors[Math.floor(Math.random() * colors.length)],
+      'border-radius:' + (Math.random() > .5 ? '50%' : '2px'),
+      'animation-duration:' + (2.2 + Math.random() * 2.8) + 's',
+      'animation-delay:'    + (Math.random() * 1.6) + 's',
+    ].join(';');
+    wrap.appendChild(s);
+  }
+})();
+
+/* ── 3. Countdown + auto-redirect ───────────────────────── */
+(function countdown() {
+  let secs = 10;
+  const numEl  = document.getElementById('countdown-num');
+  const fillEl = document.getElementById('countdown-fill');
+  const textEl = document.getElementById('countdown-text');
+
+  const tick = setInterval(() => {
+    secs--;
+    if (numEl) numEl.textContent = secs;
+    if (fillEl) fillEl.style.width = (secs / 10 * 100) + '%';
+    if (secs <= 0) {
+      clearInterval(tick);
+      if (textEl) textEl.textContent = 'Redirecting…';
+      window.location.href = 'dashboard.html';
+    }
+  }, 1000);
+
+  // Cancel countdown if user clicks a button manually
+  document.querySelectorAll('.btn-start, .btn-dash').forEach(btn => {
+    btn.addEventListener('click', () => {
+      clearInterval(tick);
+      if (textEl) textEl.parentElement.style.display = 'none';
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

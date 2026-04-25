@@ -1,0 +1,19 @@
+# Netlify clean-URL fallbacks
+/dashboard      /dashboard.html       200
+/login          /login.html           200
+/classroom      /classroom.html       200
+/cbt            /cbt.html             200
+/practice       /cbt.html             200
+/pricing        /pricing.html         200
+/about          /about.html           200
+/contact        /contact.html         200
+/report         /report.html          200
+/admin          /admin-dashboard.html 200
+/admin-dashboard /admin-dashboard.html 200
+/daily-quiz     /daily-quiz.html      200
+/forgot-password /forgot-password.html 200
+/reset-password /reset-password.html  200
+/terms          /terms.html           200
+/privacy        /privacy.html         200
+/confirm        /confirm.html         200
+/thankyou       /thankyou.html        200

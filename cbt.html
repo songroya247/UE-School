@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBT Practice &mdash; UE School</title>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  SECURITY BLOCK &mdash; must be first in <head>           ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js"></script>
+<!-- END SECURITY BLOCK -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",sans-serif;background:#f0f4ff;color:#0f1c3f;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+#cbt-shell{display:flex;flex-direction:column;min-height:100vh}
+
+/* ══ SETUP ══ */
+#setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f0f4ff}
+.setup-card{background:#fff;border:1.5px solid rgba(59,130,246,.15);border-radius:16px;box-shadow:0 8px 40px rgba(26,86,255,.08);width:100%;max-width:480px;padding:36px 32px}
+.setup-logo{text-align:center;font-size:.75rem;font-weight:700;letter-spacing:.1em;color:#2563eb;text-transform:uppercase;margin-bottom:6px}
+.setup-card h1{font-size:1.6rem;font-weight:800;text-align:center;color:#0f1c3f;margin-bottom:4px}
+.setup-card>p{text-align:center;color:#6b7280;font-size:.88rem;margin-bottom:28px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:.8rem;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.form-select{width:100%;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-size:.9rem;color:#0f1c3f;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none;cursor:pointer;transition:border-color .2s}
+.form-select:focus{outline:none;border-color:#2563eb}
+.session-info-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.session-badge{background:#eff6ff;color:#1d4ed8;font-size:.78rem;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid rgba(37,99,235,.15)}
+.grade-badge{background:#f0fdf4;color:#166534;font-size:.78rem;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid rgba(22,101,52,.15)}
+.btn-start{width:100%;padding:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-family:inherit;font-size:1rem;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-top:8px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 20px rgba(37,99,235,.3)}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(37,99,235,.4)}
+.btn-start:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.setup-back{display:block;text-align:center;margin-top:16px;font-size:.83rem;color:#6b7280;text-decoration:none}
+.setup-back:hover{color:#2563eb}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══ EXAM HEADER ══ */
+#exam-screen{display:none;flex-direction:column;min-height:100vh}
+.exam-header{background:#0f1c3f;color:#fff;padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:50}
+.exam-header-left{display:flex;align-items:center;gap:14px}
+.exam-logo-pill{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#93c5fd;background:rgba(147,197,253,.1);border:1px solid rgba(147,197,253,.2);padding:4px 10px;border-radius:6px}
+#exam-title{font-size:1rem;font-weight:700;color:#fff}
+.exam-header-right{display:flex;align-items:center;gap:12px}
+.jamb-pred-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;font-size:.78rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:6px}
+.jamb-pred-pill span{font-weight:800;font-size:.95rem;color:#fbbf24}
+.timer-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 14px;font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.04em;color:#fff;min-width:90px;text-align:center;transition:background .4s,border-color .4s}
+.timer-box.warning{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.5);color:#fca5a5}
+.timer-box.critical{background:rgba(239,68,68,.5);border-color:#ef4444;color:#fff;animation:tpulse .5s ease infinite alternate}
+@keyframes tpulse{from{opacity:1}to{opacity:.6}}
+#map-toggle-btn{display:none;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
+#map-toggle-btn:hover{background:rgba(255,255,255,.18)}
+
+/* ══ EXAM BODY ══ */
+.exam-body{flex:1;display:flex;overflow:hidden}
+.exam-main{flex:1;display:flex;flex-direction:column;padding:24px 32px;overflow-y:auto;background:#f0f4ff}
+.q-meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.q-counter-pill{background:#fff;border:1.5px solid rgba(37,99,235,.15);border-radius:999px;padding:6px 18px;font-size:.82rem;font-weight:700;color:#1e3a8a}
+.btn-flag{display:flex;align-items:center;gap:6px;padding:6px 14px;background:transparent;border:1.5px solid #d1d5db;border-radius:8px;color:#6b7280;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-flag:hover,.btn-flag.flagged{border-color:#f59e0b;color:#d97706;background:#fffbeb}
+.q-card{background:#fff;border:1.5px solid rgba(37,99,235,.1);border-radius:14px;padding:28px;margin-bottom:20px;box-shadow:0 2px 16px rgba(26,86,255,.06)}
+.q-number-badge{display:inline-flex;align-items:center;justify-content:center;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:14px}
+#q-text{font-size:1.1rem;font-weight:600;color:#0f1c3f;line-height:1.65}
+#q-options{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.drill-option{width:100%;display:flex;align-items:center;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:500;color:#1e3a8a;text-align:left;transition:all .18s;overflow:hidden}
+.drill-option:hover{border-color:#93c5fd;background:#f0f9ff}
+.opt-label{display:flex;align-items:center;justify-content:center;width:48px;min-width:48px;height:52px;background:#f1f5f9;border-right:1.5px solid #e5e7eb;font-size:.88rem;font-weight:800;color:#475569;flex-shrink:0;transition:background .18s,color .18s}
+.opt-text{padding:14px 18px;flex:1}
+.drill-option:hover .opt-label{background:#dbeafe;color:#1d4ed8;border-right-color:#93c5fd}
+.drill-option.selected{border-color:#2563eb;background:#eff6ff}
+.drill-option.selected .opt-label{background:#2563eb;color:#fff;border-right-color:#2563eb}
+.drill-option.selected .opt-text{color:#1e3a8a;font-weight:600}
+.drill-option.correct{border-color:#059669;background:#f0fdf4}
+.drill-option.correct .opt-label{background:#059669;color:#fff;border-right-color:#059669}
+.drill-option.wrong{border-color:#ef4444;background:#fef2f2}
+.drill-option.wrong .opt-label{background:#ef4444;color:#fff;border-right-color:#ef4444}
+.drill-option.disabled{cursor:default;pointer-events:none}
+.explanation-box{display:none;margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;font-size:.88rem;color:#166534;line-height:1.6}
+.explanation-box.show{display:block}
+
+.q-nav-row{display:flex;justify-content:space-between;gap:12px;margin-top:4px}
+.btn-nav{padding:11px 28px;border-radius:10px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .15s;border:none}
+.btn-nav-prev{background:#fff;color:#374151;border:1.5px solid #d1d5db}
+.btn-nav-prev:hover{background:#f9fafb;border-color:#9ca3af}
+.btn-nav-prev:disabled{opacity:.4;cursor:not-allowed}
+.btn-nav-next{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 16px rgba(37,99,235,.3)}
+.btn-nav-next:hover{box-shadow:0 6px 22px rgba(37,99,235,.45);filter:brightness(1.06)}
+
+/* ══ ASIDE ══ */
+#exam-aside{width:260px;flex-shrink:0;background:#fff;border-left:1.5px solid rgba(37,99,235,.1);display:flex;flex-direction:column}
+.aside-head{padding:16px 18px;border-bottom:1px solid rgba(37,99,246,.08);background:#f8faff}
+.aside-head-title{font-size:.88rem;font-weight:800;color:#0f1c3f;text-transform:uppercase;letter-spacing:.05em}
+.aside-body{flex:1;padding:16px;overflow-y:auto}
+#q-map{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.q-dot{aspect-ratio:1;border-radius:7px;background:#f1f5f9;border:1.5px solid #e2e8f0;font-size:.75rem;font-weight:700;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit}
+.q-dot:hover{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.q-dot.current{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.2)}
+.q-dot.answered{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.q-dot.flagged{background:#fef3c7;border-color:#fbbf24;color:#92400e}
+.q-dot.correct-dot{background:#d1fae5;border-color:#34d399;color:#065f46}
+.q-dot.wrong-dot{background:#fee2e2;border-color:#f87171;color:#991b1b}
+.map-legend{margin-top:18px;display:flex;flex-direction:column;gap:7px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:.75rem;color:#6b7280;font-weight:500}
+.legend-dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+.aside-foot{padding:14px 16px;border-top:1px solid rgba(37,99,246,.08)}
+.btn-submit{width:100%;padding:12px;background:#0f1c3f;color:#fff;font-family:inherit;font-size:.9rem;font-weight:700;border:none;border-radius:9px;cursor:pointer;transition:background .2s}
+.btn-submit:hover{background:#1e3a8a}
+
+/* ══ MODAL ══ */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:24px}
+.modal-backdrop.open{display:flex}
+.modal-card{background:#fff;border-radius:16px;padding:32px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
+.modal-card h3{font-size:1.25rem;font-weight:800;margin-bottom:10px}
+.modal-card p{font-size:.9rem;color:#6b7280;margin-bottom:24px;line-height:1.6}
+.modal-btns{display:flex;gap:12px;justify-content:center}
+.modal-btns .btn-cancel{padding:10px 24px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-weight:700;font-size:.9rem;color:#374151;cursor:pointer}
+.modal-btns .btn-confirm{padding:10px 24px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:9px;font-family:inherit;font-weight:700;font-size:.9rem;color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.3)}
+
+/* ══ RESULTS ══ */
+#results-screen{display:none;min-height:100vh;background:#f0f4ff;align-items:flex-start;justify-content:center;padding:40px 24px;overflow-y:auto}
+.results-card{background:#fff;border:1.5px solid rgba(37,99,235,.12);border-top:4px solid #2563eb;border-radius:16px;box-shadow:0 8px 40px rgba(26,86,255,.1);max-width:600px;width:100%;padding:36px 32px;text-align:center}
+.results-icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin:0 auto 20px}
+.results-icon.pass{background:#d1fae5;color:#059669}
+.results-icon.fail{background:#fee2e2;color:#ef4444}
+.results-icon.ok{background:#fef3c7;color:#d97706}
+.results-card h1{font-size:1.8rem;font-weight:800;color:#0f1c3f;margin-bottom:6px}
+.results-card>p{color:#6b7280;font-size:.9rem;margin-bottom:28px}
+#results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.result-stat{background:#f8faff;border:1.5px solid rgba(37,99,235,.1);border-radius:10px;padding:16px 10px}
+.result-stat-label{font-size:.7rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.result-stat-val{font-size:1.5rem;font-weight:800;color:#0f1c3f}
+.result-stat.accent{background:#eff6ff;border-color:#93c5fd}
+.result-stat.accent .result-stat-val{color:#1d4ed8}
+.xp-badge{display:inline-flex;align-items:center;gap:6px;background:#fef3c7;color:#92400e;font-weight:700;padding:6px 16px;border-radius:999px;font-size:.88rem;border:1px solid #fde68a;margin-bottom:20px}
+.grade-feedback{background:linear-gradient(135deg,#eff6ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:12px;padding:18px 20px;margin-bottom:24px;font-size:.9rem;text-align:left}
+.grade-feedback-title{font-weight:800;color:#1e3a8a;margin-bottom:4px}
+.grade-feedback-body{color:#3b4f8a;line-height:1.6}
+.results-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-results-outline{padding:12px 24px;background:#fff;border:1.5px solid #d1d5db;border-radius:10px;font-family:inherit;font-size:.9rem;font-weight:700;color:#374151;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center}
+.btn-results-outline:hover{border-color:#9ca3af;background:#f9fafb}
+.btn-results-primary{padding:12px 24px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:10px;font-family:inherit;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;box-shadow:0 4px 16px rgba(37,99,235,.3);transition:all .15s}
+.btn-results-primary:hover{filter:brightness(1.08)}
+
+/* ══ SAVING OVERLAY ══ */
+#saving-overlay{display:none;position:fixed;inset:0;background:rgba(15,28,63,.7);z-index:300;align-items:center;justify-content:center;color:#fff;font-size:1rem;font-weight:600;gap:14px;flex-direction:column}
+#saving-overlay.show{display:flex}
+
+/* ══ TOAST ══ */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(15,28,63,.92);color:#fff;padding:11px 22px;border-radius:30px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(37,99,235,.2);opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ══ DEFAULTER ══ */
+#defaulter-banner{background:#7c2d12;color:#fde8d0;text-align:center;padding:8px 20px;font-size:.78rem;font-weight:500;display:none}
+#defaulter-banner a{color:#fed7aa;text-decoration:underline;margin-left:6px}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:768px){
+  #setup-screen{padding:16px}
+  .setup-card{padding:28px 20px}
+  .exam-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
+  #exam-title{font-size:.9rem}
+  .timer-box{font-size:.85rem;padding:5px 10px}
+  .jamb-pred-pill{font-size:.72rem;padding:4px 8px}
+  #map-toggle-btn{display:inline-flex}
+  .exam-body{flex-direction:column;overflow:visible}
+  .exam-main{overflow-y:visible;padding:16px}
+  #exam-aside{display:none;width:100%!important;border-left:none;border-top:1.5px solid rgba(37,99,235,.1);order:-1}
+  #exam-aside.open{display:flex}
+  .opt-label{width:40px;min-width:40px;height:48px;font-size:.82rem}
+  .opt-text{padding:12px 14px;font-size:.9rem}
+  .q-nav-row{gap:10px}
+  .btn-nav{flex:1;padding:12px 14px}
+  #results-grid{grid-template-columns:repeat(2,1fr)!important}
+  #results-screen{padding:20px 16px}
+  .results-card{max-width:100%;padding:24px 18px}
+  #exam-screen{height:auto;min-height:100vh}
+}
+@media(max-width:420px){
+  .exam-logo-pill{display:none}
+  #exam-title{font-size:.85rem}
+}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="padding:40px;text-align:center;font-family:system-ui">
+    <h2>JavaScript is required</h2>
+    <p>Please enable JavaScript or <a href="login.html">click here to log in</a>.</p>
+  </div>
+</noscript>
+
+<div id="defaulter-banner">
+  Your subscription has expired. <a href="pricing.html">Renew Now</a>
+</div>
+
+<!-- ══ SETUP SCREEN ══ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">UE School</div>
+    <h1>Exam Engine</h1>
+    <p>Configure your CBT practice session</p>
+
+    <div class="form-group">
+      <label class="form-label">Exam Mode</label>
+      <select class="form-select" id="sel-mode" onchange="onModeChange()">
+        <option value="mock">Full Mock Exam (40 questions, 2 hrs)</option>
+        <option value="topic" selected>Topic Practice (10 questions, 20 min)</option>
+        <option value="quick">Quick Drill (5 questions, 10 min)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Subject</label>
+      <select class="form-select" id="sel-subject" onchange="onSubjectChange()">
+        <option value="mathematics">Mathematics</option>
+        <option value="english">English Language</option>
+        <option value="physics">Physics</option>
+        <option value="chemistry">Chemistry</option>
+        <option value="biology">Biology</option>
+        <option value="economics">Economics</option>
+        <option value="government">Government</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="topic-group">
+      <label class="form-label">Topic
+        <span style="font-weight:400;text-transform:none;font-size:.78rem;color:#6b7280">(optional)</span>
+      </label>
+      <select class="form-select" id="sel-topic">
+        <option value="">All Topics</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Exam Type</label>
+      <select class="form-select" id="sel-examtype">
+        <option value="JAMB">JAMB / UTME</option>
+        <option value="WAEC">WAEC / GCE</option>
+        <option value="NECO">NECO</option>
+      </select>
+    </div>
+
+    <div class="session-info-row">
+      <span class="session-badge" id="q-count-badge">10 Questions</span>
+      <span class="session-badge" id="time-badge">⏱ 20 min</span>
+      <span class="grade-badge"   id="grade-badge">&#x1F4CA; Foundation Level</span>
+    </div>
+
+    <button class="btn-start" id="btn-start" onclick="startExam()">&#x25B6; Start Session</button>
+    <a href="dashboard.html" class="setup-back">&larr; Back to Dashboard</a>
+  </div>
+</div>
+
+<!-- ══ EXAM SCREEN ══ -->
+<div id="exam-screen">
+  <header class="exam-header">
+    <div class="exam-header-left">
+      <div class="exam-logo-pill">UE School</div>
+      <div id="exam-title">Mathematics &mdash; Topic Practice</div>
+    </div>
+    <div class="exam-header-right">
+      <button id="map-toggle-btn"
+        onclick="document.getElementById('exam-aside').classList.toggle('open');
+                 this.textContent=document.getElementById('exam-aside').classList.contains('open')?'&#x2715; Hide Map':'&#x25A6; Question Map'">
+        &#x25A6; Question Map
+      </button>
+      <div class="jamb-pred-pill">Pred. JAMB: <span id="jamb-pred">&mdash;</span></div>
+      <div class="timer-box" id="timer-display">20:00</div>
+    </div>
+  </header>
+
+  <div class="exam-body">
+    <main class="exam-main">
+      <div class="q-meta-row">
+        <div class="q-counter-pill" id="q-counter">Question 1 of 10</div>
+        <button class="btn-flag" id="flag-btn" onclick="toggleFlag()">&#x2691; Flag</button>
+      </div>
+      <div class="q-card">
+        <div class="q-number-badge" id="q-number-badge">Question 1</div>
+        <div id="q-text"></div>
+        <div id="q-options"></div>
+        <div class="explanation-box" id="explanation-box"></div>
+      </div>
+      <div class="q-nav-row">
+        <button class="btn-nav btn-nav-prev" onclick="navQ(-1)" id="prev-btn">&larr; Previous</button>
+        <button class="btn-nav btn-nav-next" onclick="navQ(1)"  id="next-btn">Next &rarr;</button>
+      </div>
+    </main>
+
+    <aside id="exam-aside">
+      <div class="aside-head"><div class="aside-head-title">Question Map</div></div>
+      <div class="aside-body">
+        <div id="q-map"></div>
+        <div class="map-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#2563eb;border:1.5px solid #2563eb"></div> Current</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#dbeafe;border:1.5px solid #93c5fd"></div> Answered</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fef3c7;border:1.5px solid #fbbf24"></div> Flagged</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f1f5f9;border:1.5px solid #e2e8f0"></div> Unanswered</div>
+        </div>
+      </div>
+      <div class="aside-foot">
+        <button class="btn-submit" onclick="promptSubmit()">Submit Exam &#x2713;</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Submit modal -->
+<div class="modal-backdrop" id="submit-modal">
+  <div class="modal-card">
+    <h3>Submit Exam?</h3>
+    <p>You have answered <strong id="modal-answered">0</strong> of <strong id="modal-total">0</strong> questions.<br>Unanswered questions will be marked incorrect.</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Continue Exam</button>
+      <button class="btn-confirm" onclick="submitExam()">Submit Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Saving overlay -->
+<div id="saving-overlay">
+  <div class="loading-spinner" style="width:32px;height:32px;border-width:3px;border-top-color:#fff;border-color:rgba(255,255,255,.3)"></div>
+  <div>Saving your results…</div>
+</div>
+
+<!-- ══ RESULTS SCREEN ══ -->
+<div id="results-screen">
+  <div class="results-card">
+    <div class="results-icon pass" id="results-icon">&#x1F389;</div>
+    <h1 id="results-title">Exam Completed</h1>
+    <p id="results-subtitle">Here is your performance breakdown.</p>
+    <div class="xp-badge" id="xp-badge" style="display:none">⚡ +0 XP earned</div>
+    <div id="results-grid"></div>
+    <div class="grade-feedback" id="grade-feedback" style="display:none">
+      <div class="grade-feedback-title" id="grade-title"></div>
+      <div class="grade-feedback-body"  id="grade-body"></div>
+    </div>
+    <div class="results-actions">
+      <button class="btn-results-outline" onclick="retryExam()">🔁 Retry Session</button>
+      <button class="btn-results-outline" onclick="reviewAnswers()">&#x1F4CB; Review Answers</button>
+      <a href="dashboard.html" class="btn-results-primary">Dashboard &rarr;</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/gdrive-video.js"></script>
+<script src="js/gsheet-questions.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/grading.js"></script>
+<script>
+// ════════════ STATE ════════════
+let QUESTIONS=[], currentQ=0, answers={}, flags=new Set(), timings={};
+let qStartTime=null, timeLeft=1200, totalTime=1200;
+let timerInterval, sessionSubmitted=false, currentGradeLevel=3, sessionConfig={};
+let isReviewMode=false;
+
+const URL_PARAMS=new URLSearchParams(window.location.search);
+
+// ════════════ INIT ════════════
+// window.sb is initialised by auth-guard.js using UE_CONFIG \u2014 no credentials here.
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // AUTH_GUARD.init() boots window.sb from UE_CONFIG, validates session,
+  // checks premium gate (cbt.html is in PREMIUM_PAGES), renders nav + defaulter banner.
+  const result=await AUTH_GUARD.init();
+  if(!result) return; // redirect in progress
+
+  // Pre-fill from URL
+  const urlSubj=URL_PARAMS.get('subject');
+  const urlTopic=URL_PARAMS.get('topic');
+  if(urlSubj){
+    const s=document.getElementById('sel-subject');
+    for(const o of s.options) if(o.value===urlSubj){s.value=urlSubj;break;}
+  }
+  onSubjectChange();
+  if(urlTopic){
+    const ts=document.getElementById('sel-topic');
+    for(const o of ts.options) if(o.value===urlTopic||o.text===urlTopic){ts.value=o.value;break;}
+    document.getElementById('sel-mode').value='topic';
+  }
+  if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||'mathematics');
+  updateSessionBadges();
+});
+
+// ════════════ SETUP HELPERS ════════════
+function onModeChange(){ updateSessionBadges(); }
+
+function onSubjectChange(){
+  const subj=document.getElementById('sel-subject').value;
+  const ts=document.getElementById('sel-topic');
+  const topics=QUESTION_BANK.getTopics(subj);
+  ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
+  updateSessionBadges();
+}
+
+function updateSessionBadges(){
+  const mode=document.getElementById('sel-mode').value;
+  const subj=document.getElementById('sel-subject').value;
+  const topic=document.getElementById('sel-topic').value;
+  const cfg=getModeConfig(mode);
+  const avail=QUESTION_BANK.countFor(subj,topic||null);
+  document.getElementById('q-count-badge').textContent=`${Math.min(cfg.count,avail)||cfg.count} Questions`;
+  document.getElementById('time-badge').textContent=`⏱ ${Math.round(cfg.seconds/60)} min`;
+  document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
+}
+
+function getModeConfig(mode){
+  return {mock:{count:40,seconds:7200},topic:{count:10,seconds:1200},quick:{count:5,seconds:600}}[mode]||{count:10,seconds:1200};
+}
+
+async function loadGradeLevel(userId,subject){
+  const{data}=await window.sb.from('topic_mastery').select('grade_level').eq('user_id',userId).ilike('topic_id',subject+'.%').order('last_studied',{ascending:false}).limit(1);
+  if(data&&data.length>0) currentGradeLevel=data[0].grade_level;
+  updateSessionBadges();
+}
+
+// ════════════ START ════════════
+function startExam(){
+  const mode=document.getElementById('sel-mode').value;
+  const subj=document.getElementById('sel-subject').value;
+  const topic=document.getElementById('sel-topic').value||null;
+  const examType=document.getElementById('sel-examtype').value;
+  const cfg=getModeConfig(mode);
+
+  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
+
+  sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
+  totalTime=cfg.seconds; timeLeft=cfg.seconds;
+  currentQ=0; answers={}; flags=new Set(); timings={};
+  sessionSubmitted=false; isReviewMode=false;
+
+  const subjLabel=document.getElementById('sel-subject').options[document.getElementById('sel-subject').selectedIndex].text;
+  const parts=[subjLabel];
+  if(topic) parts.push(topic);
+  parts.push(mode==='mock'?'Mock Exam':mode==='quick'?'Quick Drill':'Practice');
+  document.getElementById('exam-title').textContent=parts.join(' \u2014 ');
+
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('exam-screen').style.display='flex';
+  document.getElementById('flag-btn').style.display='';
+  renderQ(); renderMap(); startTimer();
+}
+
+// ════════════ TIMER ════════════
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft<=0){clearInterval(timerInterval);submitExam();}
+  },1000);
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay(){
+  const h=Math.floor(timeLeft/3600),m=Math.floor((timeLeft%3600)/60),s=timeLeft%60;
+  const disp=document.getElementById('timer-display');
+  disp.textContent=h>0?`${pad(h)}:${pad(m)}:${pad(s)}`:`${pad(m)}:${pad(s)}`;
+  const pct=timeLeft/totalTime;
+  disp.classList.toggle('warning',pct<=0.25&&pct>0.1);
+  disp.classList.toggle('critical',pct<=0.1);
+}
+
+function pad(n){return String(n).padStart(2,'0');}
+
+// ════════════ RENDER QUESTION ════════════
+function renderQ(){
+  const q=QUESTIONS[currentQ]; if(!q) return;
+  if(qStartTime!==null) timings[currentQ-1]=(timings[currentQ-1]||0)+Math.round((Date.now()-qStartTime)/1000);
+  qStartTime=Date.now();
+
+  document.getElementById('q-counter').textContent=`Question ${currentQ+1} of ${QUESTIONS.length}`;
+  document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
+  document.getElementById('q-text').textContent=q.text;
+
+  const fb=document.getElementById('flag-btn');
+  fb.classList.toggle('flagged',flags.has(currentQ));
+  fb.textContent=flags.has(currentQ)?'\u2691 Flagged':'\u2691 Flag';
+
+  const oc=document.getElementById('q-options'); oc.innerHTML='';
+  q.opts.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='drill-option'+(answers[currentQ]===i?' selected':'');
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
+    btn.onclick=()=>selectAnswer(i);
+    oc.appendChild(btn);
+  });
+
+  document.getElementById('explanation-box').classList.remove('show');
+  document.getElementById('prev-btn').disabled=currentQ===0;
+  const nb=document.getElementById('next-btn');
+  if(currentQ===QUESTIONS.length-1){
+    nb.textContent='Submit \u2713'; nb.onclick=promptSubmit;
+    nb.style.background='linear-gradient(135deg,#059669,#047857)';
+  } else {
+    nb.textContent='Next \u2192'; nb.onclick=()=>navQ(1); nb.style.background='';
+  }
+
+  // Live pred
+  const done=Object.keys(answers).length;
+  if(done>0){
+    const corr=QUESTIONS.filter((qq,i)=>answers[i]===qq.ans).length;
+    document.getElementById('jamb-pred').textContent=Math.round(120+(corr/done)*260);
+  }
+}
+
+// ════════════ ANSWER SELECTION ════════════
+function selectAnswer(idx){
+  answers[currentQ]=idx;
+  renderQ(); renderMap();
+  if(currentQ<QUESTIONS.length-1) setTimeout(()=>{currentQ++;renderQ();renderMap();},280);
+}
+
+function navQ(dir){
+  if(qStartTime!==null){timings[currentQ]=(timings[currentQ]||0)+Math.round((Date.now()-qStartTime)/1000);qStartTime=null;}
+  currentQ=Math.max(0,Math.min(QUESTIONS.length-1,currentQ+dir));
+  if(isReviewMode) renderReviewQ(); else renderQ();
+  renderMap();
+}
+
+function toggleFlag(){
+  if(flags.has(currentQ)) flags.delete(currentQ); else flags.add(currentQ);
+  renderQ(); renderMap();
+}
+
+// ════════════ MAP ════════════
+function renderMap(){
+  const map=document.getElementById('q-map'); map.innerHTML='';
+  QUESTIONS.forEach((_,i)=>{
+    const dot=document.createElement('button');
+    dot.className='q-dot';
+    if(i===currentQ) dot.classList.add('current');
+    else if(flags.has(i)) dot.classList.add('flagged');
+    else if(answers[i]!==undefined) dot.classList.add('answered');
+    dot.textContent=flags.has(i)&&i!==currentQ?'\u2691':i+1;
+    dot.onclick=()=>{currentQ=i;if(isReviewMode)renderReviewQ();else renderQ();renderMap();};
+    map.appendChild(dot);
+  });
+}
+
+// ════════════ SUBMIT ════════════
+function promptSubmit(){
+  const ans=Object.keys(answers).length;
+  document.getElementById('modal-answered').textContent=ans;
+  document.getElementById('modal-total').textContent=QUESTIONS.length;
+  document.getElementById('submit-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('submit-modal').classList.remove('open');}
+
+async function submitExam(){
+  if(sessionSubmitted) return;
+  sessionSubmitted=true;
+  closeModal();
+  clearInterval(timerInterval);
+  if(qStartTime!==null){timings[currentQ]=(timings[currentQ]||0)+Math.round((Date.now()-qStartTime)/1000);}
+  document.getElementById('saving-overlay').classList.add('show');
+  let gradingResult=null;
+  try{
+    gradingResult=await GRADING.processSession({
+      questions:QUESTIONS,answers,timings,
+      meta:{userId:window.UE_USER_ID,subject:sessionConfig.subject,topic:sessionConfig.topic,examType:sessionConfig.examType,gradeLevel:sessionConfig.gradeLevel}
+    });
+  } catch(err){console.error('Grading error:',err);}
+  document.getElementById('saving-overlay').classList.remove('show');
+  showResults(gradingResult);
+}
+
+// ════════════ RESULTS ════════════
+function showResults(gr){
+  const correct=QUESTIONS.filter((q,i)=>answers[i]===q.ans).length;
+  const total=QUESTIONS.length, pct=Math.round(correct/total*100);
+  const timeSpent=totalTime-timeLeft;
+  const mins=Math.floor(timeSpent/60),secs=timeSpent%60;
+  const jambPred=Math.round(120+(correct/total)*260);
+
+  const icon=document.getElementById('results-icon');
+  const title=document.getElementById('results-title');
+  const sub=document.getElementById('results-subtitle');
+  if(pct>=70){icon.className='results-icon pass';icon.textContent='\uD83C\uDF89';title.textContent='Excellent Work!';sub.textContent=`You scored ${pct}% \u2014 you're on track!`;}
+  else if(pct>=50){icon.className='results-icon ok';icon.textContent='\uD83D\uDC4D';title.textContent='Good Effort!';sub.textContent=`You scored ${pct}%. Keep practising.`;}
+  else{icon.className='results-icon fail';icon.textContent='\uD83D\uDCDA';title.textContent='Keep Practising';sub.textContent=`You scored ${pct}%. Review and try again.`;}
+
+  if(gr?.xpEarned){const x=document.getElementById('xp-badge');x.style.display='inline-flex';x.textContent=`\u26A1 +${gr.xpEarned} XP earned`;}
+
+  document.getElementById('results-grid').innerHTML=`
+    <div class="result-stat"><div class="result-stat-label">Score</div><div class="result-stat-val">${correct}/${total}</div></div>
+    <div class="result-stat accent"><div class="result-stat-label">Accuracy</div><div class="result-stat-val">${pct}%</div></div>
+    <div class="result-stat"><div class="result-stat-label">Time</div><div class="result-stat-val">${pad(mins)}:${pad(secs)}</div></div>
+    <div class="result-stat accent"><div class="result-stat-label">Pred. JAMB</div><div class="result-stat-val">${jambPred}</div></div>
+  `;
+
+  if(gr){
+    const gf=document.getElementById('grade-feedback');
+    gf.style.display='block';
+    const oldG=sessionConfig.gradeLevel, newG=gr.newGradeLevel;
+    const gTitle=document.getElementById('grade-title');
+    const gBody=document.getElementById('grade-body');
+    if(newG<oldG){gTitle.textContent=`\uD83D\uDE80 Level Up! ${GRADING.gradeLabel(oldG)} \u2192 ${GRADING.gradeLabel(newG)}`;gBody.textContent=`Your accuracy of ${pct}% qualifies you for harder questions next session.`;}
+    else if(newG>oldG){gTitle.textContent='\uD83D\uDCC9 Adjusting Difficulty';gBody.textContent=`We'll reduce difficulty to help you build confidence at ${GRADING.gradeLabel(newG)} level.`;}
+    else{gTitle.textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(newG)} Level`;gBody.textContent=`Continue at this level. Reach ${pct>=65?'80':'65'}% accuracy to advance.`;}
+  }
+
+  document.getElementById('exam-screen').style.display='none';
+  const rs=document.getElementById('results-screen');
+  rs.style.display='flex'; rs.scrollTop=0; window.scrollTo(0,0);
+}
+
+// ════════════ REVIEW ════════════
+function reviewAnswers(){
+  isReviewMode=true;
+  document.getElementById('results-screen').style.display='none';
+  document.getElementById('exam-screen').style.display='flex';
+  document.getElementById('flag-btn').style.display='none';
+  currentQ=0;
+
+  // Colour-code map dots
+  const map=document.getElementById('q-map'); map.innerHTML='';
+  QUESTIONS.forEach((q,i)=>{
+    const dot=document.createElement('button');
+    const isC=answers[i]===q.ans;
+    dot.className='q-dot '+(answers[i]!==undefined?(isC?'correct-dot':'wrong-dot'):'');
+    if(i===currentQ) dot.classList.add('current');
+    dot.textContent=i+1;
+    dot.onclick=()=>{currentQ=i;renderReviewQ();renderMap();};
+    map.appendChild(dot);
+  });
+
+  renderReviewQ();
+}
+
+function renderReviewQ(){
+  const q=QUESTIONS[currentQ], sel=answers[currentQ], isC=sel===q.ans;
+  document.getElementById('q-counter').textContent=`Review \u2014 Question ${currentQ+1} of ${QUESTIONS.length}`;
+  document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
+  document.getElementById('q-text').textContent=q.text;
+
+  const oc=document.getElementById('q-options'); oc.innerHTML='';
+  q.opts.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    let cls='drill-option disabled';
+    if(i===q.ans) cls+=' correct';
+    if(i===sel&&!isC) cls+=' wrong';
+    btn.className=cls;
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
+    oc.appendChild(btn);
+  });
+
+  const eb=document.getElementById('explanation-box');
+  if(q.explanation){eb.innerHTML=`<strong>Explanation:</strong> ${q.explanation}`;eb.classList.add('show');}
+  else eb.classList.remove('show');
+
+  document.getElementById('prev-btn').disabled=currentQ===0;
+  const nb=document.getElementById('next-btn');
+  if(currentQ===QUESTIONS.length-1){
+    nb.textContent='Back to Results';nb.style.background='';
+    nb.onclick=()=>{document.getElementById('exam-screen').style.display='none';document.getElementById('results-screen').style.display='flex';};
+  } else {
+    nb.textContent='Next \u2192';nb.style.background='';nb.onclick=()=>{currentQ++;renderReviewQ();renderMap();};
+  }
+}
+
+// ════════════ RETRY ════════════
+function retryExam(){
+  isReviewMode=false;
+  document.getElementById('results-screen').style.display='none';
+  document.getElementById('setup-screen').style.display='flex';
+  document.getElementById('flag-btn').style.display='';
+}
+
+// ════════════ TOAST ════════════
+function toast(msg,dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+</script>
+</body>
+</html>

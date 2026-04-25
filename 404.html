@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  // GitHub Pages clean-URL fix
+  // Converts /dashboard → /dashboard.html then redirects
+  (function() {
+    var seg = window.location.pathname.replace(/\/$/, '').split('/').pop();
+    if (seg && seg.indexOf('.') === -1) {
+      var base = window.location.pathname.replace(/\/[^/]*$/, '');
+      window.location.replace(window.location.origin + base + '/' + seg + '.html' + window.location.search + window.location.hash);
+    }
+  })();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page Not Found &mdash; UE School</title>
+<link rel="stylesheet" href="css/main.css">
+<style>
+body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); padding: 24px; }
+.wrap { text-align: center; max-width: 480px; }
+.big-num { font-family: var(--font-head); font-size: 8rem; color: var(--accent); line-height: 1; margin-bottom: 0; opacity: .15; }
+.icon    { font-size: 4rem; margin-bottom: 20px; margin-top: -40px; }
+h1 { font-family: var(--font-head); font-size: 2rem; margin-bottom: 10px; }
+p  { color: var(--muted); margin-bottom: 32px; line-height: 1.7; }
+.btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="big-num">404</div>
+  <div class="icon">🔍</div>
+  <h1>Page Not Found</h1>
+  <p>The page you're looking for doesn't exist or may have moved.<br>
+     Let's get you back on track.</p>
+  <div class="btn-row">
+    <a href="index.html"     class="btn btn-outline">&larr; Home</a>
+    <a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a>
+  </div>
+</div>
+
+<script>
+// GitHub Pages SPA routing \u2014 redirect /path to /?path=/path
+// This lets the app handle routing client-side
+(function(){
+  var seg = window.location.pathname.replace(/^\/[^/]*\//,'').replace(/\.html$/,'');
+  if(seg && seg !== '404') {
+    // Graceful: just let the page show as-is
+  }
+})();
+</script>
+</body>
+</html>

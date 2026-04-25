@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Us &mdash; UE School</title>
+<meta name="description" content="Learn about UE School &mdash; our mission, story, and the team building the best exam prep platform for Nigerian students.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>
+/* ── MOBILE NAV &mdash; matches index.html professional slide-down ── */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px; height: 40px;
+  padding: 8px;
+  background: rgba(26,86,255,.06);
+  border: 1.5px solid var(--border2);
+  border-radius: 9px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  z-index: 210;
+  transition: background .2s, border-color .2s;
+}
+.nav-hamburger:hover { background: rgba(26,86,255,.12); border-color: var(--accent); }
+.nav-hamburger span {
+  display: block; width: 18px; height: 2px;
+  background: var(--text); border-radius: 2px;
+  transition: transform .3s ease, opacity .3s ease;
+  transform-origin: center center;
+}
+.nav-mobile-open .nav-hamburger { background: rgba(26,86,255,.1); border-color: var(--accent); }
+.nav-mobile-open .nav-hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-mobile-open .nav-hamburger span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-mobile-open .nav-hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 768px) {
+  .ue-nav { height: auto; }
+  .ue-nav .container { flex-wrap: wrap; height: auto; padding: 0 16px; }
+  .nav-logo { padding: 14px 0; flex: 1; }
+  .nav-hamburger { display: flex; }
+  .nav-links, .nav-right {
+    display: flex !important;
+    flex-direction: column; width: 100%;
+    overflow: hidden; max-height: 0; opacity: 0; pointer-events: none;
+    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, padding .3s ease;
+  }
+  .nav-links { gap: 2px; padding: 0; order: 3; }
+  .nav-right  { gap: 8px; padding: 0; order: 4; border-top: 1px solid var(--border); }
+  .nav-mobile-open .nav-links {
+    max-height: 300px; opacity: 1; pointer-events: auto;
+    padding: 8px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .nav-mobile-open .nav-right {
+    max-height: 120px; opacity: 1; pointer-events: auto; padding: 10px 0 14px;
+  }
+  .nav-links a {
+    display: flex; align-items: center;
+    padding: 11px 14px; font-size: .92rem; font-weight: 600;
+    color: var(--text); border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .nav-links a:hover, .nav-links a.active { background: rgba(26,86,255,.07); color: var(--accent); }
+  .nav-right .btn { width: 100%; justify-content: center; height: 44px; }
+}
+</style>
+
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+
+
+
+<style>
+  .legal-hero {
+    background: linear-gradient(135deg, #0a0f1e 0%, #111827 100%);
+    padding: 80px 0 60px;
+    text-align: center;
+  }
+  .legal-hero h1 {
+    font-family: var(--font-head);
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    color: #fff;
+    margin-bottom: 16px;
+  }
+  .legal-hero p {
+    color: rgba(255,255,255,.6);
+    font-size: 1.05rem;
+    max-width: 540px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+  .legal-body { padding: 72px 0; }
+  .legal-body .container { max-width: 780px; }
+  .legal-body h2 {
+    font-family: var(--font-head);
+    font-size: 1.9rem;
+    margin: 48px 0 16px;
+    color: var(--text);
+  }
+  .legal-body h2:first-child { margin-top: 0; }
+  .legal-body p, .legal-body li {
+    color: var(--muted);
+    line-height: 1.85;
+    font-size: .97rem;
+  }
+  .legal-body ul { padding-left: 20px; margin: 12px 0; }
+  .legal-body li { margin-bottom: 8px; }
+  .about-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin: 40px 0;
+  }
+  .about-stat {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 20px;
+    text-align: center;
+  }
+  .about-stat-val {
+    font-family: var(--font-head);
+    font-size: 2.4rem;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .about-stat-lbl {
+    font-size: .82rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .about-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 32px 0;
+  }
+  .team-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 20px;
+    text-align: center;
+  }
+  .team-avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #6fa3ff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-size: 1.5rem; color: #fff;
+    margin: 0 auto 14px;
+  }
+  .team-name { font-weight: 700; margin-bottom: 4px; }
+  .team-role { font-size: .82rem; color: var(--muted); }
+  @media (max-width: 600px) {
+    .about-stat-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="ue-nav">
+  <div class="container">
+    <a href="index.html" class="nav-logo">UE School</a>
+    <div class="nav-links">
+      <a href="classroom.html">Classroom</a>
+      <a href="cbt.html">Practice (CBT)</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="pricing.html">Pricing</a>
+    </div>
+    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu"
+            onclick="this.closest('.ue-nav').classList.toggle('nav-mobile-open')">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-right" id="nav-right-public">
+      <a href="login.html" class="btn btn-primary" id="nav-login-btn">Login / Sign Up</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="legal-hero">
+  <div class="container">
+    <h1>About UE School</h1>
+    <p>We are on a mission to give every Nigerian student an unfair advantage in their exams &mdash; without breaking the bank.</p>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="legal-body">
+  <div class="container">
+
+    <h2>Our Story</h2>
+    <p>UE School was founded after watching too many brilliant students miss university cut-offs &mdash; not because they weren't smart, but because quality exam preparation was expensive and inaccessible. We set out to change that. Starting with a small library of JAMB past questions and a simple score tracker, we have grown into a full adaptive learning platform built specifically for the Nigerian exam ecosystem.</p>
+    <p>Every feature on this platform &mdash; the CBT engine, the SmartPath™ suggestions, the topic-by-topic scoring &mdash; was designed by people who have sat the same exams, or who have coached students through them.</p>
+
+    <!-- Stats -->
+    <div class="about-stat-grid">
+      <div class="about-stat">
+        <div class="about-stat-val">50K+</div>
+        <div class="about-stat-lbl">Students Enrolled</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-val">10K+</div>
+        <div class="about-stat-lbl">Practice Questions</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-val">94%</div>
+        <div class="about-stat-lbl">Pass Rate Among Active Users</div>
+      </div>
+    </div>
+
+    <h2>What We Believe</h2>
+    <ul>
+      <li><strong>Access before profit.</strong> Our lowest plan costs less than a bottle of water a day. We will never put essential learning behind a paywall we can't justify.</li>
+      <li><strong>Data over guesswork.</strong> Your practice sessions generate real insights. Our AI tracks every gap so your study time is spent where it matters most.</li>
+      <li><strong>Nigerian students deserve world-class tools.</strong> We build for the reality of our users &mdash; patchy internet, shared devices, and exams in June.</li>
+      <li><strong>Transparency always.</strong> We are honest about what our predictions mean and what they don't.</li>
+    </ul>
+
+    <h2>What We Cover</h2>
+    <p>UE School is built around the three major Nigerian secondary exit and tertiary entry exams:</p>
+    <ul>
+      <li><strong>JAMB UTME</strong> &mdash; full syllabus coverage, 10,000+ past-question bank, score prediction engine.</li>
+      <li><strong>WAEC SSCE</strong> &mdash; topic-by-topic drills, essay structure guides, theory marking hints.</li>
+      <li><strong>NECO SSCE</strong> &mdash; parallel content to WAEC with NECO-specific question patterns.</li>
+      <li><strong>Post-UTME</strong> &mdash; university-specific question sets for popular institutions.</li>
+    </ul>
+
+    <h2>Our Team</h2>
+    <p>We are a lean, dedicated team of educators, engineers, and former exam candidates. We ship improvements every week and we read every support message we receive.</p>
+
+    <div class="about-team-grid">
+      <div class="team-card">
+        <div class="team-avatar">UE</div>
+        <div class="team-name">UE School Team</div>
+        <div class="team-role">Education &amp; Curriculum</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">EN</div>
+        <div class="team-name">Engineering</div>
+        <div class="team-role">Platform &amp; AI</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">SU</div>
+        <div class="team-name">Student Success</div>
+        <div class="team-role">Support &amp; Coaching</div>
+      </div>
+    </div>
+
+    <h2>Get in Touch</h2>
+    <p>Have a question, suggestion, or partnership proposal? We'd love to hear from you. Visit our <a href="contact.html" style="color:var(--accent);font-weight:600;">Contact page</a>.</p>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo">UE School</div>
+        <div class="footer-tagline">The cockpit for your exam preparation. Pass your JAMB, WAEC, and NECO exams with confidence.</div>
+      </div>
+      <div>
+        <div class="footer-heading">Platform</div>
+        <ul class="footer-links">
+          <li><a href="classroom.html">Classroom</a></li>
+          <li><a href="cbt.html">Practice CBT</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="pricing.html">Pricing</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-heading">Company</div>
+        <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-divider">&copy; 2026 UE School. All rights reserved.</div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+      const nav = document.querySelector('.ue-nav');
+      nav && nav.classList.remove('nav-mobile-open');
+      const btn = document.getElementById('nav-toggle');
+      btn && btn.setAttribute('aria-expanded', 'false');
+    });
+  });
+});
+</script>
+<script src="js/app.js"></script>
+
+<script>
+// Auth-aware nav for public pages
+(async function() {
+  try {
+    // sb/SB is set by js/supabase.js shim \u2014 credentials live only in js/config.js
+const SB = window.sb;
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const navRight = document.getElementById('nav-right-public');
+      if (navRight) {
+        const { data: p } = await sb.from('profiles').select('full_name,total_xp').eq('id', session.user.id).single();
+        const initials = (p?.full_name || 'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        navRight.innerHTML = `
+          <div class="nav-user-pill" style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1.5px solid var(--border2);border-radius:999px;padding:4px 14px 4px 4px">
+            <div class="nav-avatar" style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem">${initials}</div>
+            <span style="font-weight:700;font-size:.9rem">${(p?.full_name||'').split(' ')[0]}</span>
+            <span style="font-size:.78rem;color:var(--muted)">${p?.total_xp||0} XP</span>
+          </div>
+          <a href="dashboard.html" class="btn btn-primary" style="margin-left:8px">Dashboard</a>
+          <button class="btn btn-outline btn-sm" onclick="(window.sb||window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL,window.UE_CONFIG.SUPABASE_ANON)).auth.signOut().then(()=>location.reload())" style="margin-left:4px">Logout</button>
+        `;
+      }
+    }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

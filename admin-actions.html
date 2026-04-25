@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Actions — UE School</title>
+<meta name="robots" content="noindex,nofollow">
+
+<!-- Security block — same as all other protected pages -->
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0a0c10; --surface:#111318; --surface2:#181c24;
+  --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.14);
+  --accent:#1a56ff; --accent-glow:rgba(26,86,255,.25);
+  --good:#00c97a; --warn:#f59e0b; --danger:#ef4444;
+  --text:#f0f2f7; --muted:#7a849a;
+  --font-head:'Syne',sans-serif; --font-body:'DM Sans',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--font-body);
+  font-size:14px;min-height:100vh;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.shell{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+h1{font-family:var(--font-head);font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+h1 .tag{
+  display:inline-block;background:var(--accent);color:#fff;font-size:.62rem;
+  padding:3px 8px;border-radius:6px;margin-left:8px;vertical-align:middle;
+  font-family:var(--font-body);font-weight:700;letter-spacing:.06em
+}
+.who{font-size:.78rem;color:var(--muted)}
+.who b{color:var(--text)}
+a.back{color:var(--muted);text-decoration:none;font-size:.8rem}
+a.back:hover{color:var(--text)}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:22px;margin-bottom:18px
+}
+.card h2{font-family:var(--font-head);font-size:1.05rem;font-weight:700;margin-bottom:14px}
+
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row > *{flex:1;min-width:200px}
+
+input[type=text],input[type=email],input[type=number],select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:10px 12px;color:var(--text);font:inherit;outline:none
+}
+input:focus,select:focus{border-color:var(--accent)}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 16px;border:1px solid var(--border2);border-radius:8px;
+  background:var(--surface2);color:var(--text);font:inherit;font-weight:600;
+  font-size:.82rem;cursor:pointer;transition:.15s
+}
+.btn:hover{background:var(--surface)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{filter:brightness(1.15)}
+.btn-good{background:var(--good);border-color:var(--good);color:#04140d}
+.btn-warn{background:var(--warn);border-color:var(--warn);color:#1f1300}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.target-block{display:none}
+.target-block.show{display:block}
+
+.kv{display:grid;grid-template-columns:130px 1fr;gap:8px 14px;font-size:.85rem;margin-top:6px}
+.kv .k{color:var(--muted);font-size:.78rem}
+.kv .v{color:var(--text);word-break:break-word}
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:6px;font-size:.7rem;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase
+}
+.b-prem{background:rgba(0,201,122,.15);color:var(--good)}
+.b-free{background:rgba(255,255,255,.08);color:var(--muted)}
+.b-admin{background:rgba(26,86,255,.18);color:#7eaaff}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-head h3{font-family:var(--font-head);font-size:.95rem;font-weight:700}
+
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
+tr:hover td{background:rgba(255,255,255,.02)}
+.mono{font-family:var(--font-mono);font-size:.72rem;color:var(--muted)}
+.empty{color:var(--muted);font-size:.82rem;padding:20px;text-align:center}
+
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(140%);
+  background:var(--surface2);border:1px solid var(--border2);
+  padding:11px 18px;border-radius:10px;font-size:.85rem;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);transition:.25s;z-index:9999;
+  max-width:90vw;text-align:center
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--good)}
+#toast.err{border-color:var(--danger)}
+
+.gate{
+  max-width:440px;margin:80px auto;text-align:center;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:36px 28px
+}
+.gate h1{font-size:1.3rem;margin-bottom:10px}
+.gate p{color:var(--muted);margin-bottom:18px;font-size:.88rem}
+.spinner{
+  width:28px;height:28px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .8s linear infinite;margin:0 auto
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:640px){
+  .kv{grid-template-columns:1fr;gap:2px 0}
+  .kv .k{margin-top:8px}
+}
+</style>
+</head>
+<body>
+
+<div id="boot" class="gate">
+  <div class="spinner"></div>
+  <p style="margin-top:14px">Verifying admin access…</p>
+</div>
+
+<div id="denied" class="gate" style="display:none">
+  <h1>Access denied</h1>
+  <p>Your account is not flagged as an admin. If this is a mistake, contact the system owner.</p>
+  <a class="btn btn-primary" href="dashboard.html">Back to dashboard</a>
+</div>
+
+<div id="app" class="shell" style="display:none">
+
+  <header>
+    <div>
+      <h1>Admin Actions <span class="tag">PRIVILEGED</span></h1>
+      <div class="who">Signed in as <b id="who-email">…</b></div>
+    </div>
+    <a class="back" href="dashboard.html">← Back to dashboard</a>
+  </header>
+
+  <div class="card">
+    <h2>Find a user</h2>
+    <div class="row">
+      <input id="search-email" type="email" placeholder="user@example.com" autocomplete="off">
+      <button class="btn btn-primary" id="search-btn" style="flex:0 0 auto">Look up</button>
+    </div>
+    <div style="font-size:.74rem;color:var(--muted);margin-top:8px">
+      Search is case-insensitive and matches the user's exact email address.
+    </div>
+  </div>
+
+  <div id="target" class="card target-block">
+    <h2>User</h2>
+    <div class="kv">
+      <div class="k">Name</div>      <div class="v" id="t-name">—</div>
+      <div class="k">Email</div>     <div class="v" id="t-email">—</div>
+      <div class="k">User ID</div>   <div class="v mono" id="t-id">—</div>
+      <div class="k">Plan</div>      <div class="v" id="t-plan">—</div>
+      <div class="k">Expires</div>   <div class="v" id="t-expiry">—</div>
+      <div class="k">Status</div>    <div class="v" id="t-status">—</div>
+      <div class="k">Joined</div>    <div class="v" id="t-joined">—</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-good" data-act="grant" data-days="30">Grant 30 days</button>
+      <button class="btn btn-good" data-act="grant" data-days="90">Grant 90 days</button>
+      <button class="btn btn-good" data-act="grant" data-days="365">Grant 365 days</button>
+      <button class="btn btn-primary" data-act="extend" data-days="30">Extend +30</button>
+      <button class="btn btn-warn" data-act="custom">Custom days…</button>
+      <button class="btn btn-danger" data-act="revoke">Revoke premium</button>
+    </div>
+
+    <div style="margin-top:24px">
+      <div class="section-head">
+        <h3>Recent payments</h3>
+        <span style="font-size:.72rem;color:var(--muted)" id="pay-count"></span>
+      </div>
+      <div id="pay-list"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-head">
+      <h3 style="font-family:var(--font-head);font-size:1.05rem">Recent admin activity</h3>
+      <button class="btn" id="refresh-audit" style="padding:5px 12px;font-size:.75rem">Refresh</button>
+    </div>
+    <div id="audit-list"><div class="empty">Loading…</div></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- Supabase SDK + auth-guard (which sets window.sb and window.UE_USER) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/admin-actions.js"></script>
+
+</body>
+</html>
