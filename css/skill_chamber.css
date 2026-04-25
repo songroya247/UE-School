@@ -1,0 +1,91 @@
+/* All selectors scoped under .skill-chamber-modal so they cannot leak globally. */
+.skill-chamber-modal{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;animation:scOverlayIn .25s ease both}
+.skill-chamber-modal__overlay{position:absolute;inset:0;background:rgba(8,15,35,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.skill-chamber-modal__panel{position:relative;background:linear-gradient(160deg,#fff,#f0f4ff);border:1px solid rgba(79,142,255,.25);border-radius:20px;box-shadow:0 30px 80px rgba(15,28,63,.3),0 0 60px rgba(79,142,255,.15);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:scPanelIn .35s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes scOverlayIn{from{opacity:0}to{opacity:1}}
+@keyframes scPanelIn{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.skill-chamber-modal .sc-head{padding:26px 28px 18px;border-bottom:1px solid rgba(79,142,255,.12);position:relative}
+.skill-chamber-modal .sc-mode-tag{display:inline-flex;align-items:center;gap:8px;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:5px 12px;border-radius:20px;margin-bottom:12px}
+.skill-chamber-modal .sc-mode-tag.boss{background:linear-gradient(135deg,#fde68a,#fbbf24);color:#78350f;border:1px solid #f59e0b}
+.skill-chamber-modal .sc-mode-tag.drill{background:rgba(37,99,235,.12);color:#1d4ed8;border:1px solid rgba(37,99,235,.3)}
+.skill-chamber-modal .sc-mode-tag.powerup{background:linear-gradient(135deg,#ddd6fe,#c4b5fd);color:#5b21b6;border:1px solid #8b5cf6}
+.skill-chamber-modal .sc-mode-tag.success{background:linear-gradient(135deg,#bbf7d0,#86efac);color:#166534;border:1px solid #16a34a}
+.skill-chamber-modal .sc-title{font-family:'Syne',sans-serif;font-size:1.55rem;font-weight:800;color:#0f1c3f;line-height:1.2;letter-spacing:-.01em;margin-bottom:6px}
+.skill-chamber-modal .sc-subtitle{color:#4b5563;font-size:.92rem;line-height:1.55}
+.skill-chamber-modal .sc-close{position:absolute;top:18px;right:18px;width:32px;height:32px;border-radius:8px;background:rgba(15,28,63,.06);border:none;color:#4b5563;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s}
+.skill-chamber-modal .sc-close:hover{background:rgba(15,28,63,.12);color:#0f1c3f}
+
+.skill-chamber-modal .sc-body{padding:24px 28px}
+.skill-chamber-modal .sc-foot{padding:18px 28px 24px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid rgba(79,142,255,.1);flex-wrap:wrap}
+
+.skill-chamber-modal .sc-btn{font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;padding:11px 20px;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.skill-chamber-modal .sc-btn.primary{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 4px 18px rgba(79,142,255,.3)}
+.skill-chamber-modal .sc-btn.primary:hover{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 6px 22px rgba(79,142,255,.4)}
+.skill-chamber-modal .sc-btn.outline{background:transparent;color:#1e3a6e;border:1px solid rgba(79,142,255,.3)}
+.skill-chamber-modal .sc-btn.outline:hover{background:rgba(79,142,255,.06)}
+.skill-chamber-modal .sc-btn.warn{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff}
+.skill-chamber-modal .sc-btn.warn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+
+/* ---- Power-up renderers ---- */
+.skill-chamber-modal .pu-section-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#0f1c3f;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.skill-chamber-modal .pu-section-title::before{content:'';width:4px;height:18px;background:linear-gradient(180deg,#3b82f6,#6366f1);border-radius:2px}
+
+/* Math: formula triangle */
+.skill-chamber-modal .pu-triangle{display:flex;justify-content:center;margin:8px 0 18px}
+.skill-chamber-modal .pu-triangle svg{max-width:240px;width:100%;height:auto}
+.skill-chamber-modal .pu-card{background:linear-gradient(135deg,rgba(219,234,254,.7),rgba(191,219,254,.4));border:1px solid rgba(37,99,235,.2);border-radius:14px;padding:18px;margin-bottom:14px}
+.skill-chamber-modal .pu-card .pu-formula{font-family:'Courier New',monospace;font-size:1.05rem;color:#1e3a6e;background:rgba(255,255,255,.7);border-radius:8px;padding:10px 14px;margin-bottom:8px;border:1px solid rgba(79,142,255,.18)}
+.skill-chamber-modal .pu-card .pu-note{font-size:.85rem;color:#4b5563;line-height:1.55}
+
+/* Math: slide-and-divide */
+.skill-chamber-modal .pu-steps{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.skill-chamber-modal .pu-step{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid rgba(79,142,255,.18);border-radius:11px;padding:12px 14px}
+.skill-chamber-modal .pu-step-num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;font-family:'Syne',sans-serif}
+.skill-chamber-modal .pu-step-text{font-size:.9rem;color:#1e3a6e;line-height:1.5}
+.skill-chamber-modal .pu-step-text code{background:rgba(37,99,235,.08);padding:1px 6px;border-radius:4px;font-family:'Courier New',monospace;color:#1d4ed8;font-size:.85rem}
+
+/* Literature: character tree */
+.skill-chamber-modal .pu-tree{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.skill-chamber-modal .pu-tree-node{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid rgba(79,142,255,.18);border-radius:11px;padding:12px 14px}
+.skill-chamber-modal .pu-tree-icon{font-size:1.6rem;flex-shrink:0;width:42px;height:42px;background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(99,102,241,.08));border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid rgba(124,58,237,.2)}
+.skill-chamber-modal .pu-tree-name{font-family:'Syne',sans-serif;font-weight:700;color:#0f1c3f;font-size:.95rem;margin-bottom:2px}
+.skill-chamber-modal .pu-tree-role{font-size:.8rem;color:#6b7280;line-height:1.4}
+.skill-chamber-modal .pu-tree-edges{font-size:.78rem;color:#7c3aed;background:rgba(124,58,237,.08);padding:8px 12px;border-radius:8px;border-left:3px solid #7c3aed;line-height:1.5}
+
+/* Biology: decoder */
+.skill-chamber-modal .pu-decoder{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px}
+.skill-chamber-modal .pu-decode{display:grid;grid-template-columns:90px 24px 1fr;gap:10px;align-items:center;background:#fff;border:1px solid rgba(79,142,255,.18);border-radius:10px;padding:10px 14px;font-size:.9rem}
+.skill-chamber-modal .pu-decode-tag{font-family:'Courier New',monospace;font-weight:700;color:#16a34a;background:rgba(22,163,74,.08);padding:4px 8px;border-radius:6px;text-align:center;border:1px solid rgba(22,163,74,.2)}
+.skill-chamber-modal .pu-decode-arrow{color:#9ca3af;text-align:center;font-weight:700}
+.skill-chamber-modal .pu-decode-meaning{color:#1e3a6e;line-height:1.4}
+
+/* English: grammar formula */
+.skill-chamber-modal .pu-grammar{background:linear-gradient(135deg,rgba(219,234,254,.7),rgba(191,219,254,.4));border:1px solid rgba(37,99,235,.2);border-radius:14px;padding:18px;margin-bottom:14px}
+.skill-chamber-modal .pu-grammar-formula{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;font-family:'Courier New',monospace;font-size:1rem;color:#1d4ed8;margin-bottom:12px}
+.skill-chamber-modal .pu-grammar-token{background:#fff;border:1px solid rgba(37,99,235,.3);padding:6px 12px;border-radius:8px;font-weight:600}
+.skill-chamber-modal .pu-grammar-op{font-size:1.2rem;font-weight:700;color:#1e3a6e}
+.skill-chamber-modal .pu-grammar-note{font-size:.85rem;color:#4b5563;line-height:1.55;text-align:center}
+
+.skill-chamber-modal .sc-stat-row{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.skill-chamber-modal .sc-stat{flex:1;min-width:120px;background:rgba(79,142,255,.06);border:1px solid rgba(79,142,255,.18);border-radius:11px;padding:12px 14px}
+.skill-chamber-modal .sc-stat-label{font-size:.7rem;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.06em;margin-bottom:4px}
+.skill-chamber-modal .sc-stat-value{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#0f1c3f}
+.skill-chamber-modal .sc-stat-value.good{color:#16a34a}
+.skill-chamber-modal .sc-stat-value.warn{color:#f59e0b}
+.skill-chamber-modal .sc-stat-value.bad{color:#dc2626}
+
+.skill-chamber-modal .sc-progress{height:8px;background:rgba(79,142,255,.1);border-radius:8px;overflow:hidden;margin:14px 0}
+.skill-chamber-modal .sc-progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:8px;transition:width .5s ease}
+
+.skill-chamber-modal .sc-xp-burst{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#fef3c7,#fed7aa);border:1px solid #fcd34d;color:#92400e;font-weight:800;padding:8px 16px;border-radius:30px;font-size:.95rem;font-family:'Syne',sans-serif;margin-top:8px;box-shadow:0 4px 16px rgba(251,191,36,.3);animation:scXpPop .5s ease both}
+@keyframes scXpPop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+
+@media(max-width:540px){
+  .skill-chamber-modal__panel{max-height:95vh}
+  .skill-chamber-modal .sc-head{padding:20px 20px 14px}
+  .skill-chamber-modal .sc-body{padding:18px 20px}
+  .skill-chamber-modal .sc-foot{padding:14px 20px 20px}
+  .skill-chamber-modal .sc-title{font-size:1.3rem}
+  .skill-chamber-modal .pu-decode{grid-template-columns:80px 20px 1fr}
+}
