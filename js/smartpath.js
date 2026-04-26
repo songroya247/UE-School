@@ -121,10 +121,63 @@ const SMARTPATH = (function () {
       .eq('id', userId);
   }
 
+  // ── WAEC / NECO grade prediction ──────────────────
+  // Maps an aggregate mastery score (0..1) to a Nigerian
+  // examinations grade band (A1 → F9). Same table used by
+  // report.html so the two views never disagree.
+  function masteryToGrade(m) {
+    if (m === null || m === undefined || isNaN(m)) {
+      return { label: 'NIL', band: 'unknown', confidence: 0 };
+    }
+    const p = m * 100;
+    if (p >= 75) return { label: 'A1', band: 'excellent',  confidence: m };
+    if (p >= 70) return { label: 'B2', band: 'very-good',  confidence: m };
+    if (p >= 65) return { label: 'B3', band: 'very-good',  confidence: m };
+    if (p >= 60) return { label: 'C4', band: 'credit',     confidence: m };
+    if (p >= 55) return { label: 'C5', band: 'credit',     confidence: m };
+    if (p >= 50) return { label: 'C6', band: 'credit',     confidence: m };
+    if (p >= 45) return { label: 'D7', band: 'pass',       confidence: m };
+    if (p >= 40) return { label: 'E8', band: 'pass',       confidence: m };
+    return       { label: 'F9', band: 'fail',       confidence: m };
+  }
+
+  // predictWAECGrade(profile, masteryRows)
+  //   → [{ subject, avg, grade:{label,band,confidence}, sampled }]
+  // `subject` is the canonical id ('mathematics', 'english', …).
+  // `sampled` is the number of topics included in the average — the
+  // UI uses it to mark predictions with too little data as "low
+  // confidence". A subject with zero rows still appears (NIL grade)
+  // so students see what they haven't started yet.
+  function predictWAECGrade(profile, masteryRows) {
+    const subjects = (profile && profile.exam_subjects) || [];
+    if (!subjects.length) return [];
+
+    const bySubject = {};
+    for (const r of (masteryRows || [])) {
+      if (r.mastery_level === null || r.mastery_level === undefined) continue;
+      const subj = String(r.topic_id || '').split('.')[0];
+      if (!subj) continue;
+      (bySubject[subj] = bySubject[subj] || []).push(r.mastery_level);
+    }
+
+    return subjects.map(subj => {
+      const arr = bySubject[subj] || [];
+      const avg = arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+      return {
+        subject: subj,
+        avg,
+        grade:   masteryToGrade(avg),
+        sampled: arr.length,
+      };
+    });
+  }
+
   return {
     classifyTopic,
     buildQueue,
     predictJAMBScore,
+    predictWAECGrade,
+    masteryToGrade,
     buildDescription,
     formatTopicLabel,
     saveQueue,
