@@ -31,7 +31,7 @@
      ║  SECURITY BLOCK &mdash; must be first in <head>           ║
      ╚══════════════════════════════════════════════════════╝ -->
 <script src="js/config.js"></script>
-<script src="js/head-gatekeeper.js"></script>
+<script src="js/head-gatekeeper.js?v=3"></script>
 <!-- END SECURITY BLOCK -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -739,6 +739,25 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
     </div>
   </section>
 
+  <!-- ── WAEC / NECO grade prediction (only renders if user has WAEC or NECO in exam_types) ── -->
+  <section class="fade-up" id="waec-pred-section" style="display:none">
+    <h2 class="section-title" style="margin-bottom:16px">Predicted WAEC / NECO <span>Grades</span></h2>
+    <div class="perf-card" id="waec-pred-container" style="padding:24px">
+      <div style="padding:16px;text-align:center;color:var(--muted)">Loading grade predictions…</div>
+    </div>
+  </section>
+
+  <!-- ── Topic weakness heatmap ── -->
+  <section class="fade-up">
+    <h2 class="section-title" style="margin-bottom:8px">Topic Weakness <span>Heatmap</span></h2>
+    <div style="font-size:.85rem;color:var(--muted);margin-bottom:16px">
+      Each cell shows your mastery for one topic. Red = needs work. Green = on track.
+    </div>
+    <div class="perf-card" id="heatmap-container" style="padding:20px;overflow-x:auto">
+      <div style="padding:24px;text-align:center;color:var(--muted)">Loading heatmap…</div>
+    </div>
+  </section>
+
   <section class="fade-up">
     <h2 class="section-title" style="margin-bottom:16px">SmartPath™ <span>Recommendations</span></h2>
     <div class="smartpath-grid" id="smartpath-container" data-skeleton>
@@ -746,7 +765,113 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
     </div>
   </section>
 
+  <!-- ── Premium Tools hub: study guides, 1-on-1 tutor, mastery report,
+       exam-countdown reminders, WhatsApp support ── -->
+  <section class="fade-up">
+    <h2 class="section-title" style="margin-bottom:16px">Premium <span>Tools</span></h2>
+    <div class="perf-card" style="padding:0;overflow:hidden">
+      <div class="ptools-grid">
+        <a href="study-guides.html" class="ptool-card">
+          <div class="ptool-icon" style="background:linear-gradient(135deg,#1a56ff,#6366f1)">&#x1F4DA;</div>
+          <div class="ptool-body">
+            <div class="ptool-title">PDF Study Guides</div>
+            <div class="ptool-sub" id="ptool-guides-sub">Curriculum-aligned summaries for every subject you study</div>
+          </div>
+          <div class="ptool-arrow">&rsaquo;</div>
+        </a>
+        <a href="tutor.html" class="ptool-card">
+          <div class="ptool-icon" style="background:linear-gradient(135deg,#10b981,#059669)">&#x1F468;&#x200D;&#x1F3EB;</div>
+          <div class="ptool-body">
+            <div class="ptool-title">Book a 1-on-1 Tutor</div>
+            <div class="ptool-sub">A live session with a verified UE School tutor for your toughest topic</div>
+          </div>
+          <div class="ptool-arrow">&rsaquo;</div>
+        </a>
+        <a href="report.html" class="ptool-card">
+          <div class="ptool-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">&#x1F4C4;</div>
+          <div class="ptool-body">
+            <div class="ptool-title">Download Mastery Report</div>
+            <div class="ptool-sub">Your full readiness profile as a sharable PDF</div>
+          </div>
+          <div class="ptool-arrow">&rsaquo;</div>
+        </a>
+        <div class="ptool-card" style="cursor:default">
+          <div class="ptool-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626)">&#x23F0;</div>
+          <div class="ptool-body">
+            <div class="ptool-title">Exam-Countdown Reminders</div>
+            <div class="ptool-sub" id="ptool-reminder-sub">Get an email at every milestone before exam day</div>
+          </div>
+          <label class="we-switch" title="Toggle exam reminders">
+            <input type="checkbox" id="exam-reminder-toggle" disabled>
+            <span class="we-slider"></span>
+          </label>
+        </div>
+        <a id="ptool-whatsapp" href="#" target="_blank" rel="noopener" class="ptool-card" style="display:none">
+          <div class="ptool-icon" style="background:linear-gradient(135deg,#25d366,#128c7e)">&#x1F4AC;</div>
+          <div class="ptool-body">
+            <div class="ptool-title">Dedicated WhatsApp Support</div>
+            <div class="ptool-sub">Skip the queue — message us directly on WhatsApp</div>
+          </div>
+          <div class="ptool-arrow">&rsaquo;</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
 </main>
+
+<!-- ── Premium tools card styling (kept inline so we don't bloat main.css) ── -->
+<style>
+.ptools-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:760px){.ptools-grid{grid-template-columns:1fr}}
+.ptool-card{display:flex;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-decoration:none;color:inherit;transition:background .15s}
+.ptools-grid > .ptool-card:nth-child(2n){border-right:none}
+@media(max-width:760px){.ptool-card{border-right:none}}
+.ptool-card:hover{background:rgba(26,86,255,.04)}
+.ptool-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;flex-shrink:0}
+.ptool-body{flex:1;min-width:0}
+.ptool-title{font-weight:700;font-size:.95rem;margin-bottom:2px}
+.ptool-sub{font-size:.78rem;color:var(--muted);line-height:1.35}
+.ptool-arrow{color:var(--muted);font-size:1.4rem;font-weight:700;padding-left:6px}
+
+/* WAEC grade pills */
+.waec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.waec-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:10px}
+.waec-row .ws-name{font-weight:700;font-size:.92rem}
+.waec-row .ws-meta{font-size:.72rem;color:var(--muted);margin-top:2px}
+.waec-pill{font-family:var(--font-mono);font-weight:800;font-size:1.05rem;padding:6px 12px;border-radius:8px;letter-spacing:.04em}
+.waec-pill.g-excellent{background:#d1fae5;color:#065f46}
+.waec-pill.g-very-good{background:#dbeafe;color:#1e40af}
+.waec-pill.g-credit  {background:#fef3c7;color:#92400e}
+.waec-pill.g-pass    {background:#fed7aa;color:#9a3412}
+.waec-pill.g-fail    {background:#fee2e2;color:#991b1b}
+.waec-pill.g-unknown {background:#f3f4f6;color:#6b7280}
+
+/* Heatmap */
+.hm-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.hm-row:last-child{margin-bottom:0}
+.hm-subj{flex:0 0 110px;font-weight:700;font-size:.82rem;color:var(--text);text-transform:capitalize}
+.hm-cells{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.hm-cell{position:relative;width:64px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#fff;font-weight:700;cursor:default;line-height:1;text-align:center;padding:2px}
+.hm-cell .hm-tt{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0f1c3f;color:#fff;font-size:.72rem;font-weight:600;padding:6px 9px;border-radius:6px;white-space:nowrap;z-index:10;pointer-events:none}
+.hm-cell:hover .hm-tt{display:block}
+.hm-c-0{background:#94a3b8}
+.hm-c-1{background:#ef4444}
+.hm-c-2{background:#f59e0b}
+.hm-c-3{background:#eab308}
+.hm-c-4{background:#22c55e}
+.hm-c-5{background:#16a34a}
+.hm-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:.72rem;color:var(--muted)}
+.hm-legend-item{display:flex;align-items:center;gap:5px}
+.hm-legend-swatch{width:12px;height:12px;border-radius:3px}
+</style>
+
+<!-- ── Floating WhatsApp support button (hidden until init binds it) ── -->
+<a id="whatsapp-fab" href="#" target="_blank" rel="noopener"
+   aria-label="Chat on WhatsApp"
+   style="display:none;position:fixed;bottom:20px;right:20px;z-index:90;background:#25d366;color:#fff;width:56px;height:56px;border-radius:50%;align-items:center;justify-content:center;box-shadow:0 6px 22px rgba(37,211,102,.35);text-decoration:none;font-size:1.6rem">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.555-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.978-1.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479c0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/></svg>
+</a>
 
 <div id="toast"></div>
 
@@ -776,7 +901,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
 <script src="https://js.paystack.co/v1/inline.js"></script>
 <script src="js/app.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/auth-guard.js"></script>
+<script src="js/auth-guard.js?v=3"></script>
 <script src="js/smartpath.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/payment.js"></script>
@@ -1054,21 +1179,26 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
     badge.textContent = getReadinessLabel(readinessPct);
     badge.className = 'rb-badge';
 
-    /* ─ build timeline labels ─ */
-    /* Strategy: if we have exam date, create week-buckets from first exam to exam date.
-       Otherwise just use exam ordinals. */
+    /* ─ build timeline labels (DAYS-COUNTDOWN to exam) ─ */
+    /* Strategy: every point on the x-axis is labelled as the number of
+       days remaining until the user's exam at that moment in time.
+       Past exams → days-left when they were taken (e.g. "60d").
+       Today    → current daysLeft.
+       Future   → projected milestones counting down to "0d". */
     let labels = [], readinessData = [], scoreData = [];
 
+    const daysLabel    = (n) => Math.max(0, Math.round(n)) + 'd';
+    const daysLeftAt   = (d) => examDate ? Math.max(0, Math.ceil((examDate - d) / 86400000)) : null;
+
     if (exams.length === 0) {
-      /* No data yet \u2014 show a flat placeholder up to exam date */
-      const weeks = examDate ? Math.min(12, Math.max(4, daysLeft ? Math.ceil(daysLeft / 7) : 6)) : 6;
-      for (let w = 1; w <= weeks; w++) {
-        if (examDate) {
-          const d = new Date(today);
-          d.setDate(d.getDate() + (w - 1) * Math.floor(daysLeft / weeks));
-          labels.push(d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }));
+      /* No data yet — show flat placeholder ticks counting down to exam */
+      const steps = 6;
+      for (let s = 1; s <= steps; s++) {
+        if (examDate && daysLeft != null) {
+          const remaining = daysLeft - ((s - 1) * daysLeft / (steps - 1));
+          labels.push(daysLabel(remaining));
         } else {
-          labels.push('Week ' + w);
+          labels.push('Day ' + s);
         }
         readinessData.push(null);
         scoreData.push(null);
@@ -1076,7 +1206,11 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
     } else {
       exams.forEach((ex, i) => {
         const d = ex.created_at ? new Date(ex.created_at) : null;
-        labels.push(d ? d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }) : 'Exam ' + (i + 1));
+        if (examDate && d) {
+          labels.push(daysLabel(daysLeftAt(d)));
+        } else {
+          labels.push('Exam ' + (i + 1));
+        }
         scoreData.push(+(ex.score_pct || 0).toFixed(1));
       });
 
@@ -1088,17 +1222,16 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
         readinessData.push(+(slice.reduce((s, e, j) => s + (e.score_pct || 0) * w[j], 0) / wS).toFixed(1));
       });
 
-      /* append future projected points to exam date */
+      /* append future projected points counting down to exam (0d) */
       if (examDate && daysLeft > 0) {
-        const weeksLeft = Math.min(4, Math.ceil(daysLeft / 7));
-        const lastReady = readinessData[readinessData.length - 1] || 0;
-        const lastScore = scoreData[scoreData.length - 1] || 0;
-        for (let w = 1; w <= weeksLeft; w++) {
-          const d = new Date(today);
-          d.setDate(d.getDate() + w * Math.floor(daysLeft / weeksLeft));
-          labels.push(d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }));
+        /* up to 4 forward ticks, roughly one per fortnight */
+        const futureSteps = Math.min(4, Math.max(1, Math.ceil(daysLeft / 14)));
+        const lastReady   = readinessData[readinessData.length - 1] || 0;
+        for (let s = 1; s <= futureSteps; s++) {
+          const remaining = daysLeft - (s * daysLeft / futureSteps);
+          labels.push(daysLabel(remaining));
           /* Projected (linear extrapolation capped at 100) */
-          readinessData.push(Math.min(100, +(lastReady + w * 2).toFixed(1)));
+          readinessData.push(Math.min(100, +(lastReady + s * 2).toFixed(1)));
           scoreData.push(null); /* no score yet */
         }
       }
