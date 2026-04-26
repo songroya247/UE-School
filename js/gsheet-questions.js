@@ -156,11 +156,15 @@ window.GSHEET_QUESTIONS = (function () {
   }
 
   // Public: filter + sample using the same shape as questions.js
-  async function getQuestions({ subject, topic, examType, count = 10 } = {}) {
+  async function getQuestions({ subject, topic, examType, university, count = 10 } = {}) {
     let bank = await fetchAll();
     if (subject)  bank = bank.filter(q => q.subject  === String(subject).toLowerCase());
     if (topic)    bank = bank.filter(q => q.topic    === topic);
     if (examType) bank = bank.filter(q => q.examType === String(examType).toUpperCase());
+    if (university) {
+      const u = String(university).toLowerCase();
+      bank = bank.filter(q => !q.university || String(q.university).toLowerCase() === u);
+    }
     bank = bank.sort(() => Math.random() - 0.5).slice(0, Math.min(count, bank.length));
     return bank;
   }
