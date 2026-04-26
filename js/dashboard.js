@@ -94,7 +94,13 @@ const DASHBOARD = (function () {
 
   // ── Welcome Card ──────────────────────────────────
   function renderWelcome(profile, masteryRows) {
-    const firstName  = (profile.full_name || 'Student').split(' ')[0];
+    // Prefer full_name, then auth metadata, then email username,
+    // and only fall back to "Student" as an absolute last resort.
+    const fallbackName =
+      (window.UE_USER && window.UE_USER.email
+        ? window.UE_USER.email.split('@')[0]
+        : 'Student');
+    const firstName  = (profile.full_name || fallbackName).split(' ')[0];
     const examDays   = daysUntil(profile.exam_date);
     const streak     = calcStreak(profile.usage_logs);
 
@@ -443,6 +449,186 @@ const DASHBOARD = (function () {
   }
 
   // ════════════════════════════════════════════════
+  //  WAEC / NECO grade prediction widget
+  // ════════════════════════════════════════════════
+  function renderWAECPredictions(profile, masteryRows) {
+    const section   = document.getElementById('waec-pred-section');
+    const container = document.getElementById('waec-pred-container');
+    if (!section || !container) return;
+
+    const examTypes = profile.exam_types || [];
+    const showWAEC  = examTypes.includes('WAEC') || examTypes.includes('NECO');
+    if (!showWAEC) { section.style.display = 'none'; return; }
+    section.style.display = '';
+
+    const preds = (window.SMARTPATH && SMARTPATH.predictWAECGrade)
+      ? SMARTPATH.predictWAECGrade(profile, masteryRows) : [];
+
+    if (!preds.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:8px">'
+        + 'Add subjects in <a href="onboarding.html" style="color:var(--accent)">your study plan</a> '
+        + 'to see grade predictions.</div>';
+      return;
+    }
+
+    container.innerHTML =
+      '<div class="waec-grid">' +
+      preds.map(p => {
+        const meta = SUBJECT_META[p.subject] || { label: p.subject };
+        const conf = p.sampled === 0
+          ? 'No practice yet'
+          : (p.sampled < 3 ? 'Low confidence — '+p.sampled+' topic'+(p.sampled===1?'':'s') : p.sampled+' topics sampled');
+        return `<div class="waec-row">
+          <div>
+            <div class="ws-name">${meta.label}</div>
+            <div class="ws-meta">${conf}</div>
+          </div>
+          <span class="waec-pill g-${p.grade.band}">${p.grade.label}</span>
+        </div>`;
+      }).join('') + '</div>' +
+      '<div style="margin-top:14px;font-size:.74rem;color:var(--muted);text-align:center">' +
+      'Grades are algorithmic estimates. Practice more topics to improve accuracy.</div>';
+  }
+
+  // ════════════════════════════════════════════════
+  //  Topic Weakness Heatmap
+  // ════════════════════════════════════════════════
+  function renderHeatmap(profile, masteryRows) {
+    const container = document.getElementById('heatmap-container');
+    if (!container) return;
+
+    const subjects = (profile.exam_subjects || []).filter(s => SUBJECT_TOPICS[s]);
+    if (!subjects.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px">'
+        + 'Pick the subjects you study to see your heatmap.</div>';
+      return;
+    }
+
+    // Mastery lookup: { 'mathematics.Quadratics' => 0.62 }
+    const lookup = {};
+    for (const r of (masteryRows || [])) {
+      if (r.mastery_level !== null && r.mastery_level !== undefined) {
+        lookup[r.topic_id] = r.mastery_level;
+      }
+    }
+
+    function bucket(m) {
+      if (m === undefined) return 0;        // not started
+      const p = m * 100;
+      if (p < 20) return 1;
+      if (p < 40) return 2;
+      if (p < 60) return 3;
+      if (p < 80) return 4;
+      return 5;
+    }
+
+    const rowsHtml = subjects.map(subj => {
+      const meta   = SUBJECT_META[subj] || { label: subj };
+      const topics = SUBJECT_TOPICS[subj] || [];
+      const cells  = topics.map(t => {
+        const key = subj + '.' + t;
+        const m   = lookup[key];
+        const b   = bucket(m);
+        const pct = m === undefined ? '—' : Math.round(m*100) + '%';
+        const tt  = `${t}: ${pct}`;
+        const lbl = t.length > 8 ? t.slice(0, 8) + '…' : t;
+        return `<div class="hm-cell hm-c-${b}" title="${tt}">${lbl}<span class="hm-tt">${tt}</span></div>`;
+      }).join('');
+      return `<div class="hm-row">
+        <div class="hm-subj">${meta.label}</div>
+        <div class="hm-cells">${cells}</div>
+      </div>`;
+    }).join('');
+
+    container.innerHTML = rowsHtml +
+      '<div class="hm-legend">' +
+      '<div class="hm-legend-item"><span class="hm-legend-swatch hm-c-0"></span>Not started</div>' +
+      '<div class="hm-legend-item"><span class="hm-legend-swatch hm-c-1"></span>0–20%</div>' +
+      '<div class="hm-legend-item"><span class="hm-legend-swatch hm-c-2"></span>20–40%</div>' +
+      '<div class="hm-legend-item"><span class="hm-legend-swatch hm-c-3"></span>40–60%</div>' +
+      '<div class="hm-legend-item"><span class="hm-legend-swatch hm-c-4"></span>60–80%</div>' +
+      '<div class="hm-legend-item"><span class="hm-legend-swatch hm-c-5"></span>80–100%</div>' +
+      '</div>';
+  }
+
+  // ════════════════════════════════════════════════
+  //  Premium Tools widget — count guides, wire WhatsApp,
+  //  exam-reminder toggle (silently no-ops if column
+  //  doesn't exist — same pattern as weekly-email-toggle).
+  // ════════════════════════════════════════════════
+  function renderPremiumTools(profile, userId) {
+    const cfg = window.UE_CONFIG || {};
+
+    // ── PDF guides count ──
+    const guides = cfg.STUDY_GUIDES || {};
+    const subjects = profile.exam_subjects || [];
+    let guideCount = 0;
+    for (const s of subjects) guideCount += (guides[s] || []).length;
+    const sub = document.getElementById('ptool-guides-sub');
+    if (sub) {
+      sub.textContent = guideCount > 0
+        ? `${guideCount} guide${guideCount===1?'':'s'} available for your subjects`
+        : 'Curriculum-aligned summaries for every subject you study';
+    }
+
+    // ── Reminder copy: show days remaining ──
+    const days = daysUntil(profile.exam_date ? profile.exam_date + '-01' : null);
+    const remSub = document.getElementById('ptool-reminder-sub');
+    if (remSub) {
+      remSub.textContent = (days !== null && days > 0)
+        ? `${days} day${days===1?'':'s'} until your exam — get a nudge at every milestone`
+        : 'Get an email at every milestone before exam day';
+    }
+
+    // ── WhatsApp links (FAB + premium-tools card) ──
+    const num = String(cfg.WHATSAPP_SUPPORT_NUMBER || '').replace(/\D/g, '');
+    if (num) {
+      const msg = encodeURIComponent(cfg.WHATSAPP_DEFAULT_MESSAGE || 'Hi UE School support — I need help.');
+      const url = `https://wa.me/${num}?text=${msg}`;
+      const fab = document.getElementById('whatsapp-fab');
+      if (fab) { fab.href = url; fab.style.display = 'flex'; }
+      const card = document.getElementById('ptool-whatsapp');
+      if (card) { card.href = url; card.style.display = 'flex'; }
+    }
+
+    // ── Exam-reminder opt-in toggle ──
+    wireExamReminderToggle(userId, profile);
+  }
+
+  async function wireExamReminderToggle(userId, profile) {
+    const t = document.getElementById('exam-reminder-toggle');
+    if (!t || !window.sb || !userId) return;
+    try {
+      const { data, error } = await window.sb
+        .from('profiles')
+        .select('exam_reminder_optin')
+        .eq('id', userId)
+        .single();
+      if (error) {
+        // Column not yet migrated — keep toggle disabled with a hint
+        const msg = (error.message || '').toLowerCase();
+        if (msg.includes('exam_reminder_optin') || msg.includes('does not exist') || msg.includes('column')) {
+          t.title = 'Reminder schema not migrated yet (apply migration 007)';
+        }
+        return;
+      }
+      t.checked  = data && data.exam_reminder_optin !== false;
+      t.disabled = false;
+      t.addEventListener('change', async () => {
+        const next = t.checked;
+        t.disabled = true;
+        const { error: e2 } = await window.sb
+          .from('profiles')
+          .update({ exam_reminder_optin: next })
+          .eq('id', userId);
+        t.disabled = false;
+        if (e2) { t.checked = !next; if (window.toast) toast('Could not save preference.'); }
+        else if (window.toast) { toast(next ? 'Reminders ON' : 'Reminders OFF'); }
+      });
+    } catch (_) { /* ignore */ }
+  }
+
+  // ════════════════════════════════════════════════
   //  MAIN INIT — called on DOMContentLoaded
   // ════════════════════════════════════════════════
   async function init() {
@@ -469,7 +655,10 @@ const DASHBOARD = (function () {
     renderScoreCard(profile, rows);
     renderSubjectsSlider(profile, masteryBySubj);
     renderPerformance(profile, rows);
+    renderWAECPredictions(profile, rows);
+    renderHeatmap(profile, rows);
     renderSmartPath(rows);
+    renderPremiumTools(profile, userId);
     renderSubscriptionStatus(profile);
 
     // ── Re-init slider after subjects are rendered ──
