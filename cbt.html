@@ -31,7 +31,7 @@
      ║  SECURITY BLOCK &mdash; must be first in <head>           ║
      ╚══════════════════════════════════════════════════════╝ -->
 <script src="js/config.js"></script>
-<script src="js/head-gatekeeper.js"></script>
+<script src="js/head-gatekeeper.js?v=3"></script>
 <!-- END SECURITY BLOCK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -260,10 +260,20 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 
     <div class="form-group">
       <label class="form-label">Exam Type</label>
-      <select class="form-select" id="sel-examtype">
+      <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
         <option value="JAMB">JAMB / UTME</option>
         <option value="WAEC">WAEC / GCE</option>
         <option value="NECO">NECO</option>
+        <option value="Post-UTME">Post-UTME (university-specific)</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="university-group" style="display:none">
+      <label class="form-label">University
+        <span style="font-weight:400;text-transform:none;font-size:.78rem;color:#6b7280">(Post-UTME only)</span>
+      </label>
+      <select class="form-select" id="sel-university">
+        <option value="">All universities (general post-UTME)</option>
       </select>
     </div>
 
@@ -374,7 +384,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/auth-guard.js"></script>
+<script src="js/auth-guard.js?v=3"></script>
 <script src="js/gdrive-video.js"></script>
 <script src="js/gsheet-questions.js"></script>
 <script src="js/questions.js"></script>
@@ -447,14 +457,36 @@ async function loadGradeLevel(userId,subject){
 }
 
 // ════════════ START ════════════
+function onExamTypeChange(){
+  const t=document.getElementById('sel-examtype').value;
+  const grp=document.getElementById('university-group');
+  if(!grp) return;
+  if(t==='Post-UTME'){
+    const sel=document.getElementById('sel-university');
+    if(sel && sel.options.length<=1){
+      const list=(window.UE_CONFIG&&window.UE_CONFIG.POST_UTME_UNIVERSITIES)||[];
+      list.forEach(u=>{
+        const o=document.createElement('option');
+        o.value=u; o.textContent=u;
+        sel.appendChild(o);
+      });
+    }
+    grp.style.display='';
+  } else {
+    grp.style.display='none';
+  }
+}
+
 function startExam(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
   const examType=document.getElementById('sel-examtype').value;
+  const universityEl=document.getElementById('sel-university');
+  const university=(examType==='Post-UTME' && universityEl) ? (universityEl.value||null) : null;
   const cfg=getModeConfig(mode);
 
-  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,university,count:cfg.count});
   if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
