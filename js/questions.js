@@ -360,12 +360,13 @@ const QUESTION_BANK = (function () {
   ];
 
   // ── Fetch questions from Supabase RPC (NO answers returned) ─────
-  async function _fetchFromDB({ subject, topic, examType, count = 10 }) {
+  async function _fetchFromDB({ subject, topic, examType, university, count = 10 }) {
     const { data, error } = await window.sb.rpc('fetch_questions', {
-      p_subject:   subject  || null,
-      p_topic:     topic    || null,
-      p_exam_type: examType || null,
-      p_count:     count,
+      p_subject:    subject    || null,
+      p_topic:      topic      || null,
+      p_exam_type:  examType   || null,
+      p_university: university || null,
+      p_count:      count,
     });
     if (error) throw new Error('[QUESTIONS] RPC error: ' + error.message);
     // DB rows have no `ans` field — that's the point
@@ -375,11 +376,15 @@ const QUESTION_BANK = (function () {
   // ── Fetch questions from local bank (FALLBACK) ──────────────────
   //  Strips the `ans` field from returned objects in non-LOCAL_ONLY
   //  mode so callers always receive the same shape.
-  function _fetchFromLocal({ subject, topic, examType, count = 10 }) {
+  function _fetchFromLocal({ subject, topic, examType, university, count = 10 }) {
     let filtered = [..._localBank];
-    if (subject)  filtered = filtered.filter(q => q.subject  === subject.toLowerCase());
-    if (topic)    filtered = filtered.filter(q => q.topic    === topic);
-    if (examType) filtered = filtered.filter(q => q.examType === examType);
+    if (subject)    filtered = filtered.filter(q => q.subject  === subject.toLowerCase());
+    if (topic)      filtered = filtered.filter(q => q.topic    === topic);
+    if (examType)   filtered = filtered.filter(q => q.examType === examType);
+    if (university) {
+      const u = String(university).toLowerCase();
+      filtered = filtered.filter(q => !q.university || String(q.university).toLowerCase() === u);
+    }
     filtered = filtered.sort(() => Math.random() - 0.5).slice(0, Math.min(count, filtered.length));
 
     if (LOCAL_ONLY) {
@@ -395,10 +400,10 @@ const QUESTION_BANK = (function () {
   //   1. Google Sheets (if UE_CONFIG.GOOGLE_SHEET_QUESTIONS_CSV_URL is set)
   //   2. Supabase RPC (if LOCAL_ONLY === false)
   //   3. Bundled local bank (always available)
-  async function getQuestions({ subject, topic, examType, count = 10 } = {}) {
+  async function getQuestions({ subject, topic, examType, university, count = 10 } = {}) {
     if (window.GSHEET_QUESTIONS && window.GSHEET_QUESTIONS.isEnabled()) {
       try {
-        const rows = await window.GSHEET_QUESTIONS.getQuestions({ subject, topic, examType, count });
+        const rows = await window.GSHEET_QUESTIONS.getQuestions({ subject, topic, examType, university, count });
         if (rows && rows.length) return rows;
       } catch (e) {
         console.warn('[QUESTIONS] Sheets fetch failed, falling through:', e.message);
@@ -406,12 +411,12 @@ const QUESTION_BANK = (function () {
     }
     if (!LOCAL_ONLY && window.sb) {
       try {
-        return await _fetchFromDB({ subject, topic, examType, count });
+        return await _fetchFromDB({ subject, topic, examType, university, count });
       } catch (e) {
         console.warn('[QUESTIONS] DB fetch failed, falling back to local bank:', e.message);
       }
     }
-    return _fetchFromLocal({ subject, topic, examType, count });
+    return _fetchFromLocal({ subject, topic, examType, university, count });
   }
 
   // ── Public: mock exam (multi-subject) ──────────────────────────
