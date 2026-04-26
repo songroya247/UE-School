@@ -371,19 +371,22 @@ const AUTH_GUARD = (function () {
           const { error: upsertErr } = await window.sb.from('profiles').upsert({
             id:                  session.user.id,
             full_name:           formData.fullName,
-            email:               formData.email,        // <-- now ALWAYS set
-            exam_types:          formData.examTypes,
-            exam_date:           formData.examDate || null,
-            target_score:        formData.targetScore,
-            target_grade:        formData.targetGrade,
+            email:               formData.email,
+            exam_types:          formData.examTypes   || [],
+            exam_date:           formData.examDate    || null,
+            target_score:        formData.targetScore || null,
+            target_grade:        formData.targetGrade || null,
             current_skill_level: 3,
             status:              'NIL',
             is_premium:          false,
-            exam_subjects:       formData.subjects,
-            study_mode:          formData.studyMode,
+            exam_subjects:       formData.subjects    || [],
+            study_mode:          formData.studyMode   || 'drill',
             smartpath_queue:     [],
             total_xp:            0,
-            usage_logs:          []
+            accuracy_avg:        0,
+            mastery_level:       'beginner',
+            usage_logs:          [],
+            weekly_report_optin: true
           }, { onConflict: 'id', ignoreDuplicates: false });
 
           if (upsertErr) {
@@ -399,8 +402,33 @@ const AUTH_GUARD = (function () {
         }
       }
 
-      // If still no profile, show a clear message and stop. Do NOT
-      // redirect to login (that just loops back to here).
+      // Last resort: try a bare-minimum upsert with just required fields
+      if (!profile) {
+        try {
+          await window.sb.from('profiles').upsert({
+            id:                  session.user.id,
+            email:               session.user.email,
+            full_name:           session.user.email.split('@')[0],
+            status:              'NIL',
+            is_premium:          false,
+            total_xp:            0,
+            accuracy_avg:        0,
+            mastery_level:       'beginner',
+            current_skill_level: 3,
+            study_mode:          'drill',
+            exam_types:          [],
+            exam_subjects:       [],
+            smartpath_queue:     [],
+            usage_logs:          [],
+            weekly_report_optin: true
+          }, { onConflict: 'id', ignoreDuplicates: false });
+          profile = await getProfile(session.user.id);
+        } catch (e) {
+          console.error('[AUTH_GUARD] last-resort upsert failed:', e);
+        }
+      }
+
+      // If STILL no profile after last resort, show error
       if (!profile) {
         liftVeil();
         showToast(
