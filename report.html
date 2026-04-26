@@ -118,7 +118,8 @@ thead tr{background:var(--bg)}
       <a href="dashboard.html" class="btn btn-outline">&larr; Back to Dashboard</a>
       <div style="display:flex;gap:10px;align-items:center">
         <button class="btn btn-outline" id="copy-share-btn" onclick="copyShareLink()" style="font-size:.82rem">🔗 Copy Share Link</button>
-        <button class="btn btn-primary" onclick="window.print()">🖨 Print / Save PDF</button>
+        <button class="btn btn-primary" id="download-pdf-btn" onclick="downloadReportPDF()">&#x2B07; Download PDF</button>
+        <button class="btn btn-outline" onclick="window.print()" style="font-size:.82rem">🖨 Print</button>
       </div>
     </div>
 
@@ -194,6 +195,8 @@ thead tr{background:var(--bg)}
 
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/app.js"></script>
@@ -271,6 +274,54 @@ function renderReport(profile,masteryRows,sessions){
   window._shareToken=profile.report_share_token;
   document.getElementById('loading-state').style.display='none';
   document.getElementById('report-content').style.display='block';
+}
+
+async function downloadReportPDF(){
+  const btn=document.getElementById('download-pdf-btn');
+  const node=document.querySelector('.report-card');
+  if(!node){toast('Nothing to export yet — wait for the report to load.');return;}
+  if(!window.html2canvas||!window.jspdf){toast('PDF tools still loading. Try again in a moment.');return;}
+  const orig=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Building PDF…';}
+  try{
+    const canvas=await window.html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    const img=canvas.toDataURL('image/png');
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const pw=pdf.internal.pageSize.getWidth();
+    const ph=pdf.internal.pageSize.getHeight();
+    const ratio=canvas.width/canvas.height;
+    const imgW=pw-40;
+    const imgH=imgW/ratio;
+    let y=20;
+    if(imgH<=ph-40){
+      pdf.addImage(img,'PNG',20,y,imgW,imgH);
+    }else{
+      // Multi-page: slice the canvas into page-sized strips
+      const pageCanvasH=Math.floor((ph-40)*(canvas.width/imgW));
+      let sy=0;
+      while(sy<canvas.height){
+        const sliceH=Math.min(pageCanvasH,canvas.height-sy);
+        const tmp=document.createElement('canvas');
+        tmp.width=canvas.width; tmp.height=sliceH;
+        tmp.getContext('2d').drawImage(canvas,0,sy,canvas.width,sliceH,0,0,canvas.width,sliceH);
+        const sliceImg=tmp.toDataURL('image/png');
+        const sliceRenderH=(sliceH/canvas.width)*imgW;
+        pdf.addImage(sliceImg,'PNG',20,20,imgW,sliceRenderH);
+        sy+=sliceH;
+        if(sy<canvas.height) pdf.addPage();
+      }
+    }
+    const tokenEl=document.getElementById('report-token');
+    const stamp=new Date().toISOString().slice(0,10);
+    pdf.save('ue-school-mastery-report-'+stamp+'.pdf');
+    if(btn){btn.disabled=false;btn.textContent=orig;}
+    toast('PDF downloaded.');
+  }catch(e){
+    console.error('[REPORT] PDF export failed:',e);
+    if(btn){btn.disabled=false;btn.textContent=orig;}
+    toast('Could not build PDF. Try the Print option instead.');
+  }
 }
 
 function copyShareLink(){
