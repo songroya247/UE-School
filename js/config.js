@@ -66,6 +66,80 @@
 
     // Cache the parsed sheet in memory for this many minutes
     GS_QUESTIONS_CACHE_MIN: 30,
+
+    // ── WhatsApp support ──────────────────────────────────────────
+    // International format, digits only (no '+', no spaces). Leaving
+    // it blank hides every "Chat on WhatsApp" button across the app.
+    WHATSAPP_SUPPORT_NUMBER: '2348000000000',
+    WHATSAPP_DEFAULT_MESSAGE:
+      'Hi UE School support — I need help with my account.',
+
+    // ── 1-on-1 tutor booking ──────────────────────────────────────
+    // Drop a Calendly / Cal.com / Google-Forms URL here and the
+    // tutor.html page will embed it. Leave blank to fall back to a
+    // contact form.
+    TUTOR_BOOKING_URL: '',
+    TUTOR_LEAD_TIME_DAYS: 2,
+
+    // ── PDF Study Guides per subject ──────────────────────────────
+    // ── Premium-locked PDFs ───────────────────────────────────────
+    // Files live in a PRIVATE Supabase Storage bucket (locked by RLS
+    // — see migrations/008_lock_study_guides.sql).  The page never
+    // exposes a public URL; it asks Supabase for a 60-second signed
+    // URL on click, which only succeeds for active premium users.
+    //
+    // Each entry: { title, path, size }
+    //   path = object key inside the STUDY_GUIDES_BUCKET
+    //          (e.g. "mathematics/jamb-master-guide.pdf" — match
+    //           exactly the folder/filename you upload in the
+    //           Supabase Storage dashboard).
+    //   size = display label, free-text.
+    //
+    // Legacy { file: 'https://…' } entries are still supported as an
+    // escape hatch for guides you intentionally want public.
+    STUDY_GUIDES_BUCKET: 'study-guides',
+    STUDY_GUIDES: {
+      mathematics: [
+        { title: 'JAMB Mathematics — Master Guide',
+          path:  'mathematics/jamb-master-guide.pdf', size: '4.2 MB' },
+        { title: 'WAEC/NECO Mathematics — Quick Revision',
+          path:  'mathematics/waec-revision.pdf',     size: '2.8 MB' },
+      ],
+      english: [
+        { title: 'English Language — JAMB Survival Pack',
+          path:  'english/jamb-survival.pdf',         size: '3.1 MB' },
+        { title: 'WAEC English — Essay & Comprehension',
+          path:  'english/waec-essay.pdf',            size: '2.4 MB' },
+      ],
+      physics:    [{ title:'Physics — Full Syllabus Guide',  path:'physics/syllabus.pdf',    size:'5.0 MB' }],
+      chemistry:  [{ title:'Chemistry — Full Syllabus Guide',path:'chemistry/syllabus.pdf',  size:'4.7 MB' }],
+      biology:    [{ title:'Biology — Full Syllabus Guide',  path:'biology/syllabus.pdf',    size:'4.1 MB' }],
+      economics:  [{ title:'Economics — Theory & Diagrams',  path:'economics/guide.pdf',     size:'3.6 MB' }],
+      government: [{ title:'Government — Constitutions',     path:'government/guide.pdf',    size:'3.0 MB' }],
+      literature: [{ title:'Literature — Set Texts Notes',   path:'literature/set-texts.pdf',size:'3.4 MB' }],
+    },
+
+    // ── Post-UTME — universities offered in the bank ──────────────
+    // Add or remove freely. The CBT setup screen shows this list when
+    // the student picks Post-UTME as their exam type.
+    POST_UTME_UNIVERSITIES: [
+      'University of Lagos (UNILAG)',
+      'University of Ibadan (UI)',
+      'Obafemi Awolowo University (OAU)',
+      'University of Nigeria, Nsukka (UNN)',
+      'Ahmadu Bello University (ABU)',
+      'University of Benin (UNIBEN)',
+      'University of Ilorin (UNILORIN)',
+      'Lagos State University (LASU)',
+      'Covenant University',
+      'Babcock University',
+    ],
+
+    // ── Exam-countdown reminders ──────────────────────────────────
+    // Days before exam_date at which the send-exam-reminders Edge
+    // Function will email the student. Order matters only for log
+    // readability; the function dedupes via last_reminder_sent_at.
+    EXAM_REMINDER_DAYS: [60, 30, 14, 7, 3, 1],
   };
 
   Object.defineProperty(window, 'UE_CONFIG', {
