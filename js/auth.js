@@ -81,12 +81,10 @@ const AUTH = (function () {
   // For GitHub Pages subdirectory deploys the pathname prefix is needed.
   // We also strip any trailing /index.html so the URL is clean.
   function buildRedirectUrl(page) {
-    const origin  = window.location.origin; // e.g. https://school.ultimateedge.info
-    const path    = window.location.pathname
-      .replace(/\/[^/]*\.html$/, '') // remove filename
-      .replace(/\/$/, '');           // remove trailing slash
-    // path will be '' for root domains, '/subfolder' for subdirectory deploys
-    return origin + path + '/' + page;
+    // Always use origin root — never use pathname, because Netlify clean URLs
+    // (e.g. /login → login.html) cause pathname to pollute the redirect URL,
+    // producing broken paths like /login/confirm.html instead of /confirm.html
+    return window.location.origin + '/' + page;
   }
 
   async function handleSignup(formData) {
