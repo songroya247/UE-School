@@ -496,6 +496,83 @@ const AUTH_GUARD = (function () {
     return s.length > n ? s.slice(0, n - 1) + '\u2026' : s;
   }
 
+  // ── Free-tier sample tracker ────────────────────────────────────
+  // Free (registered, not premium) users get N samples of every
+  // premium tool — see UE_CONFIG.FREE_SAMPLE. We persist the count
+  // per user in localStorage (key prefix below + user-id) so the
+  // sample survives reloads but is private to the device. We also
+  // mirror the key without a user-id so it survives a logout/login
+  // cycle on the same device — that prevents spam-creating throw-
+  // away accounts from racking up free attempts on a shared phone.
+  const SAMPLE_KEY_PREFIX = 'ue_free_sample::';
+
+  function _sampleKeys(feature) {
+    const uid = (window.UE_USER_ID || (window.UE_USER && window.UE_USER.id) || '');
+    return [
+      SAMPLE_KEY_PREFIX + feature + '::' + uid,
+      SAMPLE_KEY_PREFIX + feature + '::device',
+    ];
+  }
+
+  // Read how many times a free user has spent this sample.
+  function getFreeSampleCount(feature) {
+    try {
+      const keys = _sampleKeys(feature);
+      let max = 0;
+      for (const k of keys) {
+        const n = parseInt(localStorage.getItem(k) || '0', 10);
+        if (n > max) max = n;
+      }
+      return max;
+    } catch (_) { return 0; }
+  }
+
+  // Returns the per-feature limit from UE_CONFIG.FREE_SAMPLE.
+  function freeSampleLimit(feature) {
+    const m = (window.UE_CONFIG && window.UE_CONFIG.FREE_SAMPLE) || {};
+    const map = {
+      video:  m.VIDEOS_PER_ACCOUNT,
+      cbt:    m.CBT_PER_ACCOUNT,
+      guide:  m.GUIDES_PER_ACCOUNT,
+    };
+    const v = map[feature];
+    return Number.isFinite(v) ? v : 1;
+  }
+
+  // True iff a non-premium user is allowed to try this feature now.
+  // Premium / admin users always get true.
+  function canSampleFeature(feature, profile) {
+    profile = profile || window.UE_PROFILE;
+    if (isPremium(profile) || isAdmin(profile)) return true;
+    return getFreeSampleCount(feature) < freeSampleLimit(feature);
+  }
+
+  // Mark one use against the free quota. No-op for premium/admin.
+  function recordSampleUse(feature, profile) {
+    profile = profile || window.UE_PROFILE;
+    if (isPremium(profile) || isAdmin(profile)) return;
+    try {
+      const keys = _sampleKeys(feature);
+      const cur  = getFreeSampleCount(feature);
+      keys.forEach(k => localStorage.setItem(k, String(cur + 1)));
+    } catch (_) { /* ignore */ }
+  }
+
+  // Send the user to the pricing page with a friendly toast hint.
+  // Pages call this when a free user clicks a tool they have already
+  // sampled (or that is premium-only with no sample at all).
+  function bouncePremium(reason) {
+    const cfg = window.UE_CONFIG || {};
+    try {
+      sessionStorage.setItem(
+        'ue_premium_redirect_msg',
+        reason || 'Upgrade to unlock the full UE School experience.'
+      );
+    } catch (_) {}
+    window.location.replace((cfg.PRICING_PAGE || 'pricing.html') +
+      '?reason=sample_used&from=' + encodeURIComponent(location.pathname.split('/').pop() || ''));
+  }
+
   return {
     init,
     getSession,
@@ -505,6 +582,12 @@ const AUTH_GUARD = (function () {
     subscriptionStatus,
     isPremium,
     isAdmin,
+    // Free-tier sample API
+    canSampleFeature,
+    recordSampleUse,
+    getFreeSampleCount,
+    freeSampleLimit,
+    bouncePremium,
   };
 
 })();
