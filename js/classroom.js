@@ -445,8 +445,36 @@ const CLASSROOM = (function () {
     }
   };
 
-  // ─── Free topic limit for non-premium users ──────
-  const FREE_TOPICS_PER_SUBJECT = 3;
+  // ─── Free-tier sample tracking ────────────────────
+  // Free users may watch UE_CONFIG.FREE_SAMPLE.VIDEOS_PER_ACCOUNT
+  // distinct topics in their lifetime on this device. The remembered
+  // topic IDs live in localStorage so they survive reloads, and the
+  // count is shared with auth-guard.js (`video` feature).
+  const FREE_VIDEOS_KEY = 'ue_free_videos_watched';
+
+  function getWatchedVideoIds() {
+    try { return JSON.parse(localStorage.getItem(FREE_VIDEOS_KEY) || '[]'); }
+    catch (_) { return []; }
+  }
+
+  function rememberWatchedVideo(topicId) {
+    const ids = getWatchedVideoIds();
+    if (!ids.includes(topicId)) {
+      ids.push(topicId);
+      try { localStorage.setItem(FREE_VIDEOS_KEY, JSON.stringify(ids)); } catch (_) {}
+    }
+  }
+
+  // True iff this topic is unlocked for the current user.
+  // Premium → always true.
+  // Free user → true if (a) they've already opened it, or (b) they
+  // still have free-sample credit left to spend.
+  function topicUnlockedForUser(topic) {
+    if (isPremiumUser) return true;
+    const watched = getWatchedVideoIds();
+    if (watched.includes(topic.id)) return true;          // already paid for with their sample
+    return AUTH_GUARD.canSampleFeature('video');           // still has credits
+  }
 
   // ─── State ────────────────────────────────────────
   let currentSubject = 'mathematics';
@@ -534,7 +562,7 @@ const CLASSROOM = (function () {
     if (!list) return;
 
     list.innerHTML = subj.topics.map((topic, idx) => {
-      const isLocked   = topic.premium && !isPremiumUser;
+      const isLocked   = !topicUnlockedForUser(topic);
       const isActive   = topic.id === currentTopicId;
 
       const icon = isLocked ? '&#x1F512;'
@@ -551,7 +579,7 @@ const CLASSROOM = (function () {
     }).join('');
 
     // Auto-select first unlocked topic or the URL-specified topic
-    const firstUnlocked = subj.topics.find(t => !t.premium || isPremiumUser);
+    const firstUnlocked = subj.topics.find(t => topicUnlockedForUser(t));
     let targetId = null;
 
     if (autoSelectTopic) {
@@ -576,9 +604,22 @@ const CLASSROOM = (function () {
     }
     if (!topic) return;
 
-    if (topic.premium && !isPremiumUser) {
-      showLockedState(topic);
+    // Free-tier gate: if the user has spent their video sample and
+    // is opening a NEW topic, redirect to the pricing page instead
+    // of showing an in-page locked state. (Already-watched topics
+    // remain available so the sample never feels like a punishment.)
+    if (!topicUnlockedForUser(topic)) {
+      AUTH_GUARD.bouncePremium(
+        'You\'ve used your free video sample. Upgrade to UE Premium to unlock every lesson.'
+      );
       return;
+    }
+
+    // Spend a free-sample credit the first time we open this topic.
+    const watched = getWatchedVideoIds();
+    if (!isPremiumUser && !watched.includes(topic.id)) {
+      AUTH_GUARD.recordSampleUse('video');
+      rememberWatchedVideo(topic.id);
     }
 
     currentTopicId = topicId;
@@ -726,7 +767,7 @@ const CLASSROOM = (function () {
     const subj   = CURRICULUM[currentSubject];
     if (!subj) return;
     const idx    = subj.topics.findIndex(t => t.id === currentTopicId);
-    const next   = subj.topics.slice(idx + 1).find(t => !t.premium || isPremiumUser);
+    const next   = subj.topics.slice(idx + 1).find(t => topicUnlockedForUser(t));
     if (next) selectTopic(next.id);
     else toast('You\'ve completed all available lessons in this subject! &#x1F389;');
   }
