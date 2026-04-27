@@ -641,6 +641,21 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
     </div>
   </div>
 
+  <!-- ── Education News & Updates ─────────────────────────────────
+       Horizontally-scrolling card strip; works identically on mobile
+       and desktop without affecting any other dashboard module.
+       Populated by js/news.js from UE_CONFIG.NEWS_ITEMS (and
+       optionally UE_CONFIG.NEWS_FEED_URL).                          -->
+  <section class="fade-up ue-news-section">
+    <div class="ue-news-head">
+      <h2 class="section-title">Education <span>News &amp; Updates</span></h2>
+      <a class="ue-news-link" href="https://www.jamb.gov.ng/" target="_blank" rel="noopener">JAMB site &rarr;</a>
+    </div>
+    <div class="ue-news-strip" id="ue-news-strip" data-skeleton>
+      <div style="padding:18px;color:var(--muted);font-size:.85rem">Loading the latest exam news…</div>
+    </div>
+  </section>
+
   <section class="fade-up">
     <div class="dash-subj-header">
       <h2 class="section-title">Your <span>Subjects</span></h2>
@@ -771,7 +786,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
     <h2 class="section-title" style="margin-bottom:16px">Premium <span>Tools</span></h2>
     <div class="perf-card" style="padding:0;overflow:hidden">
       <div class="ptools-grid">
-        <a href="study-guides.html" class="ptool-card">
+        <a href="study-guides.html" class="ptool-card" data-paywall="guide">
           <div class="ptool-icon" style="background:linear-gradient(135deg,#1a56ff,#6366f1)">&#x1F4DA;</div>
           <div class="ptool-body">
             <div class="ptool-title">PDF Study Guides</div>
@@ -779,7 +794,8 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
           </div>
           <div class="ptool-arrow">&rsaquo;</div>
         </a>
-        <a href="tutor.html" class="ptool-card">
+        <!-- 1-on-1 Tutor — never premium-gated; lives on the Staffroom sub-site -->
+        <a id="ptool-tutor" href="tutor.html" class="ptool-card" data-paywall="none">
           <div class="ptool-icon" style="background:linear-gradient(135deg,#10b981,#059669)">&#x1F468;&#x200D;&#x1F3EB;</div>
           <div class="ptool-body">
             <div class="ptool-title">Book a 1-on-1 Tutor</div>
@@ -787,7 +803,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
           </div>
           <div class="ptool-arrow">&rsaquo;</div>
         </a>
-        <a href="report.html" class="ptool-card">
+        <a href="report.html" class="ptool-card" data-paywall="report">
           <div class="ptool-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">&#x1F4C4;</div>
           <div class="ptool-body">
             <div class="ptool-title">Download Mastery Report</div>
@@ -906,6 +922,42 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
 <script src="js/dashboard.js"></script>
 <script src="js/payment.js"></script>
 <script src="js/quotes.js"></script>
+<script src="js/news.js?v=1"></script>
+
+<script>
+// ── News strip + per-tool paywall click-handler (v3.1) ────────────
+//
+// 1. Mount the dashboard news strip.
+// 2. Intercept clicks on Premium Tools tiles that carry data-paywall:
+//      - "guide"  → only fires the bounce if the user has spent their
+//                    PDF sample (study-guides.html does the same check
+//                    page-side, but bouncing here saves a round-trip).
+//      - "report" → always premium; non-premium users go to pricing.
+//      - "none"   → never gated (1-on-1 Tutor, WhatsApp).
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.UE_NEWS) UE_NEWS.mountStrip('ue-news-strip');
+
+  function isPremiumish() {
+    if (!window.AUTH_GUARD || !window.UE_PROFILE) return true; // fail-open
+    return AUTH_GUARD.isPremium(window.UE_PROFILE) || AUTH_GUARD.isAdmin(window.UE_PROFILE);
+  }
+
+  document.querySelectorAll('.ptool-card[data-paywall]').forEach(function (card) {
+    var kind = card.getAttribute('data-paywall');
+    if (kind === 'none' || !kind) return;
+    card.addEventListener('click', function (ev) {
+      if (isPremiumish()) return;                               // premium → pass through
+      if (kind === 'guide' && AUTH_GUARD.canSampleFeature('guide')) return; // sample left
+      ev.preventDefault();
+      AUTH_GUARD.bouncePremium(
+        kind === 'report'
+          ? 'The Mastery Report is a Premium feature. Upgrade to download yours.'
+          : 'You\'ve used your free sample. Upgrade to UE Premium for unlimited access.'
+      );
+    });
+  });
+});
+</script>
 
 <!-- ─── Weekly-email opt-in wiring ───────────────────────────────────
      Reads & writes profiles.weekly_report_optin via the user's own RLS
