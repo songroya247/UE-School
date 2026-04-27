@@ -478,6 +478,17 @@ function onExamTypeChange(){
 }
 
 function startExam(){
+  // ── Free-tier sample gate ─────────────────────────────────────
+  // Non-premium users get UE_CONFIG.FREE_SAMPLE.CBT_PER_ACCOUNT
+  // session(s) total. Once spent, the next click on "Start Session"
+  // bounces them to the pricing page instead of starting the exam.
+  if (window.AUTH_GUARD && !AUTH_GUARD.canSampleFeature('cbt')) {
+    AUTH_GUARD.bouncePremium(
+      'You\'ve used your free CBT session. Upgrade to UE Premium to take unlimited mock exams.'
+    );
+    return;
+  }
+
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
@@ -488,6 +499,10 @@ function startExam(){
 
   QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,university,count:cfg.count});
   if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
+
+  // Spend the sample credit *only* after we've confirmed the session
+  // can actually start — never punish a free user for a config error.
+  if (window.AUTH_GUARD) AUTH_GUARD.recordSampleUse('cbt');
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
   totalTime=cfg.seconds; timeLeft=cfg.seconds;
