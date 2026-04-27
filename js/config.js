@@ -21,10 +21,28 @@
 
     PROTECTED_PAGES: [
       'dashboard.html', 'classroom.html', 'cbt.html', 'report.html',
-      'admin-dashboard.html', 'admin-actions.html'
+      'admin-dashboard.html', 'admin-actions.html', 'tutor.html',
+      'study-guides.html', 'daily-quiz.html'
     ],
-    PREMIUM_PAGES:    ['classroom.html', 'cbt.html'],
+    // NOTE (v3.1): pages no longer hard-redirect non-premium users.
+    // Instead, the premium "tools" do per-feature gating so a free
+    // registered user can sample one video, one CBT test, etc. before
+    // being sent to the payment page. See FREE_SAMPLE below + the
+    // gating in classroom.js / cbt.html / study-guides.html.
+    PREMIUM_PAGES:    [],
     ADMIN_ONLY_PAGES: ['admin-dashboard.html', 'admin-actions.html'],
+
+    // ── Free-tier sample limits ───────────────────────────────────
+    // Registered users who have NOT yet paid can try every premium
+    // tool exactly once as a quality sample. After they spend their
+    // sample, the next click on that tool sends them to PRICING_PAGE.
+    // The 1-on-1 tutor is exempt — it is always reachable so prospects
+    // can talk to a human before paying.
+    FREE_SAMPLE: {
+      VIDEOS_PER_ACCOUNT: 1,   // total videos a free user can watch
+      CBT_PER_ACCOUNT:    1,   // total CBT sessions a free user can run
+      GUIDES_PER_ACCOUNT: 1,   // total study-guide PDFs a free user can open
+    },
 
     // ── Admin pass-through ────────────────────────────────────────
     // Any account whose `is_admin` column is TRUE in `profiles` is
@@ -70,15 +88,16 @@
     // ── WhatsApp support ──────────────────────────────────────────
     // International format, digits only (no '+', no spaces). Leaving
     // it blank hides every "Chat on WhatsApp" button across the app.
-    WHATSAPP_SUPPORT_NUMBER: '2348000000000',
+    WHATSAPP_SUPPORT_NUMBER: '2347037426480',
     WHATSAPP_DEFAULT_MESSAGE:
       'Hi UE School support — I need help with my account.',
 
     // ── 1-on-1 tutor booking ──────────────────────────────────────
-    // Drop a Calendly / Cal.com / Google-Forms URL here and the
-    // tutor.html page will embed it. Leave blank to fall back to a
-    // contact form.
-    TUTOR_BOOKING_URL: '',
+    // The Tutor Staffroom is a separate sub-site that handles booking,
+    // tutor profiles and live sessions. Clicking the "1-on-1 Tutor"
+    // tile sends every registered user (free OR premium) here so they
+    // can speak to a human before paying.
+    TUTOR_BOOKING_URL: 'https://staffroom.ultimateedge.info',
     TUTOR_LEAD_TIME_DAYS: 2,
 
     // ── PDF Study Guides per subject ──────────────────────────────
@@ -140,6 +159,66 @@
     // Function will email the student. Order matters only for log
     // readability; the function dedupes via last_reminder_sent_at.
     EXAM_REMINDER_DAYS: [60, 30, 14, 7, 3, 1],
+
+    // ── News feed ─────────────────────────────────────────────────
+    // Used by the "Education News & Updates" strip on the dashboard
+    // (and the small ticker shown on every other page). Two sources
+    // are supported — the simpler one wins:
+    //
+    //   1. NEWS_ITEMS — a hand-curated array. Edit this file to add
+    //      or remove cards. Best for announcements you want to push
+    //      yourself (exam date drops, new features, school holidays).
+    //
+    //   2. NEWS_FEED_URL — optional URL that returns JSON of the same
+    //      shape as NEWS_ITEMS. If set AND reachable, items are
+    //      MERGED in front of NEWS_ITEMS. CORS must allow the call;
+    //      we silently fall back to NEWS_ITEMS on any error.
+    //
+    // Each item:
+    //   { id, date, tag, title, body, link, source }
+    //     date   ISO string (YYYY-MM-DD) — newest first sorts visually
+    //     tag    short label, eg "JAMB", "WAEC", "UE School"
+    //     link   optional full URL ("Read more →")
+    //     source optional short publisher name shown beside the date
+    NEWS_FEED_URL: '',
+    NEWS_ITEMS: [
+      {
+        id:    'ue-2026-01',
+        date:  '2026-04-20',
+        tag:   'UE School',
+        title: 'New 1-on-1 Tutor Staffroom is live',
+        body:  'You can now book a verified UE School tutor directly from the dashboard. Free for every registered student to try.',
+        link:  'https://staffroom.ultimateedge.info',
+        source:'UE School',
+      },
+      {
+        id:    'jamb-2026-01',
+        date:  '2026-04-15',
+        tag:   'JAMB',
+        title: 'JAMB releases 2026 UTME timetable',
+        body:  'JAMB has confirmed the official UTME timetable. Check your subject combinations and CBT centre as soon as possible.',
+        link:  'https://www.jamb.gov.ng/',
+        source:'JAMB',
+      },
+      {
+        id:    'waec-2026-01',
+        date:  '2026-04-10',
+        tag:   'WAEC',
+        title: 'WAEC SSCE registration window opens',
+        body:  'Registration for the May/June WAEC SSCE has opened. Make sure your school submits your photo and bio data on time.',
+        link:  'https://www.waecnigeria.org/',
+        source:'WAEC',
+      },
+      {
+        id:    'ue-2026-02',
+        date:  '2026-04-05',
+        tag:   'UE School',
+        title: 'Free sample: try one CBT, one video & one PDF',
+        body:  'Every newly-registered student now gets a no-charge sample of every premium tool. Like what you see? Upgrade in two taps.',
+        link:  'pricing.html',
+        source:'UE School',
+      },
+    ],
   };
 
   Object.defineProperty(window, 'UE_CONFIG', {
