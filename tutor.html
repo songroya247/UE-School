@@ -3,10 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Book a Tutor &mdash; UE School</title>
+<title>1-on-1 Tutor &mdash; UE School</title>
+
+<!--
+  v3.1 — The 1-on-1 Tutor lives on its own subdomain
+  (https://staffroom.ultimateedge.info). This page is now just a
+  branded launch pad: it confirms the user is logged in and then
+  hands them off to the Staffroom. It is NOT premium-gated — every
+  registered student must be able to talk to a tutor before paying.
+-->
 
 <script>
 (function(){
+  // Lightweight pre-flight: only require an active Supabase session.
+  // The Staffroom site does its own auth (and accepts the same
+  // login cookie via the shared *.ultimateedge.info parent domain).
   var hasSession = false;
   try {
     for (var i = 0; i < localStorage.length; i++) {
@@ -30,27 +41,27 @@
 <link rel="stylesheet" href="css/main.css">
 <style>
 body{background:var(--bg)}
-.tu-wrap{max-width:920px;margin:0 auto;padding:32px 24px 80px}
-.tu-back{display:inline-block;margin-bottom:16px;color:var(--muted);text-decoration:none;font-size:.85rem}
+.tu-wrap{max-width:720px;margin:0 auto;padding:48px 24px 80px;text-align:center}
+.tu-back{display:inline-block;margin-bottom:24px;color:var(--muted);text-decoration:none;font-size:.85rem}
 .tu-back:hover{color:var(--accent)}
-.tu-hero{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-radius:16px;padding:32px;margin-bottom:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.tu-hero-icon{width:64px;height:64px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.8rem}
-.tu-hero h1{font-family:var(--font-head);font-size:1.8rem;margin-bottom:6px}
-.tu-hero p{opacity:.92;font-size:.92rem;max-width:560px;line-height:1.5}
-.tu-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:20px}
-.tu-card h2{font-family:var(--font-head);font-size:1.2rem;margin-bottom:8px}
-.tu-card p{color:var(--muted);font-size:.9rem;line-height:1.55;margin-bottom:14px}
-.tu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:14px}
+.tu-hero{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-radius:18px;padding:36px 28px;margin-bottom:24px}
+.tu-hero-icon{width:72px;height:72px;border-radius:16px;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:18px}
+.tu-hero h1{font-family:var(--font-head);font-size:1.9rem;margin-bottom:8px;line-height:1.2}
+.tu-hero p{opacity:.95;font-size:.95rem;max-width:520px;margin:0 auto 22px;line-height:1.55}
+.tu-cta{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#059669;padding:14px 26px;border-radius:12px;font-weight:800;font-size:1rem;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:transform .15s ease}
+.tu-cta:hover{transform:translateY(-1px)}
+.tu-cta-spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:tu-spin .8s linear infinite;display:none}
+.tu-cta.loading .tu-cta-spin{display:inline-block}
+@keyframes tu-spin{to{transform:rotate(360deg)}}
+.tu-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;margin-top:18px;text-align:left}
+.tu-card h2{font-family:var(--font-head);font-size:1.05rem;margin-bottom:10px}
+.tu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:12px}
 .tu-feature{padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)}
 .tu-feature-icon{font-size:1.2rem;margin-bottom:6px}
 .tu-feature-title{font-weight:700;font-size:.88rem;margin-bottom:3px}
 .tu-feature-sub{font-size:.78rem;color:var(--muted);line-height:1.4}
-.form-group{margin-bottom:14px}
-.form-label{display:block;font-size:.78rem;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
-.form-input,.form-select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:.92rem;color:var(--text);background:#fff}
-.tu-iframe-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#fff;height:720px}
-.tu-iframe-wrap iframe{width:100%;height:100%;border:none}
-.tu-loaded-msg{display:none;background:#d1fae5;color:#065f46;padding:14px;border-radius:8px;margin-top:14px;font-size:.88rem}
+.tu-note{margin-top:16px;font-size:.78rem;color:var(--muted);line-height:1.5}
+.tu-note a{color:var(--accent);text-decoration:none}
 </style>
 </head>
 <body>
@@ -60,21 +71,23 @@ body{background:var(--bg)}
 
   <div class="tu-hero">
     <div class="tu-hero-icon">&#x1F468;&#x200D;&#x1F3EB;</div>
-    <div>
-      <h1>Book a 1-on-1 Tutor Session</h1>
-      <p>Spend 45 minutes with a verified UE School tutor on the topic giving
-         you the most trouble. Your premium subscription includes one session
-         per month — extra sessions can be added at a discount.</p>
-    </div>
+    <h1>Talk to a 1-on-1 Tutor</h1>
+    <p>Spend 45 minutes with a verified UE School tutor on the topic giving
+       you the most trouble. Free for every registered student to try.</p>
+    <a id="tu-launch" class="tu-cta" href="https://staffroom.ultimateedge.info" rel="noopener">
+      <span>Open Tutor Staffroom</span>
+      <span class="tu-cta-spin"></span>
+      <span>&rarr;</span>
+    </a>
   </div>
 
   <div class="tu-card">
-    <h2>What you'll get</h2>
+    <h2>What you get when you book</h2>
     <div class="tu-grid">
       <div class="tu-feature">
         <div class="tu-feature-icon">&#x1F3AF;</div>
         <div class="tu-feature-title">Topic-targeted</div>
-        <div class="tu-feature-sub">We pull your weakest topic from your heatmap and brief the tutor in advance.</div>
+        <div class="tu-feature-sub">We brief the tutor on your weakest topic in advance.</div>
       </div>
       <div class="tu-feature">
         <div class="tu-feature-icon">&#x1F4F9;</div>
@@ -84,7 +97,7 @@ body{background:var(--bg)}
       <div class="tu-feature">
         <div class="tu-feature-icon">&#x1F4DD;</div>
         <div class="tu-feature-title">Recap notes</div>
-        <div class="tu-feature-sub">Tutor sends a written summary + practice questions after the session.</div>
+        <div class="tu-feature-sub">Tutor sends a written summary + practice questions after.</div>
       </div>
       <div class="tu-feature">
         <div class="tu-feature-icon">&#x1F501;</div>
@@ -92,137 +105,30 @@ body{background:var(--bg)}
         <div class="tu-feature-sub">Need to move it? Up to 24 hours before, no charge.</div>
       </div>
     </div>
-  </div>
-
-  <!-- Booking widget — Calendly/Cal.com iframe OR fallback request form -->
-  <div class="tu-card">
-    <h2>Pick a slot</h2>
-    <p>Sessions run Monday–Saturday, 4 p.m. – 9 p.m. WAT. Choose any free slot
-       below — confirmation lands in your inbox in seconds.</p>
-
-    <div id="tu-iframe-host"></div>
-
-    <!-- Fallback (no booking URL configured): in-app request form -->
-    <form id="tu-fallback-form" style="display:none">
-      <div class="form-group">
-        <label class="form-label">Subject</label>
-        <select class="form-select" id="tu-subject">
-          <option value="">Choose subject…</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Topic you'd like to focus on</label>
-        <input class="form-input" id="tu-topic" placeholder="e.g. Quadratic equations" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Preferred date</label>
-        <input type="date" class="form-input" id="tu-date" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Preferred time (WAT)</label>
-        <select class="form-select" id="tu-time">
-          <option value="16:00">4:00 p.m.</option>
-          <option value="17:00">5:00 p.m.</option>
-          <option value="18:00">6:00 p.m.</option>
-          <option value="19:00">7:00 p.m.</option>
-          <option value="20:00">8:00 p.m.</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Anything the tutor should know? (optional)</label>
-        <textarea class="form-input" id="tu-notes" rows="3" style="resize:vertical;min-height:80px"></textarea>
-      </div>
-      <button type="button" class="btn btn-primary btn-block btn-lg" id="tu-submit" onclick="submitTutorRequest()">Request session</button>
-      <div id="tu-success" class="tu-loaded-msg">
-        \u2705 Request received. We'll email you a confirmation with the meeting link within 24 hours.
-      </div>
-    </form>
+    <div class="tu-note">
+      Tutoring is handled in our Staffroom sub-site so we can keep tutor
+      availability, video calls and feedback all in one place. You'll be
+      handed off automatically — if your browser blocks the auto-redirect,
+      just tap <strong>Open Tutor Staffroom</strong> above.
+    </div>
   </div>
 </div>
 
 <div id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>
-<script src="js/supabase.js"></script>
-<script src="js/app.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/auth-guard.js?v=3"></script>
-
 <script>
-const SUBJECT_LABELS = {
-  mathematics:'Mathematics', english:'English Language', physics:'Physics',
-  chemistry:'Chemistry', biology:'Biology', economics:'Economics',
-  government:'Government', literature:'Literature', geography:'Geography',
-  commerce:'Commerce', accounts:'Accounts', crk:'CRK',
-};
-let _userId = null;
-
-(async function(){
-  const auth = await AUTH_GUARD.init();
-  if (!auth) return;
-  _userId = auth.session.user.id;
-  const profile = auth.profile;
-  const cfg = window.UE_CONFIG || {};
-  const url = cfg.TUTOR_BOOKING_URL;
-
-  // Pre-populate the subject dropdown from the user's plan
-  const subjSel = document.getElementById('tu-subject');
-  (profile.exam_subjects || []).forEach(s => {
-    const o = document.createElement('option');
-    o.value = s; o.textContent = SUBJECT_LABELS[s] || s;
-    subjSel.appendChild(o);
-  });
-
-  // Default the date to "today + lead time" days
-  const lead = Math.max(1, cfg.TUTOR_LEAD_TIME_DAYS || 2);
-  const minDate = new Date(Date.now() + lead*86400000);
-  const dateEl = document.getElementById('tu-date');
-  dateEl.min   = minDate.toISOString().slice(0,10);
-  dateEl.value = dateEl.min;
-
-  const host = document.getElementById('tu-iframe-host');
-  if (url) {
-    host.innerHTML = `<div class="tu-iframe-wrap"><iframe src="${url}" allow="camera;microphone;fullscreen" loading="lazy"></iframe></div>`;
-  } else {
-    document.getElementById('tu-fallback-form').style.display = '';
-  }
+// Auto-launch the Staffroom in the same tab after a beat. We use
+// location.assign (not replace) so the back button still returns
+// the student to their UE School dashboard.
+(function(){
+  var cfg = window.UE_CONFIG || {};
+  var url = cfg.TUTOR_BOOKING_URL || 'https://staffroom.ultimateedge.info';
+  var btn = document.getElementById('tu-launch');
+  btn.href = url;
+  btn.classList.add('loading');
+  setTimeout(function(){ window.location.assign(url); }, 1400);
 })();
-
-async function submitTutorRequest(){
-  const subj = document.getElementById('tu-subject').value;
-  const topic= document.getElementById('tu-topic').value.trim();
-  const date = document.getElementById('tu-date').value;
-  const time = document.getElementById('tu-time').value;
-  const notes= document.getElementById('tu-notes').value.trim();
-  const btn  = document.getElementById('tu-submit');
-
-  if (!subj) { toast('Please choose a subject.'); return; }
-  if (!date) { toast('Please pick a date.');     return; }
-
-  const slotAt = new Date(date + 'T' + time + ':00+01:00').toISOString();
-
-  btn.disabled = true; btn.textContent = 'Sending\u2026';
-  try {
-    const { error } = await window.sb
-      .from('tutor_bookings')
-      .insert([{
-        user_id: _userId,
-        slot_at: slotAt,
-        subject: subj,
-        topic:   topic || null,
-        notes:   notes || null,
-        status:  'requested',
-      }]);
-    if (error) throw error;
-    document.getElementById('tu-fallback-form').querySelectorAll('input,select,textarea,button').forEach(el => el.disabled = true);
-    document.getElementById('tu-success').style.display = 'block';
-  } catch(e) {
-    console.error('[TUTOR] booking insert failed:', e);
-    toast('Could not save your request. Try again or use the contact form.');
-    btn.disabled = false; btn.textContent = 'Request session';
-  }
-}
 </script>
 </body>
 </html>
