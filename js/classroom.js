@@ -7,9 +7,49 @@
 const CLASSROOM = (function () {
 
   // ─── Curriculum ───────────────────────────────────
-  // Each topic has: id, title, duration, premium, youtubeId (optional),
-  // content (key points), formulas (optional), quiz questions
-  const CURRICULUM = {
+  // SUBJECT META — defines label, icon, color for each subject key.
+  const SUBJECT_META = {
+    mathematics: { label: 'Mathematics',     icon: '&#x1F4D0;', color: '#3b82f6' },
+    english:     { label: 'English Language', icon: '&#x1F4D6;', color: '#10b981' },
+    physics:     { label: 'Physics',          icon: '&#x269B;',  color: '#7c3aed' },
+    chemistry:   { label: 'Chemistry',        icon: '&#x1F9EA;', color: '#ff6b35' },
+    biology:     { label: 'Biology',          icon: '&#x1F33F;', color: '#0891b2' },
+    literature:  { label: 'Literature',       icon: '&#x1F4DA;', color: '#7c3aed' },
+    economics:   { label: 'Economics',        icon: '&#x1F4C8;', color: '#f59e0b' },
+    government:  { label: 'Government',       icon: '&#x1F3DB;', color: '#6366f1' },
+  };
+
+  // Build CURRICULUM dynamically from window.TOPIC_BLUEPRINT at init time.
+  // Sheet topics (gsheet-curriculum.js) use: title, duration, videos, objectives, formulas, blurb.
+  // Legacy topics use: content.intro / content.points / content.formulas / quiz.
+  // renderLesson() handles both formats transparently.
+  function buildCurriculumFromBlueprint() {
+    const bp = window.TOPIC_BLUEPRINT || {};
+    const result = {};
+    for (const topic of Object.values(bp)) {
+      const subj = (topic.subject || '').toLowerCase();
+      if (!subj) continue;
+      if (!result[subj]) {
+        const meta = SUBJECT_META[subj] || { label: subj, icon: '&#x1F4DA;', color: '#6b7280' };
+        result[subj] = { label: meta.label, icon: meta.icon, color: meta.color, topics: [] };
+      }
+      result[subj].topics.push(topic);
+    }
+    return result;
+  }
+
+  // Resolved once during init() — do NOT call before GSHEET_CURRICULUM.init() has run.
+  let CURRICULUM = null;
+  function getCurriculum() {
+    if (CURRICULUM) return CURRICULUM;
+    const dynamic = buildCurriculumFromBlueprint();
+    // If blueprint has subjects, use it; otherwise fall back to LEGACY_CURRICULUM
+    CURRICULUM = Object.keys(dynamic).length ? dynamic : LEGACY_CURRICULUM;
+    return CURRICULUM;
+  }
+
+  // ── Legacy hardcoded topics (fallback only — used when Google Sheet is unavailable) ──
+  const LEGACY_CURRICULUM = {
     mathematics: {
       label: 'Mathematics', icon: '&#x1F4D0;', color: '#3b82f6',
       topics: [
@@ -500,9 +540,12 @@ const CLASSROOM = (function () {
     }
 
     // Build subject tabs from user's registered subjects (fall back to all)
+    // getCurriculum() resolves TOPIC_BLUEPRINT → CURRICULUM at this point
+    // (gsheet-curriculum.js has already run GSHEET_CURRICULUM.init() in classroom.html)
+    CURRICULUM = null; // reset so getCurriculum() rebuilds from the now-populated TOPIC_BLUEPRINT
     const userSubjects = profile?.exam_subjects?.length
-      ? profile.exam_subjects.filter(s => CURRICULUM[s])
-      : Object.keys(CURRICULUM);
+      ? profile.exam_subjects.filter(s => getCurriculum()[s])
+      : Object.keys(getCurriculum());
 
     renderSubjectTabs(userSubjects);
 
@@ -511,7 +554,7 @@ const CLASSROOM = (function () {
     const urlSubj  = params.get('subject');
     const urlTopic = params.get('topic');
 
-    const startSubject = (urlSubj && CURRICULUM[urlSubj]) ? urlSubj : (userSubjects[0] || 'mathematics');
+    const startSubject = (urlSubj && getCurriculum()[urlSubj]) ? urlSubj : (userSubjects[0] || 'mathematics');
     currentSubject = startSubject;
 
     renderSidebar(startSubject, urlTopic);
@@ -528,7 +571,7 @@ const CLASSROOM = (function () {
     if (!container) return;
 
     container.innerHTML = subjects.map(s => {
-      const meta = CURRICULUM[s];
+      const meta = getCurriculum()[s];
       if (!meta) return '';
       return `<button class="subject-tab" data-subject="${s}"
                 onclick="CLASSROOM.switchSubject('${s}', this)">
@@ -539,7 +582,7 @@ const CLASSROOM = (function () {
 
   // ─── Switch subject ───────────────────────────────
   function switchSubject(subjKey, tabEl) {
-    if (!CURRICULUM[subjKey]) return;
+    if (!getCurriculum()[subjKey]) return;
     currentSubject = subjKey;
 
     document.querySelectorAll('.subject-tab').forEach(t => t.classList.remove('active'));
@@ -550,7 +593,7 @@ const CLASSROOM = (function () {
 
   // ─── Render sidebar topic list ────────────────────
   function renderSidebar(subjKey, autoSelectTopic) {
-    const subj    = CURRICULUM[subjKey];
+    const subj    = getCurriculum()[subjKey];
     if (!subj) return;
 
     const headEl = document.getElementById('sidebar-subject-name');
@@ -598,7 +641,7 @@ const CLASSROOM = (function () {
   function selectTopic(topicId) {
     // Find topic across all subjects
     let topic = null;
-    for (const subj of Object.values(CURRICULUM)) {
+    for (const subj of Object.values(getCurriculum())) {
       topic = subj.topics.find(t => t.id === topicId);
       if (topic) break;
     }
@@ -680,10 +723,31 @@ const CLASSROOM = (function () {
       }
     }
 
-    // Lesson content
+    // Lesson content — handles both sheet format and legacy format
     const contentEl = document.getElementById('lesson-content');
     if (contentEl) {
-      const { intro, points = [], formulas = [] } = topic.content;
+      let intro = '', points = [], formulas = [];
+
+      if (topic.content) {
+        // ── Legacy format (hardcoded topics) ──
+        // content: { intro, points: string[], formulas: [{label, formula}] }
+        intro    = topic.content.intro    || '';
+        points   = topic.content.points   || [];
+        formulas = topic.content.formulas || [];
+      } else {
+        // ── Sheet format (TOPIC_BLUEPRINT from gsheet-curriculum.js) ──
+        // blurb → intro, objectives → points, formulas → formula strings
+        intro  = topic.blurb || '';
+        points = topic.objectives || [];
+        // Sheet formulas are plain strings; convert to legacy {label, formula} shape
+        formulas = (topic.formulas || []).map(f => {
+          const colonIdx = f.indexOf(':');
+          if (colonIdx > 0 && colonIdx < 30) {
+            return { label: f.slice(0, colonIdx).trim(), formula: f.slice(colonIdx + 1).trim() };
+          }
+          return { label: '', formula: f };
+        });
+      }
 
       const pointsHTML = points.length ? `
         <h3>Key Points</h3>
@@ -694,12 +758,12 @@ const CLASSROOM = (function () {
         <div class="formula-box">
           <div class="formula-box-label">Formula Box</div>
           <div class="formula-grid">
-            ${formulas.map(f => `<div class="formula-item"><strong style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:4px">${f.label}</strong>${f.formula}</div>`).join('')}
+            ${formulas.map(f => `<div class="formula-item">${f.label ? `<strong style="font-size:.72rem;color:var(--muted);display:block;margin-bottom:4px">${f.label}</strong>` : ''}${f.formula}</div>`).join('')}
           </div>
         </div>
       ` : '';
 
-      contentEl.innerHTML = `<p>${intro}</p>${pointsHTML}${formulaHTML}`;
+      contentEl.innerHTML = intro ? `<p>${intro}</p>${pointsHTML}${formulaHTML}` : `${pointsHTML}${formulaHTML}`;
     }
 
     // Quick quiz
@@ -772,7 +836,7 @@ const CLASSROOM = (function () {
 
   // ─── Next / Prev lesson navigation ───────────────
   function nextLesson() {
-    const subj   = CURRICULUM[currentSubject];
+    const subj   = getCurriculum()[currentSubject];
     if (!subj) return;
     const idx    = subj.topics.findIndex(t => t.id === currentTopicId);
     const next   = subj.topics.slice(idx + 1).find(t => topicUnlockedForUser(t));
@@ -781,7 +845,7 @@ const CLASSROOM = (function () {
   }
 
   function prevLesson() {
-    const subj = CURRICULUM[currentSubject];
+    const subj = getCurriculum()[currentSubject];
     if (!subj) return;
     const idx  = subj.topics.findIndex(t => t.id === currentTopicId);
     if (idx > 0) selectTopic(subj.topics[idx - 1].id);
@@ -899,7 +963,7 @@ const CLASSROOM = (function () {
 
   return {
     init, switchSubject, selectTopic, loadTopic, nextLesson, prevLesson,
-    playVideo, toggleSidebar, closeSidebar, CURRICULUM
+    playVideo, toggleSidebar, closeSidebar, getCurriculum
   };
 
 })();
