@@ -85,6 +85,20 @@
     // Cache the parsed sheet in memory for this many minutes
     GS_QUESTIONS_CACHE_MIN: 30,
 
+    // ── Google Sheets — curriculum / syllabus ─────────────────────
+    // 1. Open your Google Sheet (UE_School_WAEC_Curriculum).
+    // 2. File → Share → "Anyone with the link" → Viewer.
+    // 3. File → Publish to web → Sheet1 → CSV → copy the URL.
+    // 4. Paste it below and save this file.
+    //
+    // The sheet ID is: 1Ok27xPUjyYouH-bMoaHYFaR0CIipGrRt8A5Iqrv8To8
+    // Your published CSV URL will look like:
+    //   https://docs.google.com/spreadsheets/d/1Ok27xPUjyYouH-bMoaHYFaR0CIipGrRt8A5Iqrv8To8/pub?gid=0&single=true&output=csv
+    GOOGLE_SHEET_CURRICULUM_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
+
+    // How long to cache the curriculum sheet (minutes).
+    GS_CURRICULUM_CACHE_MIN: 30,
+
     // ── WhatsApp support ──────────────────────────────────────────
     // International format, digits only (no '+', no spaces). Leaving
     // it blank hides every "Chat on WhatsApp" button across the app.
