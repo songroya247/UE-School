@@ -31,7 +31,7 @@
      ║  SECURITY BLOCK &mdash; must be first in <head>           ║
      ╚══════════════════════════════════════════════════════╝ -->
 <script src="js/config.js"></script>
-<script src="js/head-gatekeeper.js"></script>
+<script src="js/head-gatekeeper.js?v=3"></script>
 <!-- END SECURITY BLOCK -->
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -274,13 +274,16 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/auth-guard.js"></script>
+<script src="js/auth-guard.js?v=3"></script>
 
 <!-- Skill Chamber dependencies (load order matters) -->
 <script src="js/storage.js"></script>
 <script src="js/skill_questions.js"></script>
 <script src="js/curriculum.js"></script>
 <script src="js/intervention_modal.js"></script>
+
+<!-- Google Sheets curriculum loader (must load BEFORE classroom.js) -->
+<script src="js/gsheet-curriculum.js"></script>
 
 <!-- Main classroom engine (must come after skill chamber deps) -->
 <script src="js/gdrive-video.js"></script>
@@ -303,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const authData = await AUTH_GUARD.init();
   if (!authData) return; // redirect in progress (no session or not premium)
 
+  await GSHEET_CURRICULUM.init();   // load WAEC curriculum from Google Sheet
   await CLASSROOM.init();
 });
 </script>
