@@ -287,7 +287,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 
 <!-- Main classroom engine (must come after skill chamber deps) -->
 <script src="js/gdrive-video.js"></script>
-<script src="js/gdrive-curriculum.js"></script>   <!-- 3-tier video player: Sheet → resolve → iframe -->
+<script src="js/gdrive-curriculum.js"></script>   <!-- 3-tier video player -->
 <script src="js/classroom.js"></script>
 
 <!-- Skill Chamber router &mdash; monkey-patches CLASSROOM.loadTopic -->
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!authData) return; // redirect in progress (no session or not premium)
 
   await GSHEET_CURRICULUM.init();   // load WAEC curriculum from Google Sheet
-  await GDRIVE_CURRICULUM.init();   // load 3-tier video data from Sheet → TOPIC_BLUEPRINT
+  await GDRIVE_CURRICULUM.init();   // load 3-tier video data → TOPIC_BLUEPRINT
   await CLASSROOM.init();
 });
 </script>
