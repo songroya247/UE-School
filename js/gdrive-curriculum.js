@@ -15,7 +15,7 @@
 window.GDRIVE_CURRICULUM = (function () {
   'use strict';
 
-  const cfg      = window.UE_CONFIG || {};
+  const cfg       = window.UE_CONFIG || {};
   const SHEET_URL = cfg.CURRICULUM_SHEET_CSV_URL || '';
   const CACHE_MS  = 5 * 60 * 1000; // 5-minute in-memory cache
 
@@ -156,9 +156,6 @@ window.GDRIVE_CURRICULUM = (function () {
   }
 
   // ── 3-tier fallback order ────────────────────────────────────────
-  // foundation → tries foundation first, then standard, then mastery
-  // standard   → tries standard first,   then foundation, then mastery
-  // mastery    → tries mastery first,     then standard, then foundation
   const ORDER = {
     foundation: ['foundation', 'standard', 'mastery'],
     standard:   ['standard',   'foundation', 'mastery'],
@@ -167,8 +164,6 @@ window.GDRIVE_CURRICULUM = (function () {
 
   // ── resolveVideo(topic, tier) ────────────────────────────────────
   // Returns { embedUrl, type, isFallback, servedTier }
-  // topic.videos must have { foundation, standard, mastery } keys
-  // (each is the classifyVideoCell result object, or null if blank).
   function resolveVideo(topic, tier) {
     const t     = (tier || 'standard').toLowerCase();
     const order = ORDER[t] || ORDER.standard;
@@ -184,10 +179,7 @@ window.GDRIVE_CURRICULUM = (function () {
   }
 
   // ── masteryToTier(score) ─────────────────────────────────────────
-  // Maps a 0–1 mastery score to one of the three video tiers:
-  //   0.00 – 0.39  → foundation  (struggling students)
-  //   0.40 – 0.74  → standard    (average students)
-  //   0.75 – 1.00  → mastery     (high scorers)
+  // 0.00–0.39 → foundation | 0.40–0.74 → standard | 0.75–1.00 → mastery
   function masteryToTier(score) {
     if (score === null || score === undefined || score === '') return 'foundation';
     const n = Number(score);
