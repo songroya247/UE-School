@@ -1,13 +1,18 @@
 /* ═══════════════════════════════════════════════════
-   UE School — Classroom Engine
-   Wires subject tabs, topic list, video area, lesson
-   content, quick quiz, and topic_mastery tracking.
+   UE School — Classroom Engine  (patched v2)
+   Fixes applied:
+     1. init() accepts authData to avoid double AUTH_GUARD call
+     2. Subject/topic persisted in localStorage — survives refresh
+     3. iframe injected only on play click (Drive URL never in DOM early)
+     4. playVideo() fully gated — re-checks premium at play-time
+     5. skill_chamber loadTopic properly wired to renderLesson with tier
+     6. Tier switcher pills read from topic.videos after sheet load
+     7. renderLesson correctly reads tier from opts passed by skill_chamber
 ═══════════════════════════════════════════════════ */
 
 const CLASSROOM = (function () {
 
-  // ─── Curriculum ───────────────────────────────────
-  // SUBJECT META — defines label, icon, color for each subject key.
+  // ─── Subject meta ─────────────────────────────────
   const SUBJECT_META = {
     mathematics: { label: 'Mathematics',     icon: '&#x1F4D0;', color: '#3b82f6' },
     english:     { label: 'English Language', icon: '&#x1F4D6;', color: '#10b981' },
@@ -19,10 +24,7 @@ const CLASSROOM = (function () {
     government:  { label: 'Government',       icon: '&#x1F3DB;', color: '#6366f1' },
   };
 
-  // Build CURRICULUM dynamically from window.TOPIC_BLUEPRINT at init time.
-  // Sheet topics (gsheet-curriculum.js) use: title, duration, videos, objectives, formulas, blurb.
-  // Legacy topics use: content.intro / content.points / content.formulas / quiz.
-  // renderLesson() handles both formats transparently.
+  // ─── Curriculum builder ───────────────────────────
   function buildCurriculumFromBlueprint() {
     const bp = window.TOPIC_BLUEPRINT || {};
     const result = {};
@@ -38,462 +40,20 @@ const CLASSROOM = (function () {
     return result;
   }
 
-  // Resolved once during init() — do NOT call before GSHEET_CURRICULUM.init() has run.
   let CURRICULUM = null;
   function getCurriculum() {
     if (CURRICULUM) return CURRICULUM;
     const dynamic = buildCurriculumFromBlueprint();
-    // If blueprint has subjects, use it; otherwise fall back to LEGACY_CURRICULUM
     CURRICULUM = Object.keys(dynamic).length ? dynamic : LEGACY_CURRICULUM;
     return CURRICULUM;
   }
 
-  // ── Legacy hardcoded topics (fallback only — used when Google Sheet is unavailable) ──
-  const LEGACY_CURRICULUM = {
-    mathematics: {
-      label: 'Mathematics', icon: '&#x1F4D0;', color: '#3b82f6',
-      topics: [
-        {
-          id: 'mathematics.Number Bases', title: 'Number Bases', duration: '12:30', premium: false,
-          content: {
-            intro: 'Number bases are systems for representing numbers using a fixed number of digits. The decimal system (base 10) is most familiar, but binary (base 2), octal (base 8), and hexadecimal (base 16) are widely used in mathematics and computing.',
-            points: [
-              'In base 10, the digits are 0–9. In base 2, only 0 and 1 are used.',
-              'To convert from base 10 to another base, repeatedly divide by the base and record remainders.',
-              'To convert to base 10, multiply each digit by the base raised to its position power.',
-              'Addition and subtraction can be performed directly in any base without converting first.'
-            ],
-            formulas: [
-              { label: 'Base 10 \u2192 Base n', formula: 'Divide by n, read remainders upward' },
-              { label: 'Base n \u2192 Base 10', formula: 'Σ (digit × nᵖᵒˢⁱᵗⁱᵒⁿ)' }
-            ]
-          },
-          quiz: [
-            { q: 'Convert 13 (base 10) to base 2', opts: ['1100', '1101', '1010', '1111'], ans: 1 },
-            { q: 'What is 1011₂ in base 10?', opts: ['9', '10', '11', '12'], ans: 2 },
-            { q: 'Convert 255 (base 10) to base 16', opts: ['EF', 'FF', 'FE', 'F0'], ans: 1 }
-          ]
-        },
-        {
-          id: 'mathematics.Indices', title: 'Indices', duration: '15:24', premium: false,
-          content: {
-            intro: 'Indices (or powers) provide a convenient way of writing numbers multiplied by themselves. Mastering the laws of indices is essential for JAMB and WAEC mathematics.',
-            points: [
-              'Any number raised to the power of 0 equals 1 (except 0 itself).',
-              'When multiplying numbers with the same base, add the indices: aᵐ × aⁿ = aᵐ⁺ⁿ.',
-              'When dividing numbers with the same base, subtract the indices: aᵐ ÷ aⁿ = aᵐ⁻ⁿ.',
-              'A negative index means the reciprocal: a⁻ⁿ = 1/aⁿ.'
-            ],
-            formulas: [
-              { label: 'Multiplication', formula: 'aᵐ × aⁿ = aᵐ⁺ⁿ' },
-              { label: 'Division', formula: 'aᵐ ÷ aⁿ = aᵐ⁻ⁿ' },
-              { label: 'Power of power', formula: '(aᵐ)ⁿ = aᵐˣⁿ' },
-              { label: 'Negative index', formula: 'a⁻ⁿ = 1/aⁿ' }
-            ]
-          },
-          quiz: [
-            { q: 'Simplify: (2x²)³', opts: ['6x⁵', '8x⁵', '6x⁶', '8x⁶'], ans: 3 },
-            { q: 'Evaluate: 3⁰ + 4⁻¹', opts: ['1', '1.25', '2', '0.25'], ans: 1 },
-            { q: 'If 2ˣ = 32, find x', opts: ['4', '5', '6', '3'], ans: 1 }
-          ]
-        },
-        {
-          id: 'mathematics.Logarithms', title: 'Logarithms', duration: '18:10', premium: false,
-          content: {
-            intro: 'Logarithms are the inverse of exponentiation. If aˣ = N, then logₐN = x. They simplify multiplication of large numbers into addition.',
-            points: [
-              'log(AB) = log A + log B — multiplication becomes addition.',
-              'log(A/B) = log A − log B — division becomes subtraction.',
-              'log(Aⁿ) = n·log A — powers become multiplication.',
-              'log₁₀ is called the common logarithm; logₑ is the natural logarithm (ln).'
-            ],
-            formulas: [
-              { label: 'Product rule', formula: 'log(AB) = logA + logB' },
-              { label: 'Quotient rule', formula: 'log(A/B) = logA − logB' },
-              { label: 'Power rule', formula: 'log(Aⁿ) = n·logA' },
-              { label: 'Change of base', formula: 'logₐB = logB / logA' }
-            ]
-          },
-          quiz: [
-            { q: 'Evaluate log₂ 64', opts: ['4', '5', '6', '7'], ans: 2 },
-            { q: 'Simplify log 6 + log 5 − log 3', opts: ['log 10', 'log 28', 'log 8', 'log 2'], ans: 0 },
-            { q: 'If log 2 = 0.3010, find log 8', opts: ['0.6020', '0.9030', '1.2040', '0.4515'], ans: 1 }
-          ]
-        },
-        {
-          id: 'mathematics.Quadratics', title: 'Quadratic Equations', duration: '20:15', premium: false,
-          content: {
-            intro: 'A quadratic equation is any equation of the form ax² + bx + c = 0. They are solved by factoring, completing the square, or using the quadratic formula.',
-            points: [
-              'Factoring works when the equation factors cleanly into (x−p)(x−q) = 0.',
-              'The quadratic formula x = (−b ± √(b²−4ac)) / 2a works for all quadratics.',
-              'The discriminant (b²−4ac) tells you the nature of roots: positive = 2 real roots, zero = 1 repeated root, negative = no real roots.',
-              'Sum of roots = −b/a; Product of roots = c/a.'
-            ],
-            formulas: [
-              { label: 'Quadratic formula', formula: 'x = (−b ± √(b²−4ac)) / 2a' },
-              { label: 'Sum of roots', formula: 'α + β = −b/a' },
-              { label: 'Product of roots', formula: 'αβ = c/a' },
-              { label: 'Discriminant', formula: 'Δ = b² − 4ac' }
-            ]
-          },
-          quiz: [
-            { q: 'Solve x² − 5x + 6 = 0', opts: ['x=2 or x=3', 'x=−2 or x=3', 'x=1 or x=6', 'x=−2 or x=−3'], ans: 0 },
-            { q: 'Sum of roots of 3x² − 9x + 4 = 0 is', opts: ['3', '9', '4/3', '−3'], ans: 0 },
-            { q: 'The discriminant of x² + 2x + 5 = 0 is', opts: ['−16', '16', '24', '−24'], ans: 0 }
-          ]
-        },
-        {
-          id: 'mathematics.Probability', title: 'Probability', duration: '16:45', premium: true,
-          content: {
-            intro: 'Probability measures the likelihood of an event occurring, expressed as a number between 0 (impossible) and 1 (certain).',
-            points: [
-              'P(event) = (Number of favourable outcomes) / (Total possible outcomes).',
-              'P(A or B) = P(A) + P(B) − P(A and B) for any two events.',
-              'P(A and B) = P(A) × P(B) only when A and B are independent.',
-              'The complementary event: P(not A) = 1 − P(A).'
-            ],
-            formulas: [
-              { label: 'Basic probability', formula: 'P(E) = n(E) / n(S)' },
-              { label: 'Addition rule', formula: 'P(A∪B) = P(A)+P(B)−P(A∩B)' },
-              { label: 'Multiplication (independent)', formula: 'P(A∩B) = P(A)×P(B)' },
-              { label: 'Complement', formula: 'P(Aʹ) = 1 − P(A)' }
-            ]
-          },
-          quiz: [
-            { q: 'A bag has 3 red, 5 blue balls. P(red) =', opts: ['3/8', '5/8', '3/5', '1/3'], ans: 0 },
-            { q: 'P(rolling a 6 on a fair die) is', opts: ['1/2', '1/3', '1/6', '1/4'], ans: 2 },
-            { q: 'P(A)=0.4, P(B)=0.3, independent. P(A∩B) =', opts: ['0.7', '0.12', '0.1', '0.4'], ans: 1 }
-          ]
-        },
-        {
-          id: 'mathematics.Calculus', title: 'Differentiation', duration: '22:00', premium: true,
-          content: {
-            intro: 'Differentiation finds the rate of change of a function. It is the foundation of calculus and is heavily tested in WAEC.',
-            points: [
-              'The derivative of xⁿ is nxⁿ⁻¹ — this is the power rule.',
-              'The derivative of a constant is 0.',
-              'Sum rule: d/dx [f(x) + g(x)] = f\'(x) + g\'(x).',
-              'Set dy/dx = 0 to find turning points (maxima or minima).'
-            ],
-            formulas: [
-              { label: 'Power rule', formula: 'd/dx(xⁿ) = nxⁿ⁻¹' },
-              { label: 'Constant', formula: 'd/dx(c) = 0' },
-              { label: 'Sum rule', formula: 'd/dx(f+g) = f\'+g\'' },
-              { label: 'Turning point', formula: 'Set dy/dx = 0' }
-            ]
-          },
-          quiz: [
-            { q: 'Find dy/dx if y = 3x² + 2x − 5', opts: ['6x+2', '3x+2', '6x−5', '6x'], ans: 0 },
-            { q: 'Differentiate y = x⁴ − 3x² + 7', opts: ['4x³−6x', '4x³−3x', 'x³−6x', '4x³+6x'], ans: 0 },
-            { q: 'At a turning point, dy/dx equals', opts: ['1', '−1', '0', 'undefined'], ans: 2 }
-          ]
-        }
-      ]
-    },
+  // ─── localStorage keys ────────────────────────────
+  const FREE_VIDEOS_KEY  = 'ue_free_videos_watched';
+  const LAST_SUBJECT_KEY = 'ue_last_subject';
+  const LAST_TOPIC_KEY   = 'ue_last_topic';
 
-    english: {
-      label: 'English Language', icon: '&#x1F4D6;', color: '#10b981',
-      topics: [
-        {
-          id: 'english.Comprehension', title: 'Reading Comprehension', duration: '14:00', premium: false,
-          content: {
-            intro: 'Comprehension tests your ability to understand written passages and answer questions about them. It is the highest-weighted section in WAEC English.',
-            points: [
-              'Read the questions before reading the passage to know what to look for.',
-              'Identify the main idea in each paragraph before tackling the questions.',
-              'Vocabulary questions: use context clues from surrounding sentences.',
-              'Inference questions: the answer is implied, not directly stated.'
-            ],
-            formulas: []
-          },
-          quiz: [
-            { q: '"Benevolent" means closest to', opts: ['Generous', 'Cruel', 'Strict', 'Ambitious'], ans: 0 },
-            { q: '"Ephemeral" means', opts: ['Short-lived', 'Eternal', 'Enormous', 'Ordinary'], ans: 0 },
-            { q: 'The antonym of "diligent" is', opts: ['Lazy', 'Hardworking', 'Clever', 'Smart'], ans: 0 }
-          ]
-        },
-        {
-          id: 'english.Lexis & Structure', title: 'Lexis & Structure', duration: '16:30', premium: false,
-          content: {
-            intro: 'Lexis refers to vocabulary knowledge; Structure covers grammar rules. Together, they form the backbone of the English Language exam.',
-            points: [
-              'Subject-verb agreement: the verb must agree in number with its subject.',
-              'Figures of speech: simile (like/as), metaphor (direct comparison), personification (human traits to objects).',
-              'Tense consistency: do not switch tenses within the same paragraph.',
-              'Correct pronoun usage: "between you and me" (not "I") because "me" is the object.'
-            ],
-            formulas: []
-          },
-          quiz: [
-            { q: '"The wind whispered through the trees" is', opts: ['Personification', 'Simile', 'Metaphor', 'Alliteration'], ans: 0 },
-            { q: 'Neither the boys nor the girl ___ present.', opts: ['was', 'were', 'are', 'were not'], ans: 0 },
-            { q: 'The plural of "phenomenon" is', opts: ['Phenomena', 'Phenomenons', 'Phenomenas', 'Phenomen'], ans: 0 }
-          ]
-        },
-        {
-          id: 'english.Essay Writing', title: 'Essay Writing', duration: '18:45', premium: false,
-          content: {
-            intro: 'Essay writing tests your ability to communicate ideas in a structured, coherent way. WAEC tests narrative, argumentative, descriptive, and formal letter writing.',
-            points: [
-              'Structure: Introduction, Body (3+ paragraphs), Conclusion.',
-              'Formal letters: start with Dear Sir/Madam, end with Yours faithfully.',
-              'Personal/informal letters: start with Dear [Name], end with Yours sincerely.',
-              'Paragraphing: each paragraph should have one main idea with a topic sentence.'
-            ],
-            formulas: []
-          },
-          quiz: [
-            { q: 'A formal letter ends with', opts: ['Yours faithfully', 'Yours sincerely', 'Best regards', 'Kind regards'], ans: 0 },
-            { q: 'The introduction of an essay should', opts: ['State the main idea and engage the reader', 'List all arguments', 'Summarise the entire essay', 'Give the conclusion first'], ans: 0 },
-            { q: 'Each paragraph should begin with a', opts: ['Topic sentence', 'Question', 'Quotation', 'Definition'], ans: 0 }
-          ]
-        }
-      ]
-    },
-
-    physics: {
-      label: 'Physics', icon: '&#x269B;', color: '#7c3aed',
-      topics: [
-        {
-          id: 'physics.Mechanics', title: 'Mechanics & Motion', duration: '19:20', premium: false,
-          content: {
-            intro: 'Mechanics is the study of motion and forces. Newton\'s laws of motion and equations of uniformly accelerated motion are core JAMB topics.',
-            points: [
-              'Newton\'s 1st Law: an object remains at rest or in uniform motion unless acted upon by an external force.',
-              'Newton\'s 2nd Law: F = ma — force equals mass times acceleration.',
-              'Newton\'s 3rd Law: for every action, there is an equal and opposite reaction.',
-              'SUVAT equations describe motion with constant acceleration.'
-            ],
-            formulas: [
-              { label: 'Newton\'s 2nd Law', formula: 'F = ma' },
-              { label: 'Velocity', formula: 'v = u + at' },
-              { label: 'Distance', formula: 's = ut + ½at²' },
-              { label: 'Kinetic Energy', formula: 'KE = ½mv²' }
-            ]
-          },
-          quiz: [
-            { q: 'A body accelerates at 4 m/s² from rest. Speed after 5s is', opts: ['20 m/s', '25 m/s', '10 m/s', '15 m/s'], ans: 0 },
-            { q: 'KE of a 5kg object moving at 10 m/s is', opts: ['250 J', '500 J', '50 J', '25 J'], ans: 0 },
-            { q: 'Newton\'s 1st Law is also called the law of', opts: ['Inertia', 'Momentum', 'Action', 'Acceleration'], ans: 0 }
-          ]
-        },
-        {
-          id: 'physics.Electricity', title: 'Electricity & Circuits', duration: '17:55', premium: false,
-          content: {
-            intro: 'Electricity covers current, voltage, resistance, and circuit analysis. Ohm\'s Law is the cornerstone of all electrical calculations.',
-            points: [
-              'Ohm\'s Law: V = IR — voltage equals current times resistance.',
-              'In series circuits, total resistance = R₁ + R₂ + R₃.',
-              'In parallel circuits, 1/R_total = 1/R₁ + 1/R₂.',
-              'Power: P = IV = I²R = V²/R.'
-            ],
-            formulas: [
-              { label: 'Ohm\'s Law', formula: 'V = IR' },
-              { label: 'Series resistance', formula: 'R = R₁+R₂+R₃' },
-              { label: 'Parallel resistance', formula: '1/R = 1/R₁+1/R₂' },
-              { label: 'Power', formula: 'P = IV = I²R' }
-            ]
-          },
-          quiz: [
-            { q: 'A 12V battery connected to 4Ω gives current', opts: ['3 A', '4 A', '48 A', '8 A'], ans: 0 },
-            { q: 'In series circuits, resistance', opts: ['Adds up', 'Decreases', 'Stays same', 'Halves'], ans: 0 },
-            { q: 'The unit of electrical power is', opts: ['Watt', 'Joule', 'Ampere', 'Ohm'], ans: 0 }
-          ]
-        },
-        {
-          id: 'physics.Waves', title: 'Waves & Sound', duration: '15:10', premium: true,
-          content: {
-            intro: 'Waves transfer energy without transferring matter. They are classified as transverse (light) or longitudinal (sound).',
-            points: [
-              'Wave speed v = fλ (frequency × wavelength).',
-              'Sound cannot travel in a vacuum; it needs a medium.',
-              'The speed of light in a vacuum is approximately 3 × 10⁸ m/s.',
-              'Resonance occurs when a system is driven at its natural frequency.'
-            ],
-            formulas: [
-              { label: 'Wave speed', formula: 'v = fλ' },
-              { label: 'Speed of light', formula: 'c = 3 × 10⁸ m/s' },
-              { label: 'Period', formula: 'T = 1/f' },
-              { label: 'Wavelength', formula: 'λ = v/f' }
-            ]
-          },
-          quiz: [
-            { q: 'A wave of frequency 50 Hz and wavelength 4m. Speed =', opts: ['200 m/s', '12.5 m/s', '54 m/s', '46 m/s'], ans: 0 },
-            { q: 'Which wave does NOT need a medium?', opts: ['Electromagnetic', 'Sound', 'Water', 'Seismic'], ans: 0 },
-            { q: 'Speed of light in vacuum is approximately', opts: ['3×10⁸ m/s', '3×10⁶ m/s', '3×10¹⁰ m/s', '3×10⁴ m/s'], ans: 0 }
-          ]
-        }
-      ]
-    },
-
-    chemistry: {
-      label: 'Chemistry', icon: '&#x1F9EA;', color: '#ff6b35',
-      topics: [
-        {
-          id: 'chemistry.Periodic Table', title: 'The Periodic Table', duration: '16:00', premium: false,
-          content: {
-            intro: 'The periodic table organises all known elements by atomic number. Elements in the same group share similar chemical properties.',
-            points: [
-              'Periods are horizontal rows; groups are vertical columns.',
-              'Group I (alkali metals) are highly reactive with water.',
-              'Group VII (halogens) are highly reactive non-metals.',
-              'Noble gases (Group VIII/0) are extremely unreactive.'
-            ],
-            formulas: [
-              { label: 'Atomic number', formula: 'Z = number of protons' },
-              { label: 'Mass number', formula: 'A = protons + neutrons' },
-              { label: 'Isotopes', formula: 'Same Z, different A' },
-              { label: 'Valence electrons', formula: 'Group number (I–VIII)' }
-            ]
-          },
-          quiz: [
-            { q: 'Element with atomic number 11 is', opts: ['Sodium', 'Magnesium', 'Potassium', 'Chlorine'], ans: 0 },
-            { q: 'Halogens are in Group', opts: ['VII', 'I', 'VI', 'VIII'], ans: 0 },
-            { q: 'Noble gases are', opts: ['Extremely unreactive', 'Highly reactive', 'Radioactive', 'Metallic'], ans: 0 }
-          ]
-        },
-        {
-          id: 'chemistry.Acids & Bases', title: 'Acids, Bases & Salts', duration: '17:30', premium: false,
-          content: {
-            intro: 'Acids and bases are opposites on the pH scale. Their reaction — neutralisation — produces a salt and water.',
-            points: [
-              'Acids have pH < 7; bases have pH > 7; neutral solutions have pH = 7.',
-              'Strong acids (HCl, H₂SO₄) fully dissociate; weak acids only partially dissociate.',
-              'Neutralisation: acid + base \u2192 salt + water.',
-              'Indicators (litmus, phenolphthalein) show whether a solution is acid or base.'
-            ],
-            formulas: [
-              { label: 'Neutralisation', formula: 'Acid + Base \u2192 Salt + H₂O' },
-              { label: 'pH scale', formula: 'Acid: <7 | Neutral: 7 | Base: >7' },
-              { label: 'HCl dissociation', formula: 'HCl \u2192 H⁺ + Cl⁻' },
-              { label: 'NaOH dissociation', formula: 'NaOH \u2192 Na⁺ + OH⁻' }
-            ]
-          },
-          quiz: [
-            { q: 'An acid has a pH', opts: ['Less than 7', 'Greater than 7', 'Equal to 7', 'Greater than 14'], ans: 0 },
-            { q: 'The reaction between acid and base is called', opts: ['Neutralisation', 'Oxidation', 'Reduction', 'Combustion'], ans: 0 },
-            { q: 'HCl in water gives', opts: ['H⁺ and Cl⁻', 'H₂ and Cl₂', 'OH⁻ and Cl⁻', 'H⁺ and OH⁻'], ans: 0 }
-          ]
-        },
-        {
-          id: 'chemistry.Organic Chemistry', title: 'Organic Chemistry Basics', duration: '21:10', premium: true,
-          content: {
-            intro: 'Organic chemistry studies carbon-containing compounds. The main families (homologous series) tested in WAEC are alkanes, alkenes, and alkynes.',
-            points: [
-              'Alkanes (CₙH₂ₙ₊₂) have only single C–C bonds; they are saturated.',
-              'Alkenes (CₙH₂ₙ) contain at least one C=C double bond; they are unsaturated.',
-              'Alkynes (CₙH₂ₙ₋₂) contain at least one C≡C triple bond.',
-              'Isomers are compounds with the same molecular formula but different structural formulae.'
-            ],
-            formulas: [
-              { label: 'Alkane general formula', formula: 'CₙH₂ₙ₊₂' },
-              { label: 'Alkene general formula', formula: 'CₙH₂ₙ' },
-              { label: 'Alkyne general formula', formula: 'CₙH₂ₙ₋₂' },
-              { label: 'Functional group (alcohol)', formula: '−OH' }
-            ]
-          },
-          quiz: [
-            { q: 'The simplest alkane is', opts: ['Methane', 'Ethane', 'Propane', 'Butane'], ans: 0 },
-            { q: 'Alkenes are characterised by a', opts: ['Double carbon bond', 'Single bond', 'Triple bond', 'Ionic bond'], ans: 0 },
-            { q: 'General formula for alkanes is', opts: ['CₙH₂ₙ₊₂', 'CₙH₂ₙ', 'CₙH₂ₙ₋₂', 'CₙH₄'], ans: 0 }
-          ]
-        }
-      ]
-    },
-
-    biology: {
-      label: 'Biology', icon: '&#x1F33F;', color: '#0891b2',
-      topics: [
-        {
-          id: 'biology.Cell Biology', title: 'Cell Biology', duration: '18:00', premium: false,
-          content: {
-            intro: 'The cell is the basic structural and functional unit of all living organisms. Understanding cell structure and processes is essential for JAMB and WAEC Biology.',
-            points: [
-              'The mitochondria is the powerhouse of the cell — site of aerobic respiration.',
-              'The nucleus controls cell activities and contains DNA.',
-              'Osmosis is the movement of water from low to high solute concentration across a semi-permeable membrane.',
-              'Photosynthesis occurs in chloroplasts: 6CO₂ + 6H₂O + light \u2192 C₆H₁₂O₆ + 6O₂.'
-            ],
-            formulas: [
-              { label: 'Photosynthesis', formula: '6CO₂+6H₂O \u2192 C₆H₁₂O₆+6O₂' },
-              { label: 'Aerobic respiration', formula: 'C₆H₁₂O₆+6O₂ \u2192 6CO₂+6H₂O+ATP' },
-              { label: 'Osmosis direction', formula: 'Low \u2192 High solute concentration' },
-              { label: 'Cell wall composition', formula: 'Cellulose (plants)' }
-            ]
-          },
-          quiz: [
-            { q: 'The powerhouse of the cell is the', opts: ['Mitochondria', 'Nucleus', 'Ribosome', 'Golgi body'], ans: 0 },
-            { q: 'Osmosis moves water from', opts: ['Low to high solute', 'High to low solute', 'High to low temp', 'Low to high pressure'], ans: 0 },
-            { q: 'Photosynthesis occurs in the', opts: ['Chloroplast', 'Mitochondria', 'Nucleus', 'Ribosome'], ans: 0 }
-          ]
-        }
-      ]
-    },
-
-    economics: {
-      label: 'Economics', icon: '&#x1F4C8;', color: '#f59e0b',
-      topics: [
-        {
-          id: 'economics.Supply & Demand', title: 'Supply & Demand', duration: '16:20', premium: false,
-          content: {
-            intro: 'Supply and demand are the forces that drive market economies. Understanding these concepts is fundamental to all of economics.',
-            points: [
-              'Law of demand: as price rises, quantity demanded falls (inverse relationship).',
-              'Law of supply: as price rises, quantity supplied rises (direct relationship).',
-              'Equilibrium is where supply equals demand — the market-clearing price.',
-              'Price elasticity measures how responsive quantity is to a price change.'
-            ],
-            formulas: [
-              { label: 'Price elasticity of demand', formula: 'PED = %ΔQd / %ΔP' },
-              { label: 'Elastic demand', formula: 'PED > 1' },
-              { label: 'Inelastic demand', formula: 'PED < 1' },
-              { label: 'Unit elastic', formula: 'PED = 1' }
-            ]
-          },
-          quiz: [
-            { q: 'When price rises and demand falls, this illustrates', opts: ['Law of demand', 'Law of supply', 'Diminishing returns', 'Substitution effect'], ans: 0 },
-            { q: 'Equilibrium price is where', opts: ['Supply = Demand', 'Demand > Supply', 'Supply > Demand', 'Price = 0'], ans: 0 },
-            { q: 'Price elasticity of demand measures responsiveness to changes in', opts: ['Price', 'Income', 'Supply', 'Tastes'], ans: 0 }
-          ]
-        }
-      ]
-    },
-
-    government: {
-      label: 'Government', icon: '&#x1F3DB;', color: '#6366f1',
-      topics: [
-        {
-          id: 'government.Constitution', title: 'The Nigerian Constitution', duration: '14:45', premium: false,
-          content: {
-            intro: 'The constitution is the supreme law of Nigeria. It establishes the three arms of government and guarantees fundamental rights.',
-            points: [
-              'Nigeria operates a federal system with a presidential constitution.',
-              'The 1999 Constitution (as amended) is the current operating constitution.',
-              'The three arms: Legislature (makes laws), Executive (implements), Judiciary (interprets).',
-              'Fundamental rights include: right to life, dignity, fair hearing, freedom of expression.'
-            ],
-            formulas: []
-          },
-          quiz: [
-            { q: 'Nigeria\'s current constitution was adopted in', opts: ['1999', '1979', '1963', '1960'], ans: 0 },
-            { q: 'The highest court in Nigeria is the', opts: ['Supreme Court', 'Court of Appeal', 'Federal High Court', 'Sharia Court'], ans: 0 },
-            { q: 'The upper chamber of Nigeria\'s National Assembly is the', opts: ['Senate', 'House of Reps', 'State Assembly', 'Federal Executive Council'], ans: 0 }
-          ]
-        }
-      ]
-    }
-  };
-
-  // ─── Free-tier sample tracking ────────────────────
-  // Free users may watch UE_CONFIG.FREE_SAMPLE.VIDEOS_PER_ACCOUNT
-  // distinct topics in their lifetime on this device. The remembered
-  // topic IDs live in localStorage so they survive reloads, and the
-  // count is shared with auth-guard.js (`video` feature).
-  const FREE_VIDEOS_KEY    = 'ue_free_videos_watched';
-  const LAST_SUBJECT_KEY   = 'ue_last_subject';
-  const LAST_TOPIC_KEY     = 'ue_last_topic';
-
+  // ─── Free-tier helpers ────────────────────────────
   function getWatchedVideoIds() {
     try { return JSON.parse(localStorage.getItem(FREE_VIDEOS_KEY) || '[]'); }
     catch (_) { return []; }
@@ -507,15 +67,11 @@ const CLASSROOM = (function () {
     }
   }
 
-  // True iff this topic is unlocked for the current user.
-  // Premium → always true.
-  // Free user → true if (a) they've already opened it, or (b) they
-  // still have free-sample credit left to spend.
   function topicUnlockedForUser(topic) {
     if (isPremiumUser) return true;
     const watched = getWatchedVideoIds();
-    if (watched.includes(topic.id)) return true;          // already paid for with their sample
-    return AUTH_GUARD.canSampleFeature('video');           // still has credits
+    if (watched.includes(topic.id)) return true;
+    return AUTH_GUARD.canSampleFeature('video');
   }
 
   // ─── State ────────────────────────────────────────
@@ -527,14 +83,13 @@ const CLASSROOM = (function () {
 
   // ─── Init ─────────────────────────────────────────
   // Accepts optional pre-resolved authData from classroom.html to avoid
-  // a redundant second call to AUTH_GUARD.init() (which costs a Supabase
-  // round-trip and can cause a race condition on slow connections).
+  // a redundant second Supabase round-trip.
   async function init(authData) {
     const result = authData || await AUTH_GUARD.init();
     if (!result) return;
 
     const { profile, session } = result;
-    userId = session?.user?.id;
+    userId       = session?.user?.id;
     isPremiumUser = AUTH_GUARD.isPremium(profile);
 
     // Defaulter banner
@@ -544,51 +99,47 @@ const CLASSROOM = (function () {
       banner.style.display = status === 'EXPIRED' ? 'block' : 'none';
     }
 
-    // Build subject tabs from user's registered subjects (fall back to all)
-    // getCurriculum() resolves TOPIC_BLUEPRINT → CURRICULUM at this point
-    // (gsheet-curriculum.js has already run GSHEET_CURRICULUM.init() in classroom.html)
-    CURRICULUM = null; // reset so getCurriculum() rebuilds from the now-populated TOPIC_BLUEPRINT
+    // Rebuild curriculum from now-populated TOPIC_BLUEPRINT
+    CURRICULUM = null;
     const userSubjects = profile?.exam_subjects?.length
       ? profile.exam_subjects.filter(s => getCurriculum()[s])
       : Object.keys(getCurriculum());
 
     renderSubjectTabs(userSubjects);
 
-    // Deep-link from URL params
-    const params   = new URLSearchParams(window.location.search);
-    const urlSubj  = params.get('subject');
-    const urlTopic = params.get('topic');
+    // ── Subject resolution — FIX for refresh restoring wrong subject ──
+    // Priority: URL param → localStorage → userSubjects[0] → 'mathematics'
+    const params      = new URLSearchParams(window.location.search);
+    const urlSubj     = params.get('subject');
+    const urlTopic    = params.get('topic');
+    const savedSubj   = localStorage.getItem(LAST_SUBJECT_KEY);
+    const savedTopic  = localStorage.getItem(LAST_TOPIC_KEY);
 
-    // Restore last visited subject from localStorage (survives refresh).
-    // Priority: URL param → localStorage → first subject in user's list → 'mathematics'
-    const savedSubject = localStorage.getItem(LAST_SUBJECT_KEY);
-    const savedTopic   = localStorage.getItem(LAST_TOPIC_KEY);
-
-    let startSubject = 'mathematics';
+    let startSubject;
     if (urlSubj && getCurriculum()[urlSubj]) {
-      startSubject = urlSubj;                                         // URL param wins
-    } else if (savedSubject && getCurriculum()[savedSubject] &&
-               userSubjects.includes(savedSubject)) {
-      startSubject = savedSubject;                                    // last visited subject
+      startSubject = urlSubj;
+    } else if (savedSubj && getCurriculum()[savedSubj] && userSubjects.includes(savedSubj)) {
+      startSubject = savedSubj;
     } else {
-      startSubject = userSubjects[0] || 'mathematics';               // default fallback
+      startSubject = userSubjects[0] || 'mathematics';
     }
 
     currentSubject = startSubject;
 
-    renderSidebar(startSubject, urlTopic || (!urlSubj && savedTopic) || null);
-
-    // Activate the right subject tab
+    // Activate correct tab
     document.querySelectorAll('.subject-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.subject === startSubject);
     });
+
+    // Topic to auto-select: URL param → saved topic (only if same subject) → first unlocked
+    const autoTopic = urlTopic || (!urlSubj && savedTopic) || null;
+    renderSidebar(startSubject, autoTopic);
   }
 
   // ─── Render subject tabs ──────────────────────────
   function renderSubjectTabs(subjects) {
     const container = document.getElementById('subject-tabs');
     if (!container) return;
-
     container.innerHTML = subjects.map(s => {
       const meta = getCurriculum()[s];
       if (!meta) return '';
@@ -604,10 +155,9 @@ const CLASSROOM = (function () {
     if (!getCurriculum()[subjKey]) return;
     currentSubject = subjKey;
 
-    // Persist so refresh restores this subject
+    // Persist — this is what the refresh fix reads
     try { localStorage.setItem(LAST_SUBJECT_KEY, subjKey); } catch (_) {}
-    // Clear saved topic when switching subject so we don't restore a topic
-    // from the wrong subject on the next reload
+    // Clear saved topic so we don't restore a topic from the wrong subject
     try { localStorage.removeItem(LAST_TOPIC_KEY); } catch (_) {}
 
     document.querySelectorAll('.subject-tab').forEach(t => t.classList.remove('active'));
@@ -618,10 +168,10 @@ const CLASSROOM = (function () {
 
   // ─── Render sidebar topic list ────────────────────
   function renderSidebar(subjKey, autoSelectTopic) {
-    const subj    = getCurriculum()[subjKey];
+    const subj = getCurriculum()[subjKey];
     if (!subj) return;
 
-    const headEl = document.getElementById('sidebar-subject-name');
+    const headEl  = document.getElementById('sidebar-subject-name');
     const countEl = document.getElementById('sidebar-lesson-count');
     if (headEl)  headEl.textContent  = subj.label;
     if (countEl) countEl.textContent = `${subj.topics.length} Lesson${subj.topics.length !== 1 ? 's' : ''}`;
@@ -630,13 +180,11 @@ const CLASSROOM = (function () {
     if (!list) return;
 
     list.innerHTML = subj.topics.map((topic, idx) => {
-      const isLocked   = !topicUnlockedForUser(topic);
-      const isActive   = topic.id === currentTopicId;
-
+      const isLocked = !topicUnlockedForUser(topic);
+      const isActive = topic.id === currentTopicId;
       const icon = isLocked ? '&#x1F512;'
                  : isActive  ? '<span style="color:var(--accent)">▶</span>'
                  :             '<span style="color:var(--muted2)">&#x1F4D6;</span>';
-
       return `<button class="topic-item ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}"
                 data-topic-id="${topic.id}"
                 onclick="CLASSROOM.loadTopic('${topic.id}')">
@@ -646,13 +194,15 @@ const CLASSROOM = (function () {
               </button>`;
     }).join('');
 
-    // Auto-select first unlocked topic or the URL-specified topic
+    // Auto-select topic
     const firstUnlocked = subj.topics.find(t => topicUnlockedForUser(t));
     let targetId = null;
 
     if (autoSelectTopic) {
       const match = subj.topics.find(t =>
-        t.id.endsWith(autoSelectTopic) || t.title.toLowerCase() === autoSelectTopic.toLowerCase()
+        t.id === autoSelectTopic ||
+        t.id.endsWith(autoSelectTopic) ||
+        t.title.toLowerCase() === autoSelectTopic.toLowerCase()
       );
       targetId = match ? match.id : (firstUnlocked ? firstUnlocked.id : null);
     } else {
@@ -664,7 +214,6 @@ const CLASSROOM = (function () {
 
   // ─── Select topic ─────────────────────────────────
   function selectTopic(topicId) {
-    // Find topic across all subjects
     let topic = null;
     for (const subj of Object.values(getCurriculum())) {
       topic = subj.topics.find(t => t.id === topicId);
@@ -672,10 +221,6 @@ const CLASSROOM = (function () {
     }
     if (!topic) return;
 
-    // Free-tier gate: if the user has spent their video sample and
-    // is opening a NEW topic, redirect to the pricing page instead
-    // of showing an in-page locked state. (Already-watched topics
-    // remain available so the sample never feels like a punishment.)
     if (!topicUnlockedForUser(topic)) {
       AUTH_GUARD.bouncePremium(
         'You\'ve used your free video sample. Upgrade to UE Premium to unlock every lesson.'
@@ -683,7 +228,7 @@ const CLASSROOM = (function () {
       return;
     }
 
-    // Spend a free-sample credit the first time we open this topic.
+    // Spend free-sample credit on first open
     const watched = getWatchedVideoIds();
     if (!isPremiumUser && !watched.includes(topic.id)) {
       AUTH_GUARD.recordSampleUse('video');
@@ -692,64 +237,105 @@ const CLASSROOM = (function () {
 
     currentTopicId = topicId;
 
-    // Persist last visited subject + topic so refresh restores exactly here
+    // Persist — survives refresh
     try { localStorage.setItem(LAST_SUBJECT_KEY, topic.subject || currentSubject); } catch (_) {}
     try { localStorage.setItem(LAST_TOPIC_KEY,   topicId); } catch (_) {}
 
-    // Update sidebar active state
+    // Update sidebar
     document.querySelectorAll('.topic-item').forEach(el => {
       el.classList.toggle('active', el.dataset.topicId === topicId);
     });
 
     renderLesson(topic);
-
-    // Close mobile sidebar
     if (window.innerWidth <= 720) closeSidebar();
   }
 
-  // ─── Render lesson ────────────────────────────────
-  function renderLesson(topic) {
-    // Title + meta
-    setEl('topic-tag',    topic.id.split('.')[1] || topic.title);
-    setEl('topic-title',  topic.title);
-    setEl('lesson-duration-badge', topic.duration + ' mins');
+  // ─── Resolve video URL from a topic + tier ────────
+  function resolveVideoUrl(topic, tier) {
+    tier = tier || 'standard';
+    if (topic.videos) {
+      // Sheet topic — try requested tier, then fallback chain
+      const preferred = [tier, 'standard', 'foundation', 'mastery'];
+      for (const t of preferred) {
+        const v = topic.videos[t];
+        if (v && v.url) return { url: v.url, tier: t, duration: v.duration || '' };
+      }
+    }
+    // Legacy topic fields
+    if (topic.youtubeId)
+      return { url: `https://www.youtube.com/embed/${topic.youtubeId}?rel=0&modestbranding=1`, tier, duration: topic.duration || '' };
+    if (topic.driveId)
+      return { url: `https://drive.google.com/file/d/${topic.driveId}/preview`, tier, duration: topic.duration || '' };
+    if (topic.driveUrl && window.GDRIVE_VIDEO)
+      return { url: window.GDRIVE_VIDEO.embedUrl(topic.driveUrl), tier, duration: topic.duration || '' };
+    return null;
+  }
 
-    // Video area — show a play-button placeholder first.
-    // The actual iframe src is NEVER injected until the user clicks play
-    // and premium status is re-confirmed. This prevents the Drive/YouTube
-    // URL from appearing in the DOM for free users inspecting DevTools.
+  // ─── Render lesson ────────────────────────────────
+  // opts.tier — if provided by skill_chamber, loads that video tier
+  function renderLesson(topic, opts) {
+    opts = opts || {};
+
+    setEl('topic-tag',            topic.id.split('.')[1] || topic.title);
+    setEl('topic-title',          topic.title);
+    setEl('lesson-duration-badge', (topic.duration || '') + ' mins');
+
+    // ── Video area — show play-button placeholder ──
+    // The iframe src is NEVER written to the DOM until the user clicks play.
+    // This prevents the Drive URL from being visible in DevTools for free users.
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
-      const durationLabel = topic.duration || '';
+      const resolved  = resolveVideoUrl(topic, opts.tier || 'standard');
+      const hasVideo  = !!resolved;
+      const tierLabel = resolved ? (resolved.tier.charAt(0).toUpperCase() + resolved.tier.slice(1)) : '';
+      const durationLabel = resolved ? (resolved.duration || topic.duration || '') : (topic.duration || '');
+
+      // Build tier-switcher pills if topic has multiple tiers
+      let tierSwitcher = '';
+      if (topic.videos) {
+        const availableTiers = ['foundation', 'standard', 'mastery'].filter(t => topic.videos[t] && topic.videos[t].url);
+        if (availableTiers.length > 1) {
+          const activeTier = (opts.tier && availableTiers.includes(opts.tier)) ? opts.tier : (resolved ? resolved.tier : 'standard');
+          tierSwitcher = `<div style="position:absolute;top:12px;left:12px;z-index:4;display:flex;gap:6px">
+            ${availableTiers.map(t => `
+              <button onclick="CLASSROOM.switchTier('${topic.id}','${t}')"
+                style="font-size:.68rem;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.5);cursor:pointer;letter-spacing:.04em;transition:all .2s;
+                background:${t===activeTier ? 'rgba(37,99,235,.85)' : 'rgba(255,255,255,.2)'};
+                color:${t===activeTier ? '#fff' : 'rgba(255,255,255,.8)'};
+                backdrop-filter:blur(6px)">
+                ${t.charAt(0).toUpperCase()+t.slice(1)}
+              </button>`).join('')}
+          </div>`;
+        }
+      }
+
       videoArea.innerHTML = `
         <div class="video-bg"></div>
         <div class="video-grid"></div>
-        <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
+        ${tierSwitcher}
+        ${hasVideo
+          ? `<div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}','${opts.tier||'standard'}')">&#x25B6;</div>`
+          : `<div class="video-play-btn" style="opacity:.4;cursor:default">&#x25B6;</div>
+             <div style="position:absolute;bottom:50px;left:50%;transform:translateX(-50%);font-size:.8rem;color:rgba(15,28,63,.55);white-space:nowrap">Video coming soon</div>`
+        }
         <div class="video-duration" id="video-duration-badge">${durationLabel}</div>`;
     }
 
-    // Lesson content — handles both sheet format and legacy format
+    // ── Lesson content ────────────────────────────────
     const contentEl = document.getElementById('lesson-content');
     if (contentEl) {
       let intro = '', points = [], formulas = [];
-
       if (topic.content) {
-        // ── Legacy format (hardcoded topics) ──
-        // content: { intro, points: string[], formulas: [{label, formula}] }
         intro    = topic.content.intro    || '';
         points   = topic.content.points   || [];
         formulas = topic.content.formulas || [];
       } else {
-        // ── Sheet format (TOPIC_BLUEPRINT from gsheet-curriculum.js) ──
-        // blurb → intro, objectives → points, formulas → formula strings
         intro  = topic.blurb || '';
         points = topic.objectives || [];
-        // Sheet formulas are plain strings; convert to legacy {label, formula} shape
         formulas = (topic.formulas || []).map(f => {
           const colonIdx = f.indexOf(':');
-          if (colonIdx > 0 && colonIdx < 30) {
+          if (colonIdx > 0 && colonIdx < 30)
             return { label: f.slice(0, colonIdx).trim(), formula: f.slice(colonIdx + 1).trim() };
-          }
           return { label: '', formula: f };
         });
       }
@@ -768,41 +354,55 @@ const CLASSROOM = (function () {
         </div>
       ` : '';
 
-      contentEl.innerHTML = intro ? `<p>${intro}</p>${pointsHTML}${formulaHTML}` : `${pointsHTML}${formulaHTML}`;
+      contentEl.innerHTML = intro
+        ? `<p>${intro}</p>${pointsHTML}${formulaHTML}`
+        : `${pointsHTML}${formulaHTML}`;
     }
 
-    // Quick quiz
+    // ── Quiz ──────────────────────────────────────────
     quizState = { idx: 0, questions: topic.quiz || [], answered: 0, correct: 0 };
     renderQuiz();
 
-    // Practice button
+    // ── Practice button ───────────────────────────────
     const practiceBtn = document.getElementById('practice-btn');
     if (practiceBtn) {
-      const parts = topicId(topic);
+      const parts = topicIdParts(topic);
       practiceBtn.href = `cbt.html?subject=${parts.subj}&topic=${encodeURIComponent(parts.topic)}`;
     }
 
-    // Mark as studied in Supabase (fire-and-forget)
+    // ── Record study in Supabase (fire-and-forget) ────
     if (userId) {
       window.sb.from('topic_mastery').upsert({
-        user_id:     userId,
-        topic_id:    topic.id,
+        user_id:      userId,
+        topic_id:     topic.id,
         last_studied: new Date().toISOString(),
-        status:      'IN_PROGRESS'
+        status:       'IN_PROGRESS'
       }, { onConflict: 'user_id,topic_id', ignoreDuplicates: false }).then(() => {});
     }
   }
 
-  function topicId(topic) {
+  function topicIdParts(topic) {
     const parts = topic.id.split('.');
     return { subj: parts[0], topic: parts.slice(1).join('.') };
   }
 
-  // ─── Video placeholder click ──────────────────────
-  // Re-verifies premium status at play-time so the Drive/YouTube URL is
-  // never written into the DOM until the user is confirmed as allowed.
-  function playVideo(topicId) {
-    // Find topic
+  // ─── Tier switcher (pill buttons in video area) ───
+  function switchTier(topicId, tier) {
+    let topic = null;
+    for (const subj of Object.values(getCurriculum())) {
+      topic = subj.topics.find(t => t.id === topicId);
+      if (topic) break;
+    }
+    if (!topic) return;
+    // Save chosen tier to STORAGE so skill_chamber remembers it
+    if (window.STORAGE) window.STORAGE.setChosenTier(topicId, tier);
+    renderLesson(topic, { tier, skipDiagnostic: true });
+  }
+
+  // ─── Play video (called on play-button click) ─────
+  // Re-confirms premium at play-time. The iframe src is ONLY injected here —
+  // never earlier — so the Drive URL never appears in the DOM for free users.
+  function playVideo(topicId, tier) {
     let topic = null;
     for (const subj of Object.values(getCurriculum())) {
       topic = subj.topics.find(t => t.id === topicId);
@@ -810,44 +410,29 @@ const CLASSROOM = (function () {
     }
     if (!topic) return;
 
-    // Gate check — re-verify at play time (not just at select time)
+    // Gate re-check at play-time
     if (!topicUnlockedForUser(topic)) {
-      AUTH_GUARD.bouncePremium(
-        'Upgrade to UE Premium to watch this lesson video.'
-      );
+      AUTH_GUARD.bouncePremium('Upgrade to UE Premium to watch this lesson video.');
       return;
     }
 
-    // Resolve the best available video URL
-    const getVideoUrl = (t) => {
-      if (t.videos) {
-        // Prefer standard → foundation → mastery (fallback already applied by gsheet)
-        const tier = t.videos.standard || t.videos.foundation || t.videos.mastery;
-        if (tier && tier.url) return tier.url;
-      }
-      if (t.youtubeId)
-        return `https://www.youtube.com/embed/${t.youtubeId}?rel=0&modestbranding=1&autoplay=1`;
-      if (t.driveId)
-        return `https://drive.google.com/file/d/${t.driveId}/preview`;
-      if (t.driveUrl && window.GDRIVE_VIDEO)
-        return window.GDRIVE_VIDEO.embedUrl(t.driveUrl);
-      return '';
-    };
-
-    const videoUrl = getVideoUrl(topic);
+    const resolved = resolveVideoUrl(topic, tier || 'standard');
     const videoArea = document.getElementById('video-area');
     if (!videoArea) return;
 
-    if (!videoUrl) {
-      // Genuinely no video uploaded yet
+    if (!resolved || !resolved.url) {
       toast('Video lesson coming soon! Practice with CBT questions in the meantime.');
       return;
     }
 
-    // Only NOW write the iframe into the DOM
-    const isYoutube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
+    const isYoutube = resolved.url.includes('youtube.com') || resolved.url.includes('youtu.be');
+    // Add autoplay only for YouTube (Drive ignores it without user gesture anyway)
+    const src = isYoutube && !resolved.url.includes('autoplay')
+      ? resolved.url + (resolved.url.includes('?') ? '&' : '?') + 'autoplay=1'
+      : resolved.url;
+
     videoArea.innerHTML = `<iframe
-      src="${videoUrl}"
+      src="${src}"
       style="width:100%;height:100%;border:none;border-radius:var(--radius-lg)"
       ${isYoutube ? '' : 'allow="autoplay"'}
       allowfullscreen></iframe>`;
@@ -856,9 +441,8 @@ const CLASSROOM = (function () {
   // ─── Locked state ─────────────────────────────────
   function showLockedState(topic) {
     currentTopicId = null;
-
-    setEl('topic-title', topic.title);
-    setEl('topic-tag', 'Premium');
+    setEl('topic-title',          topic.title);
+    setEl('topic-tag',            'Premium');
     setEl('lesson-duration-badge', topic.duration + ' mins');
 
     const videoArea = document.getElementById('video-area');
@@ -869,8 +453,8 @@ const CLASSROOM = (function () {
         <div class="video-locked">
           <div style="font-size:2.5rem;margin-bottom:14px">&#x1F512;</div>
           <h3 style="font-family:var(--font-head);font-size:1.8rem;margin-bottom:8px">Premium Content</h3>
-          <p style="color:rgba(15,28,63,.55);margin-bottom:22px">Upgrade your plan to unlock this lesson and all premium topics.</p>
-          <a href="pricing.html" class="btn btn-primary btn-lg">Unlock Premium \u2192</a>
+          <p style="color:rgba(15,28,63,.55);margin-bottom:22px">Upgrade your plan to unlock this lesson.</p>
+          <a href="pricing.html" class="btn btn-primary btn-lg">Unlock Premium &#x2192;</a>
         </div>`;
     }
 
@@ -889,12 +473,12 @@ const CLASSROOM = (function () {
     if (quizSection) quizSection.style.display = 'none';
   }
 
-  // ─── Next / Prev lesson navigation ───────────────
+  // ─── Next / Prev navigation ───────────────────────
   function nextLesson() {
-    const subj   = getCurriculum()[currentSubject];
+    const subj = getCurriculum()[currentSubject];
     if (!subj) return;
-    const idx    = subj.topics.findIndex(t => t.id === currentTopicId);
-    const next   = subj.topics.slice(idx + 1).find(t => topicUnlockedForUser(t));
+    const idx  = subj.topics.findIndex(t => t.id === currentTopicId);
+    const next = subj.topics.slice(idx + 1).find(t => topicUnlockedForUser(t));
     if (next) selectTopic(next.id);
     else toast('You\'ve completed all available lessons in this subject! &#x1F389;');
   }
@@ -906,26 +490,45 @@ const CLASSROOM = (function () {
     if (idx > 0) selectTopic(subj.topics[idx - 1].id);
   }
 
+  // ─── loadTopic — public alias (monkey-patched by skill_chamber) ──
+  // skill_chamber wraps this to run the diagnostic before calling
+  // selectTopic. The opts.tier it passes is forwarded to renderLesson.
+  function loadTopic(topicId, opts) {
+    opts = opts || {};
+    // If skill_chamber resolved a tier, pass it through to renderLesson
+    // by temporarily hooking selectTopic's call to renderLesson.
+    if (opts.tier) {
+      let topic = null;
+      for (const subj of Object.values(getCurriculum())) {
+        topic = subj.topics.find(t => t.id === topicId);
+        if (topic) break;
+      }
+      if (topic) {
+        // Run the normal select logic (gates, persistence, sidebar)
+        // then override the renderLesson call with the correct tier
+        selectTopic(topicId);
+        // renderLesson was already called by selectTopic — re-call with tier
+        renderLesson(topic, { tier: opts.tier, skipDiagnostic: true });
+        return;
+      }
+    }
+    selectTopic(topicId);
+  }
+
   // ─── Quiz ─────────────────────────────────────────
   function renderQuiz() {
     const section = document.getElementById('quiz-section');
     if (!section) return;
-
-    if (!quizState.questions.length) {
-      section.style.display = 'none';
-      return;
-    }
+    if (!quizState.questions.length) { section.style.display = 'none'; return; }
     section.style.display = 'block';
 
     const q = quizState.questions[quizState.idx];
-
     setEl('quiz-q-num',   String(quizState.idx + 1));
     setEl('quiz-q-total', String(quizState.questions.length));
 
     const questionEl = document.getElementById('quiz-question');
     if (questionEl) questionEl.innerHTML = q.q;
 
-    // Dots
     const dotsEl = document.getElementById('quiz-dots');
     if (dotsEl) {
       dotsEl.innerHTML = quizState.questions.map((_, i) => {
@@ -934,7 +537,6 @@ const CLASSROOM = (function () {
       }).join('');
     }
 
-    // Options
     const optsEl = document.getElementById('quiz-options');
     if (optsEl) {
       optsEl.innerHTML = '';
@@ -965,10 +567,10 @@ const CLASSROOM = (function () {
       fb.style.display = 'block';
       if (isCorrect) {
         fb.style.cssText = 'display:block;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.25);padding:12px 16px;border-radius:10px;font-weight:600;margin-top:12px';
-        fb.textContent = '&#x2713; Correct! Well done.';
+        fb.textContent = '✓ Correct! Well done.';
       } else {
         fb.style.cssText = 'display:block;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.25);padding:12px 16px;border-radius:10px;font-weight:600;margin-top:12px';
-        fb.textContent = `&#x2717; Not quite. Correct answer: ${q.opts[q.ans]}.`;
+        fb.textContent = `✗ Not quite. Correct answer: ${q.opts[q.ans]}.`;
         const allBtns = document.querySelectorAll('#quiz-options .drill-option');
         if (allBtns[q.ans]) allBtns[q.ans].style.borderColor = '#22c55e';
       }
@@ -979,23 +581,18 @@ const CLASSROOM = (function () {
         quizState.idx++;
         renderQuiz();
       } else {
-        // Quiz complete
         const pct = Math.round((quizState.correct / quizState.questions.length) * 100);
         if (fb) {
           fb.style.cssText = 'display:block;background:rgba(79,142,255,.1);color:#3b82f6;border:1px solid rgba(79,142,255,.25);padding:12px 16px;border-radius:10px;font-weight:600;margin-top:12px';
-          fb.innerHTML = `&#x1F389; Quiz complete! You scored <strong>${pct}%</strong>. <a href="${document.getElementById('practice-btn')?.href || 'cbt.html'}" style="color:var(--accent);text-decoration:underline">Take full practice \u2192</a>`;
+          fb.innerHTML = `🎉 Quiz complete! You scored <strong>${pct}%</strong>. <a href="${document.getElementById('practice-btn')?.href || 'cbt.html'}" style="color:var(--accent);text-decoration:underline">Take full practice →</a>`;
         }
-        if (document.getElementById('quiz-options')) document.getElementById('quiz-options').innerHTML = '';
+        const optsEl = document.getElementById('quiz-options');
+        if (optsEl) optsEl.innerHTML = '';
       }
     }, 1500);
   }
 
-  // ─── Helpers ──────────────────────────────────────
-  function setEl(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  }
-
+  // ─── Sidebar helpers ──────────────────────────────
   function closeSidebar() {
     document.querySelector('.classroom-sidebar')?.classList.remove('drawer-open');
     document.querySelector('.sidebar-overlay')?.classList.remove('open');
@@ -1008,17 +605,91 @@ const CLASSROOM = (function () {
     overlay?.classList.toggle('open', isOpen);
   }
 
-  // ─── loadTopic — public alias used by Skill Chamber monkey-patch ─
-  // skill_chamber.js wraps this function to intercept topic loading
-  // and run the adaptive diagnostic before rendering the lesson.
-  function loadTopic(topicId, opts) {
-    opts = opts || {};
-    selectTopic(topicId);
+  // ─── Utility ──────────────────────────────────────
+  function setEl(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
   }
+
+  // ─── Legacy curriculum (fallback when sheet unavailable) ─────────
+  const LEGACY_CURRICULUM = {
+    mathematics: {
+      label: 'Mathematics', icon: '&#x1F4D0;', color: '#3b82f6',
+      topics: [
+        {
+          id: 'mathematics.Number Bases', title: 'Number Bases', duration: '12:30', subject: 'mathematics',
+          content: {
+            intro: 'Number bases are systems for representing numbers using a fixed number of digits.',
+            points: [
+              'In base 10, the digits are 0–9. In base 2, only 0 and 1 are used.',
+              'To convert from base 10 to another base, repeatedly divide by the base and record remainders.',
+              'To convert to base 10, multiply each digit by the base raised to its position power.',
+              'Addition and subtraction can be performed directly in any base.'
+            ],
+            formulas: [
+              { label: 'Base 10 → Base n', formula: 'Divide by n, read remainders upward' },
+              { label: 'Base n → Base 10', formula: 'Σ (digit × nᵖᵒˢⁱᵗⁱᵒⁿ)' }
+            ]
+          },
+          quiz: [
+            { q: 'Convert 13 (base 10) to base 2', opts: ['1100', '1101', '1010', '1111'], ans: 1 },
+            { q: 'What is 1011₂ in base 10?',       opts: ['9', '10', '11', '12'],          ans: 2 },
+            { q: 'Convert 255 (base 10) to base 16', opts: ['EF', 'FF', 'FE', 'F0'],        ans: 1 }
+          ]
+        },
+        {
+          id: 'mathematics.Quadratics', title: 'Quadratic Equations', duration: '20:15', subject: 'mathematics',
+          content: {
+            intro: 'A quadratic equation is any equation of the form ax² + bx + c = 0.',
+            points: [
+              'Factoring works when the equation factors cleanly into (x−p)(x−q) = 0.',
+              'The quadratic formula x = (−b ± √(b²−4ac)) / 2a works for all quadratics.',
+              'The discriminant (b²−4ac) tells you the nature of roots.',
+              'Sum of roots = −b/a; Product of roots = c/a.'
+            ],
+            formulas: [
+              { label: 'Quadratic formula', formula: 'x = (−b ± √(b²−4ac)) / 2a' },
+              { label: 'Sum of roots',      formula: 'α + β = −b/a' },
+              { label: 'Product of roots',  formula: 'αβ = c/a' },
+              { label: 'Discriminant',      formula: 'Δ = b² − 4ac' }
+            ]
+          },
+          quiz: [
+            { q: 'Solve x² − 5x + 6 = 0', opts: ['x=2 or x=3', 'x=−2 or x=3', 'x=1 or x=6', 'x=−2 or x=−3'], ans: 0 },
+            { q: 'Sum of roots of 3x² − 9x + 4 = 0 is', opts: ['3', '9', '4/3', '−3'], ans: 0 },
+            { q: 'The discriminant of x² + 2x + 5 = 0 is', opts: ['−16', '16', '24', '−24'], ans: 0 }
+          ]
+        }
+      ]
+    },
+    english: {
+      label: 'English Language', icon: '&#x1F4D6;', color: '#10b981',
+      topics: [
+        {
+          id: 'english.Comprehension', title: 'Reading Comprehension', duration: '14:00', subject: 'english',
+          content: {
+            intro: 'Comprehension tests your ability to understand written passages.',
+            points: [
+              'Read the questions before reading the passage.',
+              'Identify the main idea in each paragraph.',
+              'For vocabulary questions, use context clues.',
+              'Inference questions: the answer is implied, not directly stated.'
+            ],
+            formulas: []
+          },
+          quiz: [
+            { q: '"Benevolent" means closest to', opts: ['Generous', 'Cruel', 'Strict', 'Ambitious'],   ans: 0 },
+            { q: '"Ephemeral" means',              opts: ['Short-lived', 'Eternal', 'Enormous', 'Ordinary'], ans: 0 },
+            { q: 'The antonym of "diligent" is',   opts: ['Lazy', 'Hardworking', 'Clever', 'Smart'],    ans: 0 }
+          ]
+        }
+      ]
+    }
+  };
 
   return {
     init, switchSubject, selectTopic, loadTopic, nextLesson, prevLesson,
-    playVideo, toggleSidebar, closeSidebar, getCurriculum
+    playVideo, switchTier, toggleSidebar, closeSidebar, getCurriculum
   };
 
 })();
