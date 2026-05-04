@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Status — UE School Operator</title>
+<script src="js/config.js"></script>
+<style>
+:root {
+  --bg: #f0f4ff;
+  --surface: #fff;
+  --surface2: #e8f0fe;
+  --border: rgba(79,142,255,.14);
+  --border2: rgba(79,142,255,.24);
+  --accent: #2563eb;
+  --muted: #6b7280;
+  --text: #0f1c3f;
+  --text2: #1e3a6e;
+  --green: #16a34a;
+  --green-bg: #dcfce7;
+  --green-border: #bbf7d0;
+  --red: #dc2626;
+  --red-bg: #fee2e2;
+  --red-border: #fecaca;
+  --amber: #d97706;
+  --amber-bg: #fef3c7;
+  --amber-border: #fde68a;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --font: 'Inter', system-ui, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; -webkit-font-smoothing: antialiased; }
+body { padding: 0 0 60px; }
+
+.topbar {
+  background: rgba(255,255,255,.95); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border2); padding: 0 28px;
+  height: 58px; display: flex; align-items: center;
+  justify-content: space-between; position: sticky; top: 0; z-index: 50;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.logo { font-size: .9rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text); text-decoration: none; }
+.page-tag { background: var(--surface2); border: 1px solid var(--border2); color: var(--text2); font-size: .72rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: .04em; }
+.btn-reload {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: linear-gradient(135deg,#3b82f6,#6366f1); color: #fff;
+  font-size: .8rem; font-weight: 600; border: none; border-radius: 9px;
+  padding: 8px 18px; cursor: pointer; transition: filter .2s, transform .2s;
+}
+.btn-reload:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-reload:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.last-loaded { font-size: .73rem; color: var(--muted); }
+
+.page { max-width: 1060px; margin: 0 auto; padding: 32px 24px 0; }
+
+.summary-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 28px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: 0 2px 12px rgba(37,99,235,.06); }
+.stat-card .label { font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.stat-card .value { font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1; }
+.stat-card .sub   { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+.stat-card.good .value { color: var(--green); }
+.stat-card.warn .value { color: var(--amber); }
+
+.controls { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-label { font-size: .78rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.filter-btn { font-size: .76rem; font-weight: 500; color: var(--text2); background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all .18s; }
+.filter-btn:hover  { background: var(--surface2); }
+.filter-btn.active { background: linear-gradient(135deg,rgba(37,99,235,.14),rgba(37,99,235,.07)); color: #1d4ed8; border-color: rgba(37,99,235,.3); font-weight: 600; }
+.search-input { margin-left: auto; padding: 7px 14px; border: 1px solid var(--border2); border-radius: 9px; font-size: .82rem; color: var(--text); background: var(--surface); outline: none; width: 220px; transition: border-color .2s; }
+.search-input:focus { border-color: var(--accent); }
+
+.sheet-bar { background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: var(--radius); padding: 12px 18px; margin-bottom: 20px; font-size: .8rem; color: #92400e; display: flex; align-items: center; gap: 10px; }
+.sheet-bar a { color: #92400e; font-weight: 600; word-break: break-all; }
+
+.table-wrap { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 4px 24px rgba(37,99,235,.07); }
+table { width: 100%; border-collapse: collapse; }
+thead th { background: var(--surface2); padding: 11px 16px; text-align: left; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); border-bottom: 1px solid var(--border2); white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface2); }
+tbody td { padding: 11px 16px; font-size: .82rem; color: var(--text2); vertical-align: middle; }
+td.num { color: var(--muted); font-size: .72rem; width: 36px; }
+td.topic-id { font-family: monospace; font-size: .74rem; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td.title { font-weight: 500; color: var(--text); }
+td.subject { text-transform: capitalize; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: .71rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; letter-spacing: .02em; }
+.badge.yes { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.badge.no  { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-border);   }
+
+.state-row td { text-align: center; padding: 48px 20px; color: var(--muted); }
+.spinner { display: inline-block; width: 22px; height: 22px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.no-url { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 48px 32px; text-align: center; }
+.no-url h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 10px; }
+.no-url p  { color: var(--muted); max-width: 420px; margin: 0 auto; line-height: 1.7; }
+.code-pill { background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; font-family: monospace; font-size: .82rem; padding: 12px 16px; margin-top: 16px; display: inline-block; color: var(--text2); }
+
+@media(max-width:700px) {
+  .summary-row { grid-template-columns: 1fr 1fr; }
+  .search-input { width: 100%; margin-left: 0; }
+  thead th:nth-child(1), tbody td:nth-child(1) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="dashboard.html" class="logo">UE School</a>
+    <span class="page-tag">&#x1F4F9; Video Status</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="last-loaded" id="last-loaded-label"></span>
+    <button class="btn-reload" id="reload-btn" onclick="loadSheet(true)">&#x21BA; Reload Sheet</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <div id="sheet-bar" class="sheet-bar" style="display:none">
+    &#x1F4C4; Reading from: <a id="sheet-link" href="#" target="_blank"></a>
+  </div>
+
+  <div class="summary-row">
+    <div class="stat-card"><div class="label">Total Topics</div><div class="value" id="s-total">—</div><div class="sub">in sheet</div></div>
+    <div class="stat-card good"><div class="label">Standard Video</div><div class="value" id="s-standard">—</div><div class="sub">topics covered</div></div>
+    <div class="stat-card warn"><div class="label">Foundation Video</div><div class="value" id="s-foundation">—</div><div class="sub">topics covered</div></div>
+    <div class="stat-card warn"><div class="label">Mastery Video</div><div class="value" id="s-mastery">—</div><div class="sub">topics covered</div></div>
+  </div>
+
+  <div class="controls" id="controls" style="display:none">
+    <span class="filter-label">Subject:</span>
+    <button class="filter-btn active" data-subject="all" onclick="setFilter('all',this)">All</button>
+    <span id="subject-filters"></span>
+    <input class="search-input" id="search-box" type="text" placeholder="Search topic title…" oninput="renderTable()">
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Topic ID</th><th>Title</th><th>Subject</th>
+          <th>Standard</th><th>Foundation</th><th>Mastery</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr class="state-row"><td colspan="7"><span class="spinner"></span>Loading sheet…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="no-url-msg" style="display:none" class="no-url">
+    <h2>Sheet URL not configured</h2>
+    <p>Open <strong>js/config.js</strong> and paste your published CSV URL into:</p>
+    <div class="code-pill">CURRICULUM_SHEET_CSV_URL: 'https://docs.google.com/…/pub?output=csv'</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const cfg       = window.UE_CONFIG || {};
+  const SHEET_URL = cfg.CURRICULUM_SHEET_CSV_URL || '';
+
+  let _allTopics  = [];
+  let _activeSubj = 'all';
+
+  function parseCSV(text) {
+    const rows = []; let row = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], n = text[i+1];
+      if (inQ) {
+        if (c==='"'&&n==='"'){cell+='"';i++;}
+        else if(c==='"'){inQ=false;}
+        else{cell+=c;}
+      } else {
+        if(c==='"'){inQ=true;}
+        else if(c===','){row.push(cell.trim());cell='';}
+        else if(c==='\r'){}
+        else if(c==='\n'){row.push(cell.trim());rows.push(row);row=[];cell='';}
+        else{cell+=c;}
+      }
+    }
+    if(cell.length||row.length){row.push(cell.trim());rows.push(row);}
+    return rows.filter(r=>r.some(v=>v.trim()));
+  }
+
+  function hasVideo(val){ return !!(val && val.trim() && val.trim().length > 4); }
+
+  function videoType(val){
+    if(!val||!val.trim()) return null;
+    const s = val.trim();
+    if(s.includes('youtu')) return 'YT';
+    return 'Drive';
+  }
+
+  function badge(val){
+    if(hasVideo(val)){
+      const t = videoType(val);
+      return `<span class="badge yes">&#x25B6; ${t}</span>`;
+    }
+    return `<span class="badge no">&#x2715; Missing</span>`;
+  }
+
+  function el(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+  function cap(s){ return s?s.charAt(0).toUpperCase()+s.slice(1):s; }
+  function esc(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+
+  window.loadSheet = async function(force){
+    if(!SHEET_URL){
+      document.getElementById('table-body').innerHTML =
+        '<tr class="state-row"><td colspan="7">No sheet URL configured — see below.</td></tr>';
+      document.getElementById('no-url-msg').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('no-url-msg').style.display = 'none';
+    const bar  = document.getElementById('sheet-bar');
+    const link = document.getElementById('sheet-link');
+    bar.style.display   = 'flex';
+    link.textContent    = SHEET_URL;
+    link.href           = SHEET_URL;
+
+    const btn = document.getElementById('reload-btn');
+    btn.disabled = true; btn.textContent = '⟳ Loading…';
+    document.getElementById('table-body').innerHTML =
+      '<tr class="state-row"><td colspan="7"><span class="spinner"></span>Fetching sheet…</td></tr>';
+
+    try {
+      const res  = await fetch(SHEET_URL, { cache: force?'no-store':'default' });
+      const text = await res.text();
+      const rows = parseCSV(text);
+      if(rows.length < 2) throw new Error('Sheet appears empty or has not been published to web yet.');
+
+      const headers = rows[0].map(h=>h.toLowerCase().replace(/\s+/g,'_'));
+      _allTopics = [];
+
+      for(let i=1;i<rows.length;i++){
+        const h={};
+        headers.forEach((k,idx)=>{ h[k]=rows[i][idx]||''; });
+        const id=(h.topic_id||'').trim();
+        if(!id) continue;
+        if((h.active||'TRUE').toUpperCase()==='FALSE') continue;
+        _allTopics.push({
+          id,
+          title:      (h.title||id).trim(),
+          subject:    (h.subject||'').trim().toLowerCase(),
+          standard:   h.video_standard||'',
+          foundation: h.video_foundation||'',
+          mastery:    h.video_mastery||'',
+        });
+      }
+
+      buildSubjectFilters();
+      updateSummary();
+      renderTable();
+
+      const now = new Date();
+      document.getElementById('last-loaded-label').textContent =
+        'Last loaded: ' + now.toLocaleTimeString();
+
+    } catch(err){
+      document.getElementById('table-body').innerHTML =
+        `<tr class="state-row"><td colspan="7">
+          &#x26A0;&#xFE0F; Could not load sheet.<br>
+          <small style="color:var(--red)">${err.message}</small>
+        </td></tr>`;
+    }
+
+    btn.disabled=false; btn.textContent='↺ Reload Sheet';
+  };
+
+  function buildSubjectFilters(){
+    const subjects=[...new Set(_allTopics.map(t=>t.subject))].filter(Boolean).sort();
+    document.getElementById('subject-filters').innerHTML = subjects.map(s=>
+      `<button class="filter-btn" data-subject="${s}" onclick="setFilter('${s}',this)">${cap(s)}</button>`
+    ).join('');
+    document.getElementById('controls').style.display='flex';
+  }
+
+  window.setFilter = function(subject, btn){
+    _activeSubj = subject;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  };
+
+  function updateSummary(){
+    const t = _allTopics;
+    el('s-total',      t.length);
+    el('s-standard',   t.filter(r=>hasVideo(r.standard)).length   + ' / ' + t.length);
+    el('s-foundation', t.filter(r=>hasVideo(r.foundation)).length + ' / ' + t.length);
+    el('s-mastery',    t.filter(r=>hasVideo(r.mastery)).length    + ' / ' + t.length);
+  }
+
+  window.renderTable = function(){
+    const q = (document.getElementById('search-box').value||'').toLowerCase();
+    const rows = _allTopics.filter(t=>{
+      const subjOk  = _activeSubj==='all' || t.subject===_activeSubj;
+      const queryOk = !q || t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
+      return subjOk && queryOk;
+    });
+
+    if(!rows.length){
+      document.getElementById('table-body').innerHTML =
+        '<tr class="state-row"><td colspan="7">No topics match your filter.</td></tr>';
+      return;
+    }
+
+    document.getElementById('table-body').innerHTML = rows.map((t,i)=>`
+      <tr>
+        <td class="num">${i+1}</td>
+        <td class="topic-id" title="${t.id}">${t.id}</td>
+        <td class="title">${esc(t.title)}</td>
+        <td class="subject">${cap(t.subject)}</td>
+        <td>${badge(t.standard)}</td>
+        <td>${badge(t.foundation)}</td>
+        <td>${badge(t.mastery)}</td>
+      </tr>`).join('');
+  };
+
+  loadSheet(false);
+})();
+</script>
+</body>
+</html>
