@@ -490,7 +490,9 @@ const CLASSROOM = (function () {
   // distinct topics in their lifetime on this device. The remembered
   // topic IDs live in localStorage so they survive reloads, and the
   // count is shared with auth-guard.js (`video` feature).
-  const FREE_VIDEOS_KEY = 'ue_free_videos_watched';
+  const FREE_VIDEOS_KEY    = 'ue_free_videos_watched';
+  const LAST_SUBJECT_KEY   = 'ue_last_subject';
+  const LAST_TOPIC_KEY     = 'ue_last_topic';
 
   function getWatchedVideoIds() {
     try { return JSON.parse(localStorage.getItem(FREE_VIDEOS_KEY) || '[]'); }
@@ -557,10 +559,24 @@ const CLASSROOM = (function () {
     const urlSubj  = params.get('subject');
     const urlTopic = params.get('topic');
 
-    const startSubject = (urlSubj && getCurriculum()[urlSubj]) ? urlSubj : (userSubjects[0] || 'mathematics');
+    // Restore last visited subject from localStorage (survives refresh).
+    // Priority: URL param → localStorage → first subject in user's list → 'mathematics'
+    const savedSubject = localStorage.getItem(LAST_SUBJECT_KEY);
+    const savedTopic   = localStorage.getItem(LAST_TOPIC_KEY);
+
+    let startSubject = 'mathematics';
+    if (urlSubj && getCurriculum()[urlSubj]) {
+      startSubject = urlSubj;                                         // URL param wins
+    } else if (savedSubject && getCurriculum()[savedSubject] &&
+               userSubjects.includes(savedSubject)) {
+      startSubject = savedSubject;                                    // last visited subject
+    } else {
+      startSubject = userSubjects[0] || 'mathematics';               // default fallback
+    }
+
     currentSubject = startSubject;
 
-    renderSidebar(startSubject, urlTopic);
+    renderSidebar(startSubject, urlTopic || (!urlSubj && savedTopic) || null);
 
     // Activate the right subject tab
     document.querySelectorAll('.subject-tab').forEach(tab => {
@@ -587,6 +603,12 @@ const CLASSROOM = (function () {
   function switchSubject(subjKey, tabEl) {
     if (!getCurriculum()[subjKey]) return;
     currentSubject = subjKey;
+
+    // Persist so refresh restores this subject
+    try { localStorage.setItem(LAST_SUBJECT_KEY, subjKey); } catch (_) {}
+    // Clear saved topic when switching subject so we don't restore a topic
+    // from the wrong subject on the next reload
+    try { localStorage.removeItem(LAST_TOPIC_KEY); } catch (_) {}
 
     document.querySelectorAll('.subject-tab').forEach(t => t.classList.remove('active'));
     if (tabEl) tabEl.classList.add('active');
@@ -669,6 +691,10 @@ const CLASSROOM = (function () {
     }
 
     currentTopicId = topicId;
+
+    // Persist last visited subject + topic so refresh restores exactly here
+    try { localStorage.setItem(LAST_SUBJECT_KEY, topic.subject || currentSubject); } catch (_) {}
+    try { localStorage.setItem(LAST_TOPIC_KEY,   topicId); } catch (_) {}
 
     // Update sidebar active state
     document.querySelectorAll('.topic-item').forEach(el => {
