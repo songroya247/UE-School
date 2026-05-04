@@ -82,35 +82,31 @@
     // falls back to the Supabase RPC + local bank as before.
     GOOGLE_SHEET_QUESTIONS_CSV_URL: '',
 
+    // ── Google Sheets — video curriculum (3-tier player) ──────────
+    // 1. Create a Google Sheet with these headers (row 1, lowercase):
+    //      topic_id | title | subject | video_standard
+    //    Optional: video_foundation | video_mastery | duration | blurb | active
+    // 2. Paste a Google Drive share URL OR YouTube URL into any video_* column.
+    // 3. File → Share → Publish to web → Sheet1 → CSV → copy the URL.
+    // 4. Paste that URL below.  This is the ONLY code change ever needed.
+    //    After this, adding/changing videos = editing a cell in the Sheet.
+    CURRICULUM_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/1sVVEWsi674b5k2Z6uLiS1OoAW_169ThVXIP9BtSMELw/pub?gid=0&single=true&output=csv',
+
     // Cache the parsed sheet in memory for this many minutes
     GS_QUESTIONS_CACHE_MIN: 30,
 
     // ── Google Sheets — curriculum / syllabus ─────────────────────
-    // Each subject lives on its own named sheet tab inside the same
-    // Google Spreadsheet (or different ones — any mix works).
+    // 1. Open your Google Sheet (UE_School_WAEC_Curriculum).
+    // 2. File → Share → "Anyone with the link" → Viewer.
+    // 3. File → Publish to web → Sheet1 → CSV → copy the URL.
+    // 4. Paste it below and save this file.
     //
-    // HOW TO ADD A NEW SUBJECT SHEET:
-    // 1. In Google Sheets, click the "+" at the bottom to add a tab.
-    // 2. Rename the tab (e.g. "English", "Biology").
-    // 3. File → Publish to web → select that tab → CSV → Publish.
-    // 4. Copy the URL and add it to the array below.
-    //
-    // The gid= number in the URL identifies which tab is published.
-    // All sheets must use the same column headers as the Mathematics sheet.
-    //
-    // Leave a slot as '' to disable it without deleting the entry.
-    GOOGLE_SHEET_CURRICULUM_CSV_URLS: [
-      // Mathematics
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
-      // English
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=1130134472&single=true&output=csv',
-      // Biology      ← paste published CSV URL here when ready
-      '',
-      // Literature   ← paste published CSV URL here when ready
-      '',
-    ],
+    // The sheet ID is: 1Ok27xPUjyYouH-bMoaHYFaR0CIipGrRt8A5Iqrv8To8
+    // Your published CSV URL will look like:
+    //   https://docs.google.com/spreadsheets/d/1Ok27xPUjyYouH-bMoaHYFaR0CIipGrRt8A5Iqrv8To8/pub?gid=0&single=true&output=csv
+    GOOGLE_SHEET_CURRICULUM_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
 
-    // How long to cache the curriculum sheets (minutes).
+    // How long to cache the curriculum sheet (minutes).
     GS_CURRICULUM_CACHE_MIN: 30,
 
     // ── WhatsApp support ──────────────────────────────────────────
