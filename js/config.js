@@ -1,17 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════════
-UE School — js/config.js  (v3.1 — Fixed Google Sheets URLs)
-Single source of truth for all environment-level constants.
+UE School — js/config.js  (v3.1 — FIXED URLs)
 ═══════════════════════════════════════════════════════════════════ */
 (function () {
 'use strict';
 if (window.UE_CONFIG) return;
 
 const _config = {
-  // ── Supabase ──────────────────────────────────────────────────
   SUPABASE_URL:  'https://nmkuujtupgcgxzxbenti.supabase.co',
   SUPABASE_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ta3V1anR1cGdjZ3h6eGJlbnRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njg2NDYsImV4cCI6MjA5MjQ0NDY0Nn0.89PvF3HdNL5FPwsyQoZQrmeQxwgpmDCFBjqVA_lBY_w',
-
-  // ── App ───────────────────────────────────────────────────────
+  
   APP_NAME:      'UE School',
   LOGIN_PAGE:    'login.html',
   PRICING_PAGE:  'pricing.html',
@@ -25,45 +22,32 @@ const _config = {
   PREMIUM_PAGES:    [],
   ADMIN_ONLY_PAGES: ['admin-dashboard.html', 'admin-actions.html'],
 
-  // ── Free-tier sample limits ───────────────────────────────────
   FREE_SAMPLE: {
     VIDEOS_PER_ACCOUNT: 1,
     CBT_PER_ACCOUNT:    1,
     GUIDES_PER_ACCOUNT: 1,
   },
 
-  // ── Admin pass-through ────────────────────────────────────────
-  ADMIN_EMAILS: [
-    // 'founder@ueschool.com',
-  ],
+  ADMIN_EMAILS: [],
 
-  // ── Google Drive — videos ─────────────────────────────────────
   GOOGLE_DRIVE_VIDEO_FOLDER_ID: '',
-
-  // ── Google Sheets — questions bank ────────────────────────────
   GOOGLE_SHEET_QUESTIONS_CSV_URL: '',
 
-  // ── Google Sheets — curriculum (3-tier player) ────────────────
-  // ✅ FIXED: No spaces, correct CSV output format
-  CURRICULUM_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27X04Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
+  // ✅ FIXED: No spaces in URLs
+  CURRICULUM_SHEET_CSV_URL: 'https://docs.google.com/spreadsheets/d/1sVVEWsi674b5k2Z6uLiS1OoAW_169ThVXIP9BtSMELw/pub?gid=0&single=true&output=csv',
+  
+  GOOGLE_SHEET_CURRICULUM_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27X04Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
 
-  // ── Google Sheets — English curriculum ────────────────────────  // ✅ NEW: English sheet (gid=1130134472)
-  CURRICULUM_SHEET_ENGLISH_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27X04Yhk-sbR7WQMzjZeF/pub?gid=1130134472&single=true&output=csv',
-
-  // Cache duration (minutes)
+  GS_QUESTIONS_CACHE_MIN: 30,
   GS_CURRICULUM_CACHE_MIN: 30,
 
-  // ── WhatsApp support ──────────────────────────────────────────
   WHATSAPP_SUPPORT_NUMBER: '2347037426480',
   WHATSAPP_DEFAULT_MESSAGE: 'Hi UE School support — I need help with my account.',
 
-  // ── 1-on-1 tutor booking ──────────────────────────────────────
   TUTOR_BOOKING_URL: 'https://staffroom.ultimateedge.info',
   TUTOR_LEAD_TIME_DAYS: 2,
 
-  // ── PDF Study Guides ──────────────────────────────────────────
-  STUDY_GUIDES_BUCKET: 'study-guides',
-  STUDY_GUIDES: {
+  STUDY_GUIDES_BUCKET: 'study-guides',  STUDY_GUIDES: {
     mathematics: [
       { title: 'JAMB Mathematics — Master Guide', path: 'mathematics/jamb-master-guide.pdf', size: '4.2 MB' },
       { title: 'WAEC/NECO Mathematics — Quick Revision', path: 'mathematics/waec-revision.pdf', size: '2.8 MB' },
@@ -80,40 +64,38 @@ const _config = {
     literature: [{ title:'Literature — Set Texts Notes',   path:'literature/set-texts.pdf',size:'3.4 MB' }],
   },
 
-  // ── Post-UTME universities ────────────────────────────────────
   POST_UTME_UNIVERSITIES: [
-    'University of Lagos (UNILAG)', 'University of Ibadan (UI)',
-    'Obafemi Awolowo University (OAU)', 'University of Nigeria, Nsukka (UNN)',
-    'Ahmadu Bello University (ABU)', 'University of Benin (UNIBEN)',
-    'University of Ilorin (UNILORIN)', 'Lagos State University (LASU)',
-    'Covenant University', 'Babcock University',
+    'University of Lagos (UNILAG)',
+    'University of Ibadan (UI)',
+    'Obafemi Awolowo University (OAU)',
+    'University of Nigeria, Nsukka (UNN)',
+    'Ahmadu Bello University (ABU)',
+    'University of Benin (UNIBEN)',
+    'University of Ilorin (UNILORIN)',
+    'Lagos State University (LASU)',
+    'Covenant University',
+    'Babcock University',
   ],
 
-  // ── Exam reminders ────────────────────────────────────────────
   EXAM_REMINDER_DAYS: [60, 30, 14, 7, 3, 1],
 
-  // ── News feed ─────────────────────────────────────────────────
   NEWS_FEED_URL: '',
   NEWS_ITEMS: [
     {
-      id: 'ue-2026-01', date: '2026-04-20', tag: 'UE School',      title: 'New 1-on-1 Tutor Staffroom is live',
-      body: 'You can now book a verified UE School tutor directly from the dashboard.',
-      link: 'https://staffroom.ultimateedge.info', source: 'UE School',
-    },
-    {
-      id: 'jamb-2026-01', date: '2026-04-15', tag: 'JAMB',
-      title: 'JAMB releases 2026 UTME timetable',
-      body: 'JAMB has confirmed the official UTME timetable.',
-      link: 'https://www.jamb.gov.ng/', source: 'JAMB',
+      id:    'ue-2026-01',
+      date:  '2026-04-20',
+      tag:   'UE School',
+      title: 'New 1-on-1 Tutor Staffroom is live',
+      body:  'You can now book a verified UE School tutor directly from the dashboard.',
+      link:  'https://staffroom.ultimateedge.info',
+      source:'UE School',
     },
   ],
 };
 
-// Freeze config to prevent runtime modification
 Object.defineProperty(window, 'UE_CONFIG', {
-  value: Object.freeze(_config),
-  writable: false,
-  configurable: false,
-  enumerable: true,
+  value:        Object.freeze(_config),
+  writable:     false,
+  configurable: false,  enumerable:   true,
 });
 })();
