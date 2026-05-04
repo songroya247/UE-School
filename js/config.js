@@ -86,17 +86,31 @@
     GS_QUESTIONS_CACHE_MIN: 30,
 
     // ── Google Sheets — curriculum / syllabus ─────────────────────
-    // 1. Open your Google Sheet (UE_School_WAEC_Curriculum).
-    // 2. File → Share → "Anyone with the link" → Viewer.
-    // 3. File → Publish to web → Sheet1 → CSV → copy the URL.
-    // 4. Paste it below and save this file.
+    // Each subject lives on its own named sheet tab inside the same
+    // Google Spreadsheet (or different ones — any mix works).
     //
-    // The sheet ID is: 1Ok27xPUjyYouH-bMoaHYFaR0CIipGrRt8A5Iqrv8To8
-    // Your published CSV URL will look like:
-    //   https://docs.google.com/spreadsheets/d/1Ok27xPUjyYouH-bMoaHYFaR0CIipGrRt8A5Iqrv8To8/pub?gid=0&single=true&output=csv
-    GOOGLE_SHEET_CURRICULUM_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
+    // HOW TO ADD A NEW SUBJECT SHEET:
+    // 1. In Google Sheets, click the "+" at the bottom to add a tab.
+    // 2. Rename the tab (e.g. "English", "Biology").
+    // 3. File → Publish to web → select that tab → CSV → Publish.
+    // 4. Copy the URL and add it to the array below.
+    //
+    // The gid= number in the URL identifies which tab is published.
+    // All sheets must use the same column headers as the Mathematics sheet.
+    //
+    // Leave a slot as '' to disable it without deleting the entry.
+    GOOGLE_SHEET_CURRICULUM_CSV_URLS: [
+      // Mathematics
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=0&single=true&output=csv',
+      // English
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSNMrbaNyNzjOTPTx5NMh_pROLKJqWX-ya9qB7H8tJcAkwzH-OVnixp-9X27XO4Yhk-sbR7WQMzjZeF/pub?gid=1130134472&single=true&output=csv',
+      // Biology      ← paste published CSV URL here when ready
+      '',
+      // Literature   ← paste published CSV URL here when ready
+      '',
+    ],
 
-    // How long to cache the curriculum sheet (minutes).
+    // How long to cache the curriculum sheets (minutes).
     GS_CURRICULUM_CACHE_MIN: 30,
 
     // ── WhatsApp support ──────────────────────────────────────────
