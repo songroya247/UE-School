@@ -642,7 +642,7 @@ const CLASSROOM = (function () {
     setEl('topic-title',  topic.title);
     setEl('lesson-duration-badge', topic.duration + ' mins');
 
-    // ── Video Player — reads from GDRIVE_CURRICULUM ─────────────────────────
+    // ── Video Player — reads from GDRIVE_CURRICULUM ──────────────
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
 
@@ -661,10 +661,10 @@ const CLASSROOM = (function () {
         } catch (_) { /* offline / table not yet created — silently default */ }
       }
 
-      // 2. Resolve the best available video for this student
-      //    Look up the enriched topic from TOPIC_BLUEPRINT (has .videos from sheet),
-      //    falling back to the local static topic if not in sheet.
-      const sheetTopic = window.TOPIC_BLUEPRINT && window.TOPIC_BLUEPRINT[topic.id];
+      // 2. Resolve the best available video for this student.
+      //    Look up the enriched topic from TOPIC_BLUEPRINT (has .videos
+      //    populated from the Sheet), falling back to the local static topic.
+      const sheetTopic    = window.TOPIC_BLUEPRINT && window.TOPIC_BLUEPRINT[topic.id];
       const topicForVideo = sheetTopic || topic;
 
       const tier     = window.GDRIVE_CURRICULUM
@@ -686,7 +686,7 @@ const CLASSROOM = (function () {
           : '';
 
         videoArea.style.position = 'relative';
-        videoArea.style.cursor    = 'default';
+        videoArea.style.cursor   = 'default';
         videoArea.innerHTML = `
           ${fallbackNote}
           <iframe
