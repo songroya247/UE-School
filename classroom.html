@@ -282,11 +282,14 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 <script src="js/curriculum.js"></script>
 <script src="js/intervention_modal.js"></script>
 
+<!-- Google Drive video helper (must load BEFORE gsheet-curriculum.js so
+     normaliseVideoUrl() can call GDRIVE_VIDEO.embedUrl() on all URL formats) -->
+<script src="js/gdrive-video.js"></script>
+
 <!-- Google Sheets curriculum loader (must load BEFORE classroom.js) -->
 <script src="js/gsheet-curriculum.js"></script>
 
 <!-- Main classroom engine (must come after skill chamber deps) -->
-<script src="js/gdrive-video.js"></script>
 <script src="js/classroom.js"></script>
 
 <!-- Skill Chamber router &mdash; monkey-patches CLASSROOM.loadTopic -->
