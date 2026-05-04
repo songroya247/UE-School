@@ -162,15 +162,13 @@ window.GSHEET_CURRICULUM = (function () {
       mastery:    normaliseVideoUrl(g(row, idx, 'video_mastery')),
     };
 
-    // Find the best available fallback URL
-    const bestUrl = raw.standard || raw.foundation || raw.mastery || '';
-    if (!bestUrl) return null; // no videos at all — skip this topic
-
-    // Fill blanks with fallback so the player never breaks
+    // Fill blanks with fallback so the player never breaks.
+    // If NO video at all, values stay '' — topic still shows in sidebar,
+    // player will display a "coming soon" state instead of crashing.
     const filled = {
-      foundation: raw.foundation || raw.standard || raw.mastery,
-      standard:   raw.standard   || raw.foundation || raw.mastery,
-      mastery:    raw.mastery    || raw.standard || raw.foundation,
+      foundation: raw.foundation || raw.standard || raw.mastery || '',
+      standard:   raw.standard   || raw.foundation || raw.mastery || '',
+      mastery:    raw.mastery    || raw.standard || raw.foundation || '',
     };
 
     // Build the full video tier objects
@@ -213,7 +211,7 @@ window.GSHEET_CURRICULUM = (function () {
     if (!topicId || !subject || !title) return null;
 
     const videos = buildVideos(row, idx);
-    if (!videos) return null; // rows with no video are silently skipped
+    // videos may have empty URLs — that is fine, topic still shows in sidebar
 
     const rawObj = g(row, idx, 'objectives');
     const rawFor = g(row, idx, 'formulas');
