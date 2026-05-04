@@ -524,8 +524,11 @@ const CLASSROOM = (function () {
   let userId         = null;
 
   // ─── Init ─────────────────────────────────────────
-  async function init() {
-    const result = await AUTH_GUARD.init();
+  // Accepts optional pre-resolved authData from classroom.html to avoid
+  // a redundant second call to AUTH_GUARD.init() (which costs a Supabase
+  // round-trip and can cause a race condition on slow connections).
+  async function init(authData) {
+    const result = authData || await AUTH_GUARD.init();
     if (!result) return;
 
     const { profile, session } = result;
@@ -685,42 +688,18 @@ const CLASSROOM = (function () {
     setEl('topic-title',  topic.title);
     setEl('lesson-duration-badge', topic.duration + ' mins');
 
-    // Video area — supports YouTube, Google Drive ID, Drive URL, or Sheet video tiers
+    // Video area — show a play-button placeholder first.
+    // The actual iframe src is NEVER injected until the user clicks play
+    // and premium status is re-confirmed. This prevents the Drive/YouTube
+    // URL from appearing in the DOM for free users inspecting DevTools.
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
-      // ── Video rendering — supports YouTube, Drive ID, Drive URL, or Sheet videos ──
-      // Sheet topics supply a `videos` object with tiers: foundation / standard / mastery.
-      // Fallback logic is already applied by gsheet-curriculum.js — standard tier is always safe.
-      const getVideoUrl = (t) => {
-        if (t.videos && t.videos.standard) return t.videos.standard.url || '';
-        if (t.driveId) return `https://drive.google.com/file/d/${t.driveId}/preview`;
-        if (t.driveUrl && window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(t.driveUrl);
-        return '';
-      };
-
-      if (topic.youtubeId) {
-        // YouTube embed
-        videoArea.innerHTML = `<iframe
-          src="https://www.youtube.com/embed/${topic.youtubeId}?rel=0&modestbranding=1"
-          style="width:100%;height:100%;border:none;border-radius:var(--radius-lg)"
-          allowfullscreen></iframe>`;
-      } else {
-        const videoUrl = getVideoUrl(topic);
-        if (videoUrl) {
-          videoArea.innerHTML = `<iframe
-            src="${videoUrl}"
-            style="width:100%;height:100%;border:none;border-radius:var(--radius-lg)"
-            allow="autoplay"
-            allowfullscreen></iframe>`;
-        } else {
-          // No video yet — show animated placeholder
-          videoArea.innerHTML = `
-            <div class="video-bg"></div>
-            <div class="video-grid"></div>
-            <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
-            <div class="video-duration">${topic.duration}</div>`;
-        }
-      }
+      const durationLabel = topic.duration || '';
+      videoArea.innerHTML = `
+        <div class="video-bg"></div>
+        <div class="video-grid"></div>
+        <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
+        <div class="video-duration" id="video-duration-badge">${durationLabel}</div>`;
     }
 
     // Lesson content — handles both sheet format and legacy format
@@ -794,8 +773,58 @@ const CLASSROOM = (function () {
   }
 
   // ─── Video placeholder click ──────────────────────
+  // Re-verifies premium status at play-time so the Drive/YouTube URL is
+  // never written into the DOM until the user is confirmed as allowed.
   function playVideo(topicId) {
-    toast('Video lesson coming soon! Practice with CBT questions in the meantime.');
+    // Find topic
+    let topic = null;
+    for (const subj of Object.values(getCurriculum())) {
+      topic = subj.topics.find(t => t.id === topicId);
+      if (topic) break;
+    }
+    if (!topic) return;
+
+    // Gate check — re-verify at play time (not just at select time)
+    if (!topicUnlockedForUser(topic)) {
+      AUTH_GUARD.bouncePremium(
+        'Upgrade to UE Premium to watch this lesson video.'
+      );
+      return;
+    }
+
+    // Resolve the best available video URL
+    const getVideoUrl = (t) => {
+      if (t.videos) {
+        // Prefer standard → foundation → mastery (fallback already applied by gsheet)
+        const tier = t.videos.standard || t.videos.foundation || t.videos.mastery;
+        if (tier && tier.url) return tier.url;
+      }
+      if (t.youtubeId)
+        return `https://www.youtube.com/embed/${t.youtubeId}?rel=0&modestbranding=1&autoplay=1`;
+      if (t.driveId)
+        return `https://drive.google.com/file/d/${t.driveId}/preview`;
+      if (t.driveUrl && window.GDRIVE_VIDEO)
+        return window.GDRIVE_VIDEO.embedUrl(t.driveUrl);
+      return '';
+    };
+
+    const videoUrl = getVideoUrl(topic);
+    const videoArea = document.getElementById('video-area');
+    if (!videoArea) return;
+
+    if (!videoUrl) {
+      // Genuinely no video uploaded yet
+      toast('Video lesson coming soon! Practice with CBT questions in the meantime.');
+      return;
+    }
+
+    // Only NOW write the iframe into the DOM
+    const isYoutube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
+    videoArea.innerHTML = `<iframe
+      src="${videoUrl}"
+      style="width:100%;height:100%;border:none;border-radius:var(--radius-lg)"
+      ${isYoutube ? '' : 'allow="autoplay"'}
+      allowfullscreen></iframe>`;
   }
 
   // ─── Locked state ─────────────────────────────────
