@@ -233,12 +233,10 @@ window.GSHEET_CURRICULUM = (function () {
   // ── Fetch & parse one sheet URL ───────────────────────────────────
   async function fetchOneSheet(url) {
     try {
-      // NOTE: Do NOT pass { cache: 'no-store' } here. Google's published CSV
-      // endpoint does not return permissive Cache-Control / Vary headers, and
-      // some browsers (Chrome) reject the preflight on GitHub Pages when that
-      // option is set — causing a silent CORS failure that returns {} with no
-      // visible error. The 30-minute in-memory cache (CACHE_MS) is sufficient
-      // to keep data fresh without hammering the sheet on every page load.
+      // NOTE: Do NOT use { cache: 'no-store' } here — Google's published CSV endpoint
+      // does not return permissive Cache-Control/Vary headers, and Chrome rejects the
+      // preflight on GitHub Pages with that option set, causing a silent CORS failure.
+      // The 30-minute in-memory cache (CACHE_MS) keeps data fresh without this flag.
       const res = await fetch(url);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
