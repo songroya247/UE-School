@@ -309,8 +309,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const authData = await AUTH_GUARD.init();
   if (!authData) return; // redirect in progress (no session or not premium)
 
-  await GSHEET_CURRICULUM.init();   // load WAEC curriculum from Google Sheet
-  await CLASSROOM.init();
+  await GSHEET_CURRICULUM.init();        // load WAEC curriculum from Google Sheet
+  await CLASSROOM.init(authData);        // pass authData — avoids a second Supabase round-trip
 });
 </script>
 </body>
