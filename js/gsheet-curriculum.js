@@ -62,8 +62,15 @@
 window.GSHEET_CURRICULUM = (function () {
   'use strict';
 
-  const cfg      = window.UE_CONFIG || {};
-  const SHEET_URL = cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL || '';
+  const cfg       = window.UE_CONFIG || {};
+
+  // Support both the new array (GOOGLE_SHEET_CURRICULUM_CSV_URLS) and
+  // the legacy single-URL key so old deployments keep working.
+  const SHEET_URLS = (
+    cfg.GOOGLE_SHEET_CURRICULUM_CSV_URLS ||
+    (cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL ? [cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL] : [])
+  ).filter(Boolean); // remove empty/blank entries
+
   const CACHE_MS  = (cfg.GS_CURRICULUM_CACHE_MIN || 30) * 60 * 1000;
 
   let _cache    = null; // { blueprint: {}, at: number }
@@ -225,32 +232,44 @@ window.GSHEET_CURRICULUM = (function () {
     };
   }
 
-  // ── Fetch & parse the sheet ────────────────────────────────────────
+  // ── Fetch & parse one sheet URL ───────────────────────────────────
+  async function fetchOneSheet(url) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      const rows = parseCSV(text);
+      if (rows.length < 2) return {};
+
+      const idx = buildIndex(rows[0]);
+      const blueprint = {};
+      for (let i = 1; i < rows.length; i++) {
+        const topic = rowToBlueprint(rows[i], idx);
+        if (topic) blueprint[topic.id] = topic;
+      }
+      console.info(`[GSHEET_CURRICULUM] Loaded ${Object.keys(blueprint).length} topics from ${url.split('gid=')[1] || url}`);
+      return blueprint;
+    } catch (e) {
+      console.warn('[GSHEET_CURRICULUM] fetch failed for', url, ':', e.message);
+      return {};
+    }
+  }
+
+  // ── Fetch & merge all sheet URLs ──────────────────────────────────
   async function fetchBlueprint(force = false) {
-    if (!SHEET_URL) return {};
+    if (!SHEET_URLS.length) return {};
     const now = Date.now();
     if (!force && _cache && (now - _cache.at) < CACHE_MS) return _cache.blueprint;
     if (_inflight) return _inflight;
 
     _inflight = (async () => {
       try {
-        const res = await fetch(SHEET_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
-        const rows = parseCSV(text);
-        if (rows.length < 2) return {};
-
-        const idx = buildIndex(rows[0]);
-        const blueprint = {};
-        for (let i = 1; i < rows.length; i++) {
-          const topic = rowToBlueprint(rows[i], idx);
-          if (topic) blueprint[topic.id] = topic;
-        }
+        // Fetch all sheets in parallel
+        const results = await Promise.all(SHEET_URLS.map(fetchOneSheet));
+        // Merge — later entries in the array override earlier ones on ID clash
+        const blueprint = Object.assign({}, ...results);
         _cache = { blueprint, at: now };
         return blueprint;
-      } catch (e) {
-        console.warn('[GSHEET_CURRICULUM] fetch failed:', e.message);
-        return _cache ? _cache.blueprint : {};
       } finally {
         _inflight = null;
       }
@@ -281,7 +300,7 @@ window.GSHEET_CURRICULUM = (function () {
   }
 
   function clearCache() { _cache = null; _loaded = false; }
-  function isEnabled()  { return !!SHEET_URL; }
+  function isEnabled()  { return SHEET_URLS.length > 0; }
 
   return { init, clearCache, isEnabled, fetchBlueprint };
 })();
