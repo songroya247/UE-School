@@ -91,18 +91,40 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .classroom-main::-webkit-scrollbar{width:5px}
 .classroom-main::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
 .content-inner{max-width:760px;margin:0 auto;animation:fadeUp .5s ease both}
-.video-outer{width:100%;animation:fadeUp .5s ease both}
+.video-outer{width:100%;animation:fadeUp .5s ease both;position:relative}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:var(--radius-lg);border:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,255,.1);transition:box-shadow .3s}
+.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:var(--radius-lg);border:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,255,.1);transition:all .35s cubic-bezier(.4,0,.2,1)}
 .video-area:hover{box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(79,142,255,.15)}
-
-
-
-
-
-
-@media(max-width:720px){}
+.video-area.floating{
+  position:fixed !important;
+  bottom:20px !important;
+  right:16px !important;
+  top:auto !important;
+  left:auto !important;
+  width:280px !important;
+  aspect-ratio:16/9 !important;
+  z-index:9999 !important;
+  border-radius:12px !important;
+  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(79,142,255,.3) !important;
+  cursor:default !important;
+  transition:none !important;
+  will-change:transform !important;
+}
+.video-float-bar{display:none;position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,rgba(10,15,30,.95),transparent);z-index:12;align-items:center;justify-content:space-between;padding:0 8px;border-radius:12px 12px 0 0}
+.video-area.floating .video-float-bar{display:flex}
+.video-float-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:.85rem;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1}
+.video-float-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.video-float-label{font-size:.6rem;color:rgba(255,255,255,.4);letter-spacing:.06em;text-transform:uppercase}
+.video-placeholder-box{width:100%;aspect-ratio:16/9;background:rgba(79,142,255,.04);border:2px dashed rgba(79,142,255,.15);border-radius:var(--radius-lg);display:none;align-items:center;justify-content:center;color:rgba(79,142,255,.4);font-size:.8rem;letter-spacing:.06em}
+.video-placeholder-box.visible{display:flex}
+@media(max-width:720px){
+  .video-area.floating{
+    width:260px !important;
+    bottom:72px !important;
+    right:10px !important;
+  }
+}
 /* Drive "open in new tab" blocker */
 .video-drive-cover{position:absolute;top:0;right:0;width:72px;height:56px;z-index:10;background:transparent;pointer-events:all}
 /* Loading skeleton shimmer */
@@ -244,6 +266,9 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 
   <main class="classroom-main">
     <div class="video-outer" id="video-outer">
+      <!-- Sentinel: stable element observer watches — never changes visibility itself -->
+      <div id="video-sentinel" style="position:absolute;top:0;left:0;width:1px;height:1px;pointer-events:none"></div>
+      <div class="video-placeholder-box" id="video-placeholder-box"><span>▶ Video playing below</span></div>
       <div class="video-area" id="video-area">
         <div class="video-float-bar" id="video-float-bar"><span class="video-float-label">Now Playing</span><button class="video-float-close" onclick="CLASSROOM.stopFloat()" title="Close">✕</button></div>
         <div class="video-drive-cover" id="video-drive-cover"></div>
@@ -386,6 +411,95 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Step 4: Render classroom with full merged data
   await CLASSROOM.init();
+
+  // Step 5: Float video when scrolled out of view
+  // Uses a stable sentinel div — NOT the placeholder — to avoid observer loop blinking
+  const videoArea   = document.getElementById('video-area');
+  const placeholder = document.getElementById('video-placeholder-box');
+  const sentinel    = document.getElementById('video-sentinel');
+
+  if (videoArea && sentinel && 'IntersectionObserver' in window) {
+    let isFloating = false;
+    const videoOuter = document.getElementById('video-outer');
+
+    function activateFloat() {
+      if (isFloating) return;
+      isFloating = true;
+      // Lock container height so page doesn't collapse/fold
+      if (videoOuter) {
+        videoOuter.style.minHeight = videoOuter.getBoundingClientRect().height + 'px';
+      }
+      // Suppress any CSS transition so the video doesn't animate/slide
+      videoArea.style.cssText = 'transition:none';
+      videoArea.classList.add('floating');
+      // Reinforce position via inline styles — overrides any cascade or leftover drag styles
+      videoArea.style.position  = 'fixed';
+      videoArea.style.bottom    = (window.innerWidth <= 720 ? '72' : '20') + 'px';
+      videoArea.style.right     = (window.innerWidth <= 720 ? '10' : '16') + 'px';
+      videoArea.style.top       = 'auto';
+      videoArea.style.left      = 'auto';
+      videoArea.style.width     = (window.innerWidth <= 720 ? '260' : '280') + 'px';
+      videoArea.style.transition = '';
+      if (placeholder) placeholder.classList.add('visible');
+    }
+
+    function deactivateFloat() {
+      if (!isFloating) return;
+      isFloating = false;
+      // Wipe ALL inline styles so the element returns to its natural in-flow styling
+      videoArea.removeAttribute('style');
+      videoArea.classList.remove('floating');
+      if (placeholder) placeholder.classList.remove('visible');
+      if (videoOuter) videoOuter.style.minHeight = '';
+    }
+
+    const obs = new IntersectionObserver((entries) => {
+      const visible = entries[0].isIntersecting;
+      if (!videoArea.querySelector('iframe')) return;
+      if (!visible) activateFloat();
+      else deactivateFloat();
+    }, { threshold: 0.15, rootMargin: '0px' });
+
+    obs.observe(sentinel);
+  }
+});
+
+function enableDrag(el) {
+  // Drag is desktop-only — on touch devices, pointer events from
+  // scrolling would accidentally move the floating video.
+  if (el._dragEnabled) return;
+  el._dragEnabled = true;
+  let sX, sY, oX, oY, dragging = false;
+
+  el.addEventListener('pointerdown', e => {
+    // Skip: touch input (would fight with scroll), iframes, close button
+    if (e.pointerType === 'touch') return;
+    if (e.target.closest('iframe') || e.target.closest('.video-float-close')) return;
+    sX = e.clientX; sY = e.clientY;
+    const r = el.getBoundingClientRect();
+    oX = r.left; oY = r.top;
+    dragging = false;
+    el.setPointerCapture(e.pointerId);
+  });
+
+  el.addEventListener('pointermove', e => {
+    if (!el.hasPointerCapture(e.pointerId)) return;
+    const dx = e.clientX - sX, dy = e.clientY - sY;
+    // Only start drag after a small threshold to avoid accidental moves
+    if (!dragging && Math.hypot(dx, dy) < 6) return;
+    dragging = true;
+    el.style.transition = 'none';
+    el.style.left   = Math.max(0, oX + dx) + 'px';
+    el.style.top    = Math.max(0, oY + dy) + 'px';
+    el.style.right  = 'auto';
+    el.style.bottom = 'auto';
+  });
+
+  el.addEventListener('pointerup', () => {
+    dragging = false;
+    el.style.transition = '';
+  });
+}
 </script>
 </body>
 </html>
