@@ -301,12 +301,58 @@ function toast(msg, dur = 2800) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // AUTH_GUARD.init() boots window.sb from UE_CONFIG, validates session,
-  // checks premium gate (classroom.html is in PREMIUM_PAGES), renders nav.
   const authData = await AUTH_GUARD.init();
-  if (!authData) return; // redirect in progress (no session or not premium)
+  if (!authData) return;
 
-  await GSHEET_CURRICULUM.init();   // load WAEC curriculum from Google Sheet
+  // Step 1: Load Google Sheet curriculum into TOPIC_BLUEPRINT
+  await GSHEET_CURRICULUM.init();
+
+  // Step 2: Merge sheet topics into CLASSROOM.CURRICULUM so the
+  // video player and sidebar can find them. Sheet wins over hardcoded.
+  (function mergeSheetIntoCurriculum() {
+    const blueprint = window.TOPIC_BLUEPRINT || {};
+    const CURRICULUM = window.CLASSROOM && window.CLASSROOM.CURRICULUM;
+    if (!CURRICULUM) { console.warn('[MERGE] CLASSROOM.CURRICULUM not found'); return; }
+    let merged = 0;
+    for (const topic of Object.values(blueprint)) {
+      if (topic._source !== 'gsheet') continue;
+      const subj = topic.subject;
+      if (!subj) continue;
+      if (!CURRICULUM[subj]) {
+        CURRICULUM[subj] = {
+          label:  subj.charAt(0).toUpperCase() + subj.slice(1),
+          icon:   '&#x1F4D6;',
+          color:  '#6366f1',
+          topics: [],
+        };
+      }
+      const classroomTopic = {
+        id:       topic.id,
+        title:    topic.title,
+        duration: topic.duration || '14 mins',
+        premium:  false,
+        videos:   topic.videos || null,
+        content: {
+          intro:    topic.blurb || topic.title + ' — loaded from Google Sheets.',
+          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
+          formulas: Array.isArray(topic.formulas)
+            ? topic.formulas.map(f => ({ label: '', formula: f }))
+            : [],
+        },
+        quiz: [],
+      };
+      const idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      if (idx >= 0) {
+        CURRICULUM[subj].topics[idx] = classroomTopic;
+      } else {
+        CURRICULUM[subj].topics.push(classroomTopic);
+      }
+      merged++;
+    }
+    console.info('[CLASSROOM] Sheet merge: ' + merged + ' topics injected.');
+  })();
+
+  // Step 3: Render classroom with full merged data
   await CLASSROOM.init();
 });
 </script>
