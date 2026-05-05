@@ -1,43 +1,41 @@
 /* ═══════════════════════════════════════════════════════════════════
-   UE School — js/gsheet-curriculum.js
-   Loads the syllabus from a published Google Sheet CSV and merges
-   it into TOPIC_BLUEPRINT so the rest of the app works unchanged.
+   UE School — js/gsheet-curriculum.js  (v2 — multi-subject)
+   Loads the syllabus from one or more published Google Sheet CSVs
+   and merges them into TOPIC_BLUEPRINT so the rest of the app works
+   unchanged.
 
    HOW TO USE (school operator — no coding needed):
    ─────────────────────────────────────────────────
-   1. Open your Google Sheet (see SHEET COLUMN GUIDE below)
-   2. File → Share → Anyone with the link → Viewer
-   3. File → Publish to web → Sheet1 → CSV → copy the link
-   4. Paste that link into config.js as:
-        GOOGLE_SHEET_CURRICULUM_CSV_URL: 'https://docs.google.com/...'
-   5. Done. Every time the page loads it pulls fresh data from the sheet.
+   1. Open config.js and find SUBJECT_SHEET_URLS.
+   2. For each subject, paste its published CSV URL:
+        mathematics: 'https://docs.google.com/...csv',
+        english:     'https://docs.google.com/...csv',
+   3. Save config.js — done. Every page load pulls fresh data.
 
    SHEET COLUMN GUIDE
    ──────────────────
    Required columns (headers must be on row 1):
 
-   topic_id        | Unique key e.g.  mathematics.quadratics
-   subject         | mathematics  /  literature  /  biology  /  english
+   topic_id        | Unique key  e.g.  mathematics.quadratics
+   subject         | mathematics  /  english  /  biology  etc.
    title           | Quadratic Equations
    duration        | 14 mins
    blurb           | One-sentence description shown on the card
-   objectives      | Pipe-separated list: "Solve by factorising | Use the formula | Read the discriminant"
-   formulas        | Pipe-separated list: "ax²+bx+c=0 | x=(-b±√...)÷2a"
+   objectives      | Pipe-separated: "Solve by factorising | Use formula"
+   formulas        | Pipe-separated: "ax²+bx+c=0 | x=(-b±√...)÷2a"
 
-   Video columns (paste full Google Drive share URL — leave blank if not ready yet):
+   Video columns (paste full Google Drive share URL or /preview URL):
 
    video_foundation | Slow walkthrough for struggling students
    video_standard   | Main lesson — the default tier
    video_mastery    | Exam-focused rapid revision
 
-   Tagline columns (optional — short description shown under each video button):
-
+   Tagline columns (optional):
    tagline_foundation | e.g.  Slow walkthrough · 6 worked examples
    tagline_standard   | e.g.  Default lesson · all methods explained
    tagline_mastery    | e.g.  Exam-focused · past-paper patterns
 
-   Duration columns (optional — shown next to each video button):
-
+   Duration columns (optional):
    duration_foundation | e.g.  22 mins
    duration_standard   | e.g.  14 mins
    duration_mastery    | e.g.   9 mins
@@ -49,9 +47,6 @@
      2. foundation (slower walkthrough)
      3. mastery    (exam-focused)
    If a tier's URL is blank the next available tier is used instead.
-   No error is shown to students — they simply get the best video available.
-   Example: you only have a standard video uploaded → students see that.
-            You later add foundation → it appears automatically for weaker students.
 
    CACHE
    ─────
@@ -62,16 +57,26 @@
 window.GSHEET_CURRICULUM = (function () {
   'use strict';
 
-  const cfg       = window.UE_CONFIG || {};
+  const cfg = window.UE_CONFIG || {};
 
-  // Support both the new array (GOOGLE_SHEET_CURRICULUM_CSV_URLS) and
-  // the legacy single-URL key so old deployments keep working.
-  const SHEET_URLS = (
-    cfg.GOOGLE_SHEET_CURRICULUM_CSV_URLS ||
-    (cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL ? [cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL] : [])
-  ).filter(Boolean); // remove empty/blank entries
+  // ── Multi-subject sheet support ───────────────────────────────────
+  // SUBJECT_SHEET_URLS maps { subjectKey: csvUrl }.
+  // Falls back to legacy single GOOGLE_SHEET_CURRICULUM_CSV_URL.
+  const SUBJECT_URLS = cfg.SUBJECT_SHEET_URLS || {};
+  const LEGACY_URL   = cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL || '';
+  const CACHE_MS     = (cfg.GS_CURRICULUM_CACHE_MIN || 30) * 60 * 1000;
 
-  const CACHE_MS  = (cfg.GS_CURRICULUM_CACHE_MIN || 30) * 60 * 1000;
+  // Build the list of { subject, url } pairs to fetch
+  function getSheetEntries() {
+    const entries = Object.entries(SUBJECT_URLS)
+      .filter(([, url]) => url && url.trim())
+      .map(([subject, url]) => ({ subject, url: url.trim() }));
+    // Fall back to legacy single URL (subject inferred from sheet rows)
+    if (entries.length === 0 && LEGACY_URL) {
+      entries.push({ subject: null, url: LEGACY_URL });
+    }
+    return entries;
+  }
 
   let _cache    = null; // { blueprint: {}, at: number }
   let _inflight = null;
@@ -106,10 +111,9 @@ window.GSHEET_CURRICULUM = (function () {
     const v = norm(raw);
     if (!v) return '';
     if (window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(v);
-    // Fallback: extract ID from share URL manually
     const m = v.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
     if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
-    return v; // already an embed URL or custom URL
+    return v;
   }
 
   // Map every column header the sheet might use → a canonical key
@@ -147,33 +151,22 @@ window.GSHEET_CURRICULUM = (function () {
     return i >= 0 ? norm(row[i]) : '';
   }
 
-  // ── FALLBACK LOGIC ────────────────────────────────────────────────
-  // Builds a videos object for the classroom player.
-  // Any tier whose URL is blank is automatically filled with the best
-  // available alternative so students always get a video, never a 404.
-  //
-  // Priority for fallback:
-  //   standard → foundation → mastery
-  //   (standard is the safest middle-ground for any student)
   function buildVideos(row, idx) {
     const raw = {
       foundation: normaliseVideoUrl(g(row, idx, 'video_foundation')),
       standard:   normaliseVideoUrl(g(row, idx, 'video_standard')),
       mastery:    normaliseVideoUrl(g(row, idx, 'video_mastery')),
     };
+    const bestUrl = raw.standard || raw.foundation || raw.mastery || '';
+    if (!bestUrl) return null;
 
-    // Fill blanks with fallback so the player never breaks.
-    // If NO video at all, values stay '' — topic still shows in sidebar,
-    // player will display a "coming soon" state instead of crashing.
     const filled = {
-      foundation: raw.foundation || raw.standard || raw.mastery || '',
-      standard:   raw.standard   || raw.foundation || raw.mastery || '',
-      mastery:    raw.mastery    || raw.standard || raw.foundation || '',
+      foundation: raw.foundation || raw.standard || raw.mastery,
+      standard:   raw.standard   || raw.foundation || raw.mastery,
+      mastery:    raw.mastery    || raw.standard || raw.foundation,
     };
 
-    // Build the full video tier objects
     const videos = {};
-
     const tiers = ['foundation', 'standard', 'mastery'];
     const defaultTaglines = {
       foundation: 'Slow walkthrough · step-by-step with lots of examples',
@@ -189,32 +182,26 @@ window.GSHEET_CURRICULUM = (function () {
     for (const tier of tiers) {
       const url = filled[tier];
       if (!url) continue;
-
-      // Mark with _fallback so the player can optionally show a badge
-      const isFallback = !raw[tier] && url;
-
       videos[tier] = {
         url,
         duration: g(row, idx, 'dur_' + tier) || defaultDurations[tier],
         tagline:  g(row, idx, 'tagline_' + tier) || defaultTaglines[tier],
-        _fallback: isFallback ? true : undefined,
+        _fallback: (!raw[tier] && url) ? true : undefined,
       };
     }
-
     return videos;
   }
 
-  function rowToBlueprint(row, idx) {
+  // subjectOverride: when fetching from a named-subject URL, force
+  // the subject value to that key (ignores what the sheet says).
+  function rowToBlueprint(row, idx, subjectOverride) {
     const topicId = g(row, idx, 'topic_id');
-    const subject  = g(row, idx, 'subject').toLowerCase();
+    const subject  = subjectOverride || g(row, idx, 'subject').toLowerCase();
     const title    = g(row, idx, 'title');
     if (!topicId || !subject || !title) return null;
 
     const videos = buildVideos(row, idx);
-    // videos may have empty URLs — that is fine, topic still shows in sidebar
-
-    const rawObj = g(row, idx, 'objectives');
-    const rawFor = g(row, idx, 'formulas');
+    if (!videos) return null;
 
     return {
       id:         topicId,
@@ -223,52 +210,55 @@ window.GSHEET_CURRICULUM = (function () {
       duration:   g(row, idx, 'duration') || '14 mins',
       videos,
       blurb:      g(row, idx, 'blurb') || '',
-      objectives: rawObj ? rawObj.split('|').map(s => s.trim()).filter(Boolean) : [],
-      formulas:   rawFor ? rawFor.split('|').map(s => s.trim()).filter(Boolean) : [],
+      objectives: (g(row, idx, 'objectives') || '').split('|').map(s => s.trim()).filter(Boolean),
+      formulas:   (g(row, idx, 'formulas')   || '').split('|').map(s => s.trim()).filter(Boolean),
       subSkills:  [],
       _source:    'gsheet',
     };
   }
 
-  // ── Fetch & parse one sheet URL ───────────────────────────────────
-  async function fetchOneSheet(url) {
+  // ── Fetch a single sheet and return partial blueprint ─────────────
+  async function fetchOneSheet(url, subjectOverride) {
     try {
-      // NOTE: Do NOT use { cache: 'no-store' } here — Google's published CSV endpoint
-      // does not return permissive Cache-Control/Vary headers, and Chrome rejects the
-      // preflight on GitHub Pages with that option set, causing a silent CORS failure.
-      // The 30-minute in-memory cache (CACHE_MS) keeps data fresh without this flag.
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       const rows = parseCSV(text);
       if (rows.length < 2) return {};
 
-      const idx = buildIndex(rows[0]);
-      const blueprint = {};
+      const idx       = buildIndex(rows[0]);
+      const partial   = {};
       for (let i = 1; i < rows.length; i++) {
-        const topic = rowToBlueprint(rows[i], idx);
-        if (topic) blueprint[topic.id] = topic;
+        const topic = rowToBlueprint(rows[i], idx, subjectOverride);
+        if (topic) partial[topic.id] = topic;
       }
-      console.info(`[GSHEET_CURRICULUM] Loaded ${Object.keys(blueprint).length} topics from ${url.split('gid=')[1] || url}`);
-      return blueprint;
+      console.info(
+        `[GSHEET_CURRICULUM] Loaded ${Object.keys(partial).length} topics` +
+        (subjectOverride ? ` for "${subjectOverride}"` : '') + '.'
+      );
+      return partial;
     } catch (e) {
-      console.warn('[GSHEET_CURRICULUM] fetch failed for', url, ':', e.message);
+      console.warn('[GSHEET_CURRICULUM] fetch failed for', url, '—', e.message);
       return {};
     }
   }
 
-  // ── Fetch & merge all sheet URLs ──────────────────────────────────
+  // ── Fetch ALL subject sheets in parallel ──────────────────────────
   async function fetchBlueprint(force = false) {
-    if (!SHEET_URLS.length) return {};
+    const entries = getSheetEntries();
+    if (entries.length === 0) return {};
+
     const now = Date.now();
     if (!force && _cache && (now - _cache.at) < CACHE_MS) return _cache.blueprint;
     if (_inflight) return _inflight;
 
     _inflight = (async () => {
       try {
-        // Fetch all sheets in parallel
-        const results = await Promise.all(SHEET_URLS.map(fetchOneSheet));
-        // Merge — later entries in the array override earlier ones on ID clash
+        // Fetch all sheets in parallel for speed
+        const results = await Promise.all(
+          entries.map(({ subject, url }) => fetchOneSheet(url, subject))
+        );
+        // Merge all partial blueprints together
         const blueprint = Object.assign({}, ...results);
         _cache = { blueprint, at: now };
         return blueprint;
@@ -281,13 +271,11 @@ window.GSHEET_CURRICULUM = (function () {
   }
 
   // ── Merge sheet topics into TOPIC_BLUEPRINT ───────────────────────
-  // Sheet topics OVERRIDE hardcoded ones with the same topic_id.
-  // Topics only in the code (no sheet row) are kept as-is.
-  // Call this once at page load before the classroom renders.
   async function init() {
     if (_loaded) return;
     const sheetBlueprint = await fetchBlueprint();
-    if (Object.keys(sheetBlueprint).length === 0) {
+    const count = Object.keys(sheetBlueprint).length;
+    if (count === 0) {
       console.info('[GSHEET_CURRICULUM] No sheet data — using built-in curriculum.');
       _loaded = true;
       return;
@@ -295,14 +283,14 @@ window.GSHEET_CURRICULUM = (function () {
     window.TOPIC_BLUEPRINT = Object.assign(
       {},
       window.TOPIC_BLUEPRINT || {},
-      sheetBlueprint            // sheet wins over hardcoded fallback
+      sheetBlueprint
     );
     _loaded = true;
-    console.info(`[GSHEET_CURRICULUM] Loaded ${Object.keys(sheetBlueprint).length} topics from Google Sheet.`);
+    console.info(`[GSHEET_CURRICULUM] Merged ${count} topics into TOPIC_BLUEPRINT.`);
   }
 
   function clearCache() { _cache = null; _loaded = false; }
-  function isEnabled()  { return SHEET_URLS.length > 0; }
+  function isEnabled()  { return getSheetEntries().length > 0; }
 
   return { init, clearCache, isEnabled, fetchBlueprint };
 })();
