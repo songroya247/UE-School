@@ -795,37 +795,80 @@ const CLASSROOM = (function () {
         if (studentName) {
           const wm = document.createElement('div');
           wm.id = 'video-watermark';
-          // Diagonal repeated text — hard to crop out
           const escaped = studentName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          // Build a repeating diagonal pattern using CSS
+
           wm.style.cssText = [
             'position:absolute','inset:0',
             'z-index:9',
             'pointer-events:none',
-            'display:flex',
-            'align-items:center',
-            'justify-content:center',
             'overflow:hidden',
           ].join(';');
 
-          // 2 strategic watermark positions: centre and bottom-right
-          // Subtle enough not to distract, visible enough to deter sharing
-          wm.innerHTML = [
-            'top:38%;left:50%;transform:translate(-50%,-50%) rotate(-20deg)',
-            'bottom:18%;right:6%;transform:rotate(-20deg)',
-          ].map(style => `
-            <span style="
-              position:absolute;${style};
-              color:rgba(255,255,255,0.14);
-              font-size:0.68rem;
-              font-weight:700;
-              letter-spacing:0.08em;
-              white-space:nowrap;
-              text-shadow:0 1px 3px rgba(0,0,0,0.5);
-              user-select:none;
-              pointer-events:none;
-            ">${escaped}</span>
-          `).join('');
+          // Build a repeating diagonal grid of watermark text (professional DRM style)
+          const rows = 5;
+          const cols = 4;
+          let rowsHTML = '';
+          for (let r = 0; r < rows; r++) {
+            let cells = '';
+            for (let c = 0; c < cols; c++) {
+              cells += `<span style="
+                color:rgba(255,255,255,0.065);
+                font-size:0.62rem;
+                font-weight:600;
+                letter-spacing:0.12em;
+                white-space:nowrap;
+                text-transform:uppercase;
+                padding:0 18px;
+                user-select:none;
+                pointer-events:none;
+                font-family:'DM Sans',system-ui,sans-serif;
+              ">${escaped}</span>`;
+            }
+            rowsHTML += `<div style="
+              display:flex;
+              justify-content:space-around;
+              align-items:center;
+              width:160%;
+              margin-left:-30%;
+            ">${cells}</div>`;
+          }
+
+          wm.innerHTML = `
+            <div style="
+              position:absolute;inset:0;
+              display:flex;flex-direction:column;
+              justify-content:space-around;
+              transform:rotate(-22deg) scale(1.15);
+              transform-origin:center center;
+              pointer-events:none;user-select:none;
+            ">${rowsHTML}</div>
+
+            <div style="
+              position:absolute;bottom:10px;right:12px;
+              display:flex;align-items:center;gap:5px;
+              background:rgba(0,0,0,0.45);
+              backdrop-filter:blur(6px);
+              -webkit-backdrop-filter:blur(6px);
+              border:1px solid rgba(255,255,255,0.1);
+              border-radius:5px;
+              padding:3px 9px 3px 7px;
+              pointer-events:none;user-select:none;
+            ">
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4.5 1a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" stroke="rgba(255,255,255,0.45)" stroke-width="0.9"/>
+                <path d="M3.2 3.2h2.6L3.2 5.8h2.6" stroke="rgba(255,255,255,0.45)" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span style="
+                color:rgba(255,255,255,0.5);
+                font-size:0.58rem;
+                font-weight:600;
+                letter-spacing:0.07em;
+                white-space:nowrap;
+                text-transform:uppercase;
+                font-family:'DM Sans',system-ui,sans-serif;
+              ">${escaped}</span>
+            </div>`;
+
           videoArea.appendChild(wm);
         }
       }
