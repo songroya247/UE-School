@@ -754,7 +754,7 @@ const CLASSROOM = (function () {
       }
 
       // ── Get student name for watermark ──
-      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || '').trim();
+      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || 'UE School Student').trim();
 
       // ── Lazy iframe injection — show skeleton until iframe loads ──
       function injectIframe(src, isYouTube) {
@@ -1078,9 +1078,17 @@ const CLASSROOM = (function () {
     selectTopic(topicId, opts.tier);
   }
 
+  // ── Stop floating — dock video back ──
+  function stopFloat() {
+    const va = document.getElementById('video-area');
+    const ph = document.getElementById('video-placeholder-box');
+    if (va) { va.classList.remove('floating'); va.style.left = ''; va.style.top = ''; }
+    if (ph) ph.classList.remove('visible');
+  }
+
   return {
     init, switchSubject, selectTopic, loadTopic, nextLesson, prevLesson,
-    playVideo, toggleSidebar, closeSidebar, CURRICULUM
+    playVideo, toggleSidebar, closeSidebar, stopFloat, CURRICULUM
   };
 
 })();
