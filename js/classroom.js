@@ -808,23 +808,20 @@ const CLASSROOM = (function () {
             'overflow:hidden',
           ].join(';');
 
-          // Create 6 watermark text nodes scattered across the player
-          const positions = [
-            'top:15%;left:10%','top:15%;right:10%',
-            'top:45%;left:30%',
-            'bottom:20%;left:8%','bottom:20%;right:8%',
-            'top:70%;left:55%',
-          ];
-          wm.innerHTML = positions.map(pos => `
+          // 2 strategic watermark positions: centre and bottom-right
+          // Subtle enough not to distract, visible enough to deter sharing
+          wm.innerHTML = [
+            'top:38%;left:50%;transform:translate(-50%,-50%) rotate(-20deg)',
+            'bottom:18%;right:6%;transform:rotate(-20deg)',
+          ].map(style => `
             <span style="
-              position:absolute;${pos};
-              color:rgba(255,255,255,0.18);
-              font-size:0.72rem;
-              font-weight:600;
-              letter-spacing:0.06em;
+              position:absolute;${style};
+              color:rgba(255,255,255,0.14);
+              font-size:0.68rem;
+              font-weight:700;
+              letter-spacing:0.08em;
               white-space:nowrap;
-              transform:rotate(-25deg);
-              text-shadow:0 1px 2px rgba(0,0,0,0.4);
+              text-shadow:0 1px 3px rgba(0,0,0,0.5);
               user-select:none;
               pointer-events:none;
             ">${escaped}</span>
