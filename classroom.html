@@ -94,8 +94,18 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .video-outer{width:100%;animation:fadeUp .5s ease both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:var(--radius-lg);border:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,255,.1);transition:box-shadow .3s}
+.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:var(--radius-lg);border:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,255,.1);transition:all .35s cubic-bezier(.4,0,.2,1)}
 .video-area:hover{box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(79,142,255,.15)}
+.video-area.floating{position:fixed;bottom:20px;right:16px;width:260px;aspect-ratio:16/9;z-index:999;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(79,142,255,.3);cursor:move;animation:floatIn .3s cubic-bezier(.4,0,.2,1)}
+@keyframes floatIn{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:none}}
+.video-float-bar{display:none;position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,rgba(10,15,30,.95),transparent);z-index:12;align-items:center;justify-content:space-between;padding:0 8px;border-radius:12px 12px 0 0}
+.video-area.floating .video-float-bar{display:flex}
+.video-float-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:.85rem;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1}
+.video-float-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.video-float-label{font-size:.6rem;color:rgba(255,255,255,.4);letter-spacing:.06em;text-transform:uppercase}
+.video-placeholder-box{width:100%;aspect-ratio:16/9;background:rgba(79,142,255,.04);border:2px dashed rgba(79,142,255,.15);border-radius:var(--radius-lg);display:none;align-items:center;justify-content:center;color:rgba(79,142,255,.4);font-size:.8rem;letter-spacing:.06em}
+.video-placeholder-box.visible{display:flex}
+@media(max-width:720px){.video-area.floating{width:200px;bottom:70px;right:10px}}
 /* Drive "open in new tab" blocker */
 .video-drive-cover{position:absolute;top:0;right:0;width:72px;height:56px;z-index:10;background:transparent;pointer-events:all}
 /* Loading skeleton shimmer */
@@ -236,8 +246,10 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
   </aside>
 
   <main class="classroom-main">
-    <div class="video-outer">
+    <div class="video-outer" id="video-outer">
+      <div class="video-placeholder-box" id="video-placeholder-box"><span>▶ Video playing below</span></div>
       <div class="video-area" id="video-area">
+        <div class="video-float-bar" id="video-float-bar"><span class="video-float-label">Now Playing</span><button class="video-float-close" onclick="CLASSROOM.stopFloat()" title="Close">✕</button></div>
         <div class="video-drive-cover" id="video-drive-cover"></div>
         <!-- Loading skeleton shown while video fetches -->
         <div class="video-skeleton" id="video-skeleton">
@@ -378,7 +390,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Step 4: Render classroom with full merged data
   await CLASSROOM.init();
+
+  // Step 5: Float video when scrolled out of view
+  const videoArea = document.getElementById('video-area');
+  const placeholder = document.getElementById('video-placeholder-box');
+  if (videoArea && placeholder && 'IntersectionObserver' in window) {
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const hasVideo = videoArea.querySelector('iframe');
+        if (!hasVideo) return;
+        if (!entry.isIntersecting) {
+          videoArea.classList.add('floating');
+          placeholder.classList.add('visible');
+          enableDrag(videoArea);
+        } else {
+          videoArea.classList.remove('floating');
+          placeholder.classList.remove('visible');
+          videoArea.style.left = '';
+          videoArea.style.top = '';
+          videoArea.style.right = '';
+          videoArea.style.bottom = '';
+        }
+      });
+    }, { threshold: 0.15 });
+    obs.observe(placeholder);
+  }
 });
+
+function enableDrag(el) {
+  if (el._dragEnabled) return;
+  el._dragEnabled = true;
+  let sX, sY, oX, oY;
+  el.addEventListener('pointerdown', e => {
+    if (e.target.closest('iframe') || e.target.closest('.video-float-close')) return;
+    sX = e.clientX; sY = e.clientY;
+    const r = el.getBoundingClientRect();
+    oX = r.left; oY = r.top;
+    el.setPointerCapture(e.pointerId);
+    el.style.transition = 'none';
+  });
+  el.addEventListener('pointermove', e => {
+    if (!el.hasPointerCapture(e.pointerId)) return;
+    el.style.left = (oX + e.clientX - sX) + 'px';
+    el.style.top  = (oY + e.clientY - sY) + 'px';
+    el.style.right = 'auto'; el.style.bottom = 'auto';
+  });
+  el.addEventListener('pointerup', () => { el.style.transition = ''; });
+}
 </script>
 </body>
 </html>
