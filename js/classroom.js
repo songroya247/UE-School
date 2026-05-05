@@ -483,6 +483,61 @@ const CLASSROOM = (function () {
   let isPremiumUser  = false;
   let userId         = null;
 
+  // ─── Merge Google Sheet topics into CURRICULUM ────
+  // Called once at init after GSHEET_CURRICULUM.init().
+  // Converts every TOPIC_BLUEPRINT entry (from Google Sheets)
+  // into the CURRICULUM format so the sidebar, video player,
+  // and all other classroom features work without any changes.
+  function mergeSheetIntoCurriculum() {
+    const blueprint = window.TOPIC_BLUEPRINT || {};
+    let merged = 0;
+
+    for (const topic of Object.values(blueprint)) {
+      if (topic._source !== 'gsheet') continue;
+
+      const subj = topic.subject;
+      if (!subj) continue;
+
+      // Create subject bucket if it doesn't exist yet
+      if (!CURRICULUM[subj]) {
+        CURRICULUM[subj] = {
+          label:  subj.charAt(0).toUpperCase() + subj.slice(1),
+          icon:   '&#x1F4D6;',
+          color:  '#6366f1',
+          topics: [],
+        };
+      }
+
+      // Build a classroom-compatible topic object from the sheet row
+      const classroomTopic = {
+        id:       topic.id,
+        title:    topic.title,
+        duration: topic.duration || '14 mins',
+        premium:  false,
+        videos:   topic.videos || null,
+        content: {
+          intro:    topic.blurb || `${topic.title} — lesson loaded from Google Sheets.`,
+          points:   topic.objectives || [],
+          formulas: (topic.formulas || []).map(f => ({ label: '', formula: f })),
+        },
+        quiz: [],
+      };
+
+      // Replace existing hardcoded topic with same id, or append
+      const existing = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      if (existing >= 0) {
+        CURRICULUM[subj].topics[existing] = classroomTopic;
+      } else {
+        CURRICULUM[subj].topics.push(classroomTopic);
+      }
+      merged++;
+    }
+
+    if (merged > 0) {
+      console.info(`[CLASSROOM] Merged ${merged} sheet topics into CURRICULUM.`);
+    }
+  }
+
   // ─── Init ─────────────────────────────────────────
   async function init() {
     const result = await AUTH_GUARD.init();
@@ -497,6 +552,13 @@ const CLASSROOM = (function () {
     if (banner) {
       const status = AUTH_GUARD.subscriptionStatus(profile);
       banner.style.display = status === 'EXPIRED' ? 'block' : 'none';
+    }
+
+    // ── Load Google Sheet curriculum first, then render ──
+    // This ensures sheet videos are available before the sidebar builds.
+    if (window.GSHEET_CURRICULUM && window.GSHEET_CURRICULUM.isEnabled()) {
+      await window.GSHEET_CURRICULUM.init();
+      mergeSheetIntoCurriculum();
     }
 
     // Build subject tabs from user's registered subjects (fall back to all)
