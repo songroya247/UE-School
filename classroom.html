@@ -400,6 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (videoArea && sentinel && 'IntersectionObserver' in window) {
     let isFloating = false;
+    const videoOuter = document.getElementById('video-outer');
 
     const obs = new IntersectionObserver((entries) => {
       const visible = entries[0].isIntersecting;
@@ -408,16 +409,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (!visible && !isFloating) {
         // Scrolled away — go float
+        // 1. Lock container height so it doesn't collapse (fold)
+        if (videoOuter) {
+          videoOuter.style.minHeight = videoOuter.getBoundingClientRect().height + 'px';
+        }
         isFloating = true;
+        // 2. Kill transition so video doesn't animate/slide to corner
+        videoArea.style.transition = 'none';
         videoArea.classList.add('floating');
         if (placeholder) placeholder.classList.add('visible');
         enableDrag(videoArea);
+        // 3. Restore transition next frame (so drag etc. still feel smooth)
+        requestAnimationFrame(() => { videoArea.style.transition = ''; });
       } else if (visible && isFloating) {
         // Back in view — dock
         isFloating = false;
+        videoArea.style.transition = 'none';
         videoArea.classList.remove('floating');
         if (placeholder) placeholder.classList.remove('visible');
         videoArea.style.cssText = '';
+        if (videoOuter) videoOuter.style.minHeight = '';
       }
     }, { threshold: 0.2, rootMargin: '0px' });
 
