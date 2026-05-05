@@ -753,27 +753,84 @@ const CLASSROOM = (function () {
         return m ? m[1] : null;
       }
 
+      // ── Get student name for watermark ──
+      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || '').trim();
+
       // ── Lazy iframe injection — show skeleton until iframe loads ──
       function injectIframe(src, isYouTube) {
         showSkeleton();
-        // Keep drive cover only for Drive videos
-        if (driveCover) driveCover.style.display = isYouTube ? 'none' : 'block';
 
         const iframe = document.createElement('iframe');
         iframe.src = src;
         iframe.allow = 'autoplay; fullscreen';
         iframe.allowFullscreen = true;
         iframe.loading = 'lazy';
-        iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:var(--radius-lg);z-index:3';
+        iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
 
         iframe.addEventListener('load', hideSkeleton);
-        // Safety fallback: hide skeleton after 8s on very slow networks
         setTimeout(hideSkeleton, 8000);
 
-        // Clear placeholder elements, keep skeleton + badge + cover
+        // Clear placeholder elements
         videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
           .forEach(el => el.remove());
         videoArea.appendChild(iframe);
+
+        // ── Arrow blocker — sits ABOVE the iframe ──
+        // Covers the top-right corner where Drive/YouTube puts the external link icon
+        if (!isYouTube) {
+          const cover = document.createElement('div');
+          cover.style.cssText = [
+            'position:absolute',
+            'top:0','right:0',
+            'width:80px','height:60px',
+            'z-index:10',
+            'background:transparent',
+            'pointer-events:all',
+            'cursor:default',
+          ].join(';');
+          videoArea.appendChild(cover);
+        }
+
+        // ── Watermark overlay ──
+        if (studentName) {
+          const wm = document.createElement('div');
+          wm.id = 'video-watermark';
+          // Diagonal repeated text — hard to crop out
+          const escaped = studentName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          // Build a repeating diagonal pattern using CSS
+          wm.style.cssText = [
+            'position:absolute','inset:0',
+            'z-index:9',
+            'pointer-events:none',
+            'display:flex',
+            'align-items:center',
+            'justify-content:center',
+            'overflow:hidden',
+          ].join(';');
+
+          // Create 6 watermark text nodes scattered across the player
+          const positions = [
+            'top:15%;left:10%','top:15%;right:10%',
+            'top:45%;left:30%',
+            'bottom:20%;left:8%','bottom:20%;right:8%',
+            'top:70%;left:55%',
+          ];
+          wm.innerHTML = positions.map(pos => `
+            <span style="
+              position:absolute;${pos};
+              color:rgba(255,255,255,0.18);
+              font-size:0.72rem;
+              font-weight:600;
+              letter-spacing:0.06em;
+              white-space:nowrap;
+              transform:rotate(-25deg);
+              text-shadow:0 1px 2px rgba(0,0,0,0.4);
+              user-select:none;
+              pointer-events:none;
+            ">${escaped}</span>
+          `).join('');
+          videoArea.appendChild(wm);
+        }
       }
 
       // Determine video source — YouTube takes priority
