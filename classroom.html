@@ -373,7 +373,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.info('[CLASSROOM] Sheet merge: ' + merged + ' topics injected.');
   })();
 
-  // Step 3: Render classroom with full merged data
+  // Step 3: Store profile globally so watermark can read student name
+  if (authData.profile) window._ueProfile = authData.profile;
+
+  // Step 4: Render classroom with full merged data
   await CLASSROOM.init();
 });
 </script>
