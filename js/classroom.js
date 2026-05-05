@@ -657,7 +657,7 @@ const CLASSROOM = (function () {
   }
 
   // ─── Select topic ─────────────────────────────────
-  function selectTopic(topicId) {
+  function selectTopic(topicId, tier) {
     // Find topic across all subjects
     let topic = null;
     for (const subj of Object.values(CURRICULUM)) {
@@ -691,14 +691,16 @@ const CLASSROOM = (function () {
       el.classList.toggle('active', el.dataset.topicId === topicId);
     });
 
-    renderLesson(topic);
+    renderLesson(topic, tier);
 
     // Close mobile sidebar
     if (window.innerWidth <= 720) closeSidebar();
   }
 
   // ─── Render lesson ────────────────────────────────
-  function renderLesson(topic) {
+  // tier: 'foundation' | 'standard' | 'mastery' (optional, default 'standard')
+  // Fallback chain: requested tier → standard → foundation → mastery → driveId → driveUrl
+  function renderLesson(topic, tier) {
     // Title + meta
     setEl('topic-tag',    topic.id.split('.')[1] || topic.title);
     setEl('topic-title',  topic.title);
@@ -707,38 +709,97 @@ const CLASSROOM = (function () {
     // Video area — supports YouTube, Google Drive ID, Drive URL, or Sheet video tiers
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
-      // ── Video rendering — supports YouTube, Drive ID, Drive URL, or Sheet videos ──
-      // Sheet topics supply a `videos` object with tiers: foundation / standard / mastery.
-      // Fallback logic is already applied by gsheet-curriculum.js — standard tier is always safe.
-      const getVideoUrl = (t) => {
-        if (t.videos && t.videos.standard) return t.videos.standard.url || '';
+      // ── Tier-aware video URL picker with automatic fallback ──
+      // Priority: requested tier → standard → foundation → mastery → legacy driveId/driveUrl
+      // If only one video is in the sheet, every tier falls back to that video automatically.
+      const getVideoUrl = (t, requestedTier) => {
+        if (t.videos) {
+          const order = [requestedTier, 'standard', 'foundation', 'mastery']
+            .filter(Boolean)
+            .filter((v, i, a) => a.indexOf(v) === i); // dedupe
+          for (const t_tier of order) {
+            const url = t.videos[t_tier] && t.videos[t_tier].url;
+            if (url) return url;
+          }
+        }
         if (t.driveId) return `https://drive.google.com/file/d/${t.driveId}/preview`;
         if (t.driveUrl && window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(t.driveUrl);
         return '';
       };
 
-      if (topic.youtubeId) {
-        // YouTube embed
-        videoArea.innerHTML = `<iframe
-          src="https://www.youtube.com/embed/${topic.youtubeId}?rel=0&modestbranding=1"
-          style="width:100%;height:100%;border:none;border-radius:var(--radius-lg)"
-          allowfullscreen></iframe>`;
+      // ── Helpers for skeleton + tier badge ──
+      const skeleton  = document.getElementById('video-skeleton');
+      const tierBadge = document.getElementById('video-tier-badge');
+      const driveCover = document.getElementById('video-drive-cover');
+
+      function showSkeleton() {
+        if (skeleton) skeleton.style.display = 'flex';
+      }
+      function hideSkeleton() {
+        if (skeleton) skeleton.style.display = 'none';
+      }
+      function showTierBadge(t) {
+        if (!tierBadge) return;
+        const labels = { foundation: '🟠 Foundation', standard: '🔵 Standard', mastery: '🟣 Mastery' };
+        tierBadge.textContent = labels[t] || '';
+        tierBadge.className = `video-tier-badge tier-${t}`;
+        tierBadge.style.display = t ? 'block' : 'none';
+      }
+
+      // ── Detect YouTube URL ──
+      function extractYouTubeId(url) {
+        if (!url) return null;
+        const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+        return m ? m[1] : null;
+      }
+
+      // ── Lazy iframe injection — show skeleton until iframe loads ──
+      function injectIframe(src, isYouTube) {
+        showSkeleton();
+        // Keep drive cover only for Drive videos
+        if (driveCover) driveCover.style.display = isYouTube ? 'none' : 'block';
+
+        const iframe = document.createElement('iframe');
+        iframe.src = src;
+        iframe.allow = 'autoplay; fullscreen';
+        iframe.allowFullscreen = true;
+        iframe.loading = 'lazy';
+        iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;border-radius:var(--radius-lg);z-index:3';
+
+        iframe.addEventListener('load', hideSkeleton);
+        // Safety fallback: hide skeleton after 8s on very slow networks
+        setTimeout(hideSkeleton, 8000);
+
+        // Clear placeholder elements, keep skeleton + badge + cover
+        videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
+          .forEach(el => el.remove());
+        videoArea.appendChild(iframe);
+      }
+
+      // Determine video source — YouTube takes priority
+      const rawUrl = getVideoUrl(topic, tier);
+      const ytId   = topic.youtubeId || extractYouTubeId(rawUrl);
+
+      if (ytId) {
+        // YouTube embed — no Drive cover needed
+        showTierBadge(tier);
+        injectIframe(
+          `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`,
+          true
+        );
+      } else if (rawUrl) {
+        // Google Drive embed
+        showTierBadge(tier);
+        injectIframe(rawUrl, false);
       } else {
-        const videoUrl = getVideoUrl(topic);
-        if (videoUrl) {
-          videoArea.innerHTML = `<iframe
-            src="${videoUrl}"
-            style="width:100%;height:100%;border:none;border-radius:var(--radius-lg)"
-            allow="autoplay"
-            allowfullscreen></iframe>`;
-        } else {
-          // No video yet — show animated placeholder
-          videoArea.innerHTML = `
-            <div class="video-bg"></div>
-            <div class="video-grid"></div>
-            <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
-            <div class="video-duration">${topic.duration}</div>`;
-        }
+        // No video yet — show animated placeholder
+        hideSkeleton();
+        if (tierBadge) tierBadge.style.display = 'none';
+        videoArea.innerHTML = `
+          <div class="video-bg"></div>
+          <div class="video-grid"></div>
+          <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
+          <div class="video-duration">${topic.duration}</div>`;
       }
     }
 
@@ -954,9 +1015,10 @@ const CLASSROOM = (function () {
   // ─── loadTopic — public alias used by Skill Chamber monkey-patch ─
   // skill_chamber.js wraps this function to intercept topic loading
   // and run the adaptive diagnostic before rendering the lesson.
+  // opts.tier: 'foundation' | 'standard' | 'mastery'
   function loadTopic(topicId, opts) {
     opts = opts || {};
-    selectTopic(topicId);
+    selectTopic(topicId, opts.tier);
   }
 
   return {
