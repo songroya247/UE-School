@@ -753,10 +753,7 @@ const CLASSROOM = (function () {
         return m ? m[1] : null;
       }
 
-      // ── Get student name for watermark ──
-      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || 'UE School Student').trim();
-
-      // ── Lazy iframe injection — show skeleton until iframe loads ──
+      // ── Lazy iframe injection with skeleton + arrow blocker + watermark ──
       function injectIframe(src, isYouTube) {
         showSkeleton();
 
@@ -767,109 +764,65 @@ const CLASSROOM = (function () {
         iframe.loading = 'lazy';
         iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
 
-        iframe.addEventListener('load', hideSkeleton);
+        iframe.addEventListener('load', () => {
+          hideSkeleton();
+
+          // ── Watermark: single name bar at bottom of player ──
+          const prev = videoArea.querySelector('.ue-watermark');
+          if (prev) prev.remove();
+          const name = (
+            window._ueProfile?.full_name ||
+            window._ueProfile?.email     ||
+            ''
+          ).trim();
+          if (name) {
+            const wm = document.createElement('div');
+            wm.className = 'ue-watermark';
+            wm.textContent = name;
+            wm.style.cssText = [
+              'position:absolute',
+              'bottom:10px',
+              'left:50%',
+              'transform:translateX(-50%)',
+              'color:rgba(255,255,255,0.55)',
+              'background:rgba(0,0,0,0.35)',
+              'font-size:0.7rem',
+              'font-weight:600',
+              'letter-spacing:0.12em',
+              'white-space:nowrap',
+              'pointer-events:none',
+              'user-select:none',
+              'z-index:9',
+              'padding:3px 10px',
+              'border-radius:20px',
+              'backdrop-filter:blur(4px)',
+              'max-width:80%',
+              'overflow:hidden',
+              'text-overflow:ellipsis',
+              'text-transform:uppercase',
+            ].join(';');
+            videoArea.appendChild(wm);
+          }
+        });
+
+        // Safety fallback: hide skeleton after 8s on slow networks
         setTimeout(hideSkeleton, 8000);
 
-        // Clear placeholder elements
+        // Clear placeholder elements, keep skeleton + badge
         videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
           .forEach(el => el.remove());
         videoArea.appendChild(iframe);
 
-        // ── Arrow blocker — sits ABOVE the iframe ──
-        // Covers the top-right corner where Drive/YouTube puts the external link icon
+        // ── Arrow blocker: covers Drive/YouTube external-link icon ──
         if (!isYouTube) {
           const cover = document.createElement('div');
           cover.style.cssText = [
-            'position:absolute',
-            'top:0','right:0',
+            'position:absolute','top:0','right:0',
             'width:80px','height:60px',
-            'z-index:10',
-            'background:transparent',
-            'pointer-events:all',
-            'cursor:default',
+            'z-index:10','background:transparent',
+            'pointer-events:all','cursor:default',
           ].join(';');
           videoArea.appendChild(cover);
-        }
-
-        // ── Watermark overlay ──
-        if (studentName) {
-          const wm = document.createElement('div');
-          wm.id = 'video-watermark';
-          const escaped = studentName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-          wm.style.cssText = [
-            'position:absolute','inset:0',
-            'z-index:9',
-            'pointer-events:none',
-            'overflow:hidden',
-          ].join(';');
-
-          // Build a repeating diagonal grid of watermark text (professional DRM style)
-          const rows = 5;
-          const cols = 4;
-          let rowsHTML = '';
-          for (let r = 0; r < rows; r++) {
-            let cells = '';
-            for (let c = 0; c < cols; c++) {
-              cells += `<span style="
-                color:rgba(255,255,255,0.065);
-                font-size:0.62rem;
-                font-weight:600;
-                letter-spacing:0.12em;
-                white-space:nowrap;
-                text-transform:uppercase;
-                padding:0 18px;
-                user-select:none;
-                pointer-events:none;
-                font-family:'DM Sans',system-ui,sans-serif;
-              ">${escaped}</span>`;
-            }
-            rowsHTML += `<div style="
-              display:flex;
-              justify-content:space-around;
-              align-items:center;
-              width:160%;
-              margin-left:-30%;
-            ">${cells}</div>`;
-          }
-
-          wm.innerHTML = `
-            <div style="
-              position:absolute;inset:0;
-              display:flex;flex-direction:column;
-              justify-content:space-around;
-              transform:rotate(-22deg) scale(1.15);
-              transform-origin:center center;
-              pointer-events:none;user-select:none;
-            ">${rowsHTML}</div>
-
-            <div style="
-              position:absolute;bottom:10px;right:12px;
-              display:flex;align-items:center;gap:5px;
-              background:rgba(0,0,0,0.45);
-              backdrop-filter:blur(6px);
-              -webkit-backdrop-filter:blur(6px);
-              border:1px solid rgba(255,255,255,0.1);
-              border-radius:5px;
-              padding:3px 9px 3px 7px;
-              pointer-events:none;user-select:none;
-            ">
-              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4.5 1a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" stroke="rgba(255,255,255,0.45)" stroke-width="0.9"/>
-                <path d="M3.2 3.2h2.6L3.2 5.8h2.6" stroke="rgba(255,255,255,0.45)" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span style="
-                color:rgba(255,255,255,0.5);
-                font-size:0.58rem;
-                font-weight:600;
-                letter-spacing:0.07em;
-                white-space:nowrap;
-                text-transform:uppercase;
-                font-family:'DM Sans',system-ui,sans-serif;
-              ">${escaped}</span>
-            </div>`;
-
-          videoArea.appendChild(wm);
         }
       }
 
@@ -1117,18 +1070,12 @@ const CLASSROOM = (function () {
     opts = opts || {};
     selectTopic(topicId, opts.tier);
   }
-
-  // ── Stop floating — dock video back ──
-  function stopFloat() {
-    const va = document.getElementById('video-area');
-    const ph = document.getElementById('video-placeholder-box');
-    if (va) { va.classList.remove('floating'); va.style.left = ''; va.style.top = ''; }
-    if (ph) ph.classList.remove('visible');
+  if (ph) ph.classList.remove('visible');
   }
 
   return {
     init, switchSubject, selectTopic, loadTopic, nextLesson, prevLesson,
-    playVideo, toggleSidebar, closeSidebar, stopFloat, CURRICULUM
+    playVideo, toggleSidebar, closeSidebar, CURRICULUM
   };
 
 })();
