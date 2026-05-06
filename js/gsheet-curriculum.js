@@ -200,8 +200,8 @@ window.GSHEET_CURRICULUM = (function () {
     const title    = g(row, idx, 'title');
     if (!topicId || !subject || !title) return null;
 
-    const videos = buildVideos(row, idx);
-    if (!videos) return null;
+    // Videos are optional — topics without video URLs still appear in the sidebar
+    const videos = buildVideos(row, idx) || null;
 
     return {
       id:         topicId,
@@ -227,11 +227,15 @@ window.GSHEET_CURRICULUM = (function () {
       if (rows.length < 2) return {};
 
       const idx       = buildIndex(rows[0]);
+      console.info(`[GSHEET_CURRICULUM] Headers found:`, rows[0]);
       const partial   = {};
+      let skipped = 0;
       for (let i = 1; i < rows.length; i++) {
         const topic = rowToBlueprint(rows[i], idx, subjectOverride);
         if (topic) partial[topic.id] = topic;
+        else skipped++;
       }
+      if (skipped > 0) console.warn(`[GSHEET_CURRICULUM] Skipped ${skipped} rows (missing topic_id, subject, or title).`);
       console.info(
         `[GSHEET_CURRICULUM] Loaded ${Object.keys(partial).length} topics` +
         (subjectOverride ? ` for "${subjectOverride}"` : '') + '.'
