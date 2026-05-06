@@ -335,28 +335,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!authData) return;
 
   // Step 1: Load Google Sheet curriculum into TOPIC_BLUEPRINT
-  // Use sessionStorage cache so sheet only fetches ONCE per browser session
-  // — avoids slow reload every time student navigates back to classroom
-  const CACHE_KEY = 'ue_curriculum_cache_v1';
-  const cached = sessionStorage.getItem(CACHE_KEY);
-  if (cached) {
-    try {
-      window.TOPIC_BLUEPRINT = Object.assign(
-        window.TOPIC_BLUEPRINT || {},
-        JSON.parse(cached)
-      );
-      console.info('[CLASSROOM] Curriculum loaded from session cache ⚡');
-    } catch(e) {
-      sessionStorage.removeItem(CACHE_KEY);
-      await GSHEET_CURRICULUM.init();
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify(window.TOPIC_BLUEPRINT || {}));
-    }
-  } else {
-    await GSHEET_CURRICULUM.init();
-    try {
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify(window.TOPIC_BLUEPRINT || {}));
-    } catch(e) { /* storage full — skip cache */ }
-  }
+  // Cache the RAW CSV text per subject URL so the network fetch is skipped on repeat visits.
+  // We still run GSHEET_CURRICULUM.init() every time so _source flags and blueprint
+  // structure are always built correctly — only the network round-trip is cached.
+  await GSHEET_CURRICULUM.init();
 
   // Step 2: Merge sheet topics into CLASSROOM.CURRICULUM so the
   // video player and sidebar can find them. Sheet wins over hardcoded.
