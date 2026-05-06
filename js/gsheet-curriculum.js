@@ -220,7 +220,7 @@ window.GSHEET_CURRICULUM = (function () {
   // ── Fetch a single sheet and return partial blueprint ─────────────
   async function fetchOneSheet(url, subjectOverride) {
     try {
-      const res = await fetch(url, { cache: 'no-store' });
+      const res = await fetch(url, { cache: 'default' }); // browser caches CSV for ~5 min
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       const rows = parseCSV(text);
