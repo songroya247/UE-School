@@ -483,21 +483,22 @@ const CLASSROOM = (function () {
   let isPremiumUser  = false;
   let userId         = null;
 
-  // ─── mergeSheetIntoCurriculum ────────────────────
-  // Single source of truth — called ONLY from init(), after
-  // GSHEET_CURRICULUM.init() has populated TOPIC_BLUEPRINT.
-  // Converts every sheet topic into CURRICULUM format so the
-  // sidebar, video player and quiz all work without changes.
+  // ─── Merge Google Sheet topics into CURRICULUM ────
+  // Called once at init after GSHEET_CURRICULUM.init().
+  // Converts every TOPIC_BLUEPRINT entry (from Google Sheets)
+  // into the CURRICULUM format so the sidebar, video player,
+  // and all other classroom features work without any changes.
   function mergeSheetIntoCurriculum() {
     const blueprint = window.TOPIC_BLUEPRINT || {};
     let merged = 0;
 
     for (const topic of Object.values(blueprint)) {
       if (topic._source !== 'gsheet') continue;
+
       const subj = topic.subject;
       if (!subj) continue;
 
-      // Ensure the subject bucket exists
+      // Create subject bucket if it doesn't exist yet
       if (!CURRICULUM[subj]) {
         CURRICULUM[subj] = {
           label:  subj.charAt(0).toUpperCase() + subj.slice(1),
@@ -507,11 +508,7 @@ const CLASSROOM = (function () {
         };
       }
 
-      // Guard: ensure topics is always an array
-      if (!Array.isArray(CURRICULUM[subj].topics)) {
-        CURRICULUM[subj].topics = [];
-      }
-
+      // Build a classroom-compatible topic object from the sheet row
       const classroomTopic = {
         id:       topic.id,
         title:    topic.title,
@@ -519,15 +516,14 @@ const CLASSROOM = (function () {
         premium:  false,
         videos:   topic.videos || null,
         content: {
-          intro:    topic.blurb || (topic.title + ' — loaded from Google Sheets.'),
-          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
-          formulas: Array.isArray(topic.formulas)
-            ? topic.formulas.map(f => ({ label: '', formula: f }))
-            : [],
+          intro:    topic.blurb || `${topic.title} — lesson loaded from Google Sheets.`,
+          points:   topic.objectives || [],
+          formulas: (topic.formulas || []).map(f => ({ label: '', formula: f })),
         },
         quiz: [],
       };
 
+      // Replace existing hardcoded topic with same id, or append
       const existing = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
       if (existing >= 0) {
         CURRICULUM[subj].topics[existing] = classroomTopic;
@@ -536,58 +532,53 @@ const CLASSROOM = (function () {
       }
       merged++;
     }
-    console.info('[CLASSROOM] mergeSheetIntoCurriculum: ' + merged + ' topics merged.');
+
+    if (merged > 0) {
+      console.info(`[CLASSROOM] Merged ${merged} sheet topics into CURRICULUM.`);
+    }
   }
 
-  // ─── Init — Single Source of Truth ───────────────
-  // classroom.js is the ONLY entity that drives initialisation.
-  // classroom.html simply calls CLASSROOM.init() and nothing else.
-  // Sequence is strictly sequential — no race conditions possible.
+  // ─── Init ─────────────────────────────────────────
   async function init() {
-    // Step A: Authenticate
     const result = await AUTH_GUARD.init();
-    if (!result) {
-      // AUTH_GUARD is redirecting — reveal body so there's no blank flash
-      document.body.style.visibility = 'visible';
-      return;
-    }
+    if (!result) return;
 
     const { profile, session } = result;
-    userId        = session?.user?.id;
+    userId = session?.user?.id;
     isPremiumUser = AUTH_GUARD.isPremium(profile);
 
-    // Step B: Defaulter banner
+    // Defaulter banner
     const banner = document.getElementById('defaulter-banner');
     if (banner) {
       const status = AUTH_GUARD.subscriptionStatus(profile);
       banner.style.display = status === 'EXPIRED' ? 'block' : 'none';
     }
 
-    // Step C: Store profile for watermark (used by renderLesson)
-    window._ueProfile = profile || null;
-
-    // Step D: Fetch Google Sheet data — MUST complete before any UI renders
+    // ── Load Google Sheet curriculum first, then render ──
+    // This ensures sheet videos are available before the sidebar builds.
     if (window.GSHEET_CURRICULUM && window.GSHEET_CURRICULUM.isEnabled()) {
       await window.GSHEET_CURRICULUM.init();
       mergeSheetIntoCurriculum();
     }
 
-    // Step E: Build subject list from user's registered subjects (fallback: all)
-    const userSubjects = (profile?.exam_subjects?.length)
+    // Build subject tabs from user's registered subjects (fall back to all)
+    const userSubjects = profile?.exam_subjects?.length
       ? profile.exam_subjects.filter(s => CURRICULUM[s])
       : Object.keys(CURRICULUM);
 
-    // Step F: Render UI — only now that data is fully merged
     renderSubjectTabs(userSubjects);
 
-    const params       = new URLSearchParams(window.location.search);
-    const startSubject = (params.get('subject') && CURRICULUM[params.get('subject')])
-      ? params.get('subject')
-      : (userSubjects[0] || 'mathematics');
+    // Deep-link from URL params
+    const params   = new URLSearchParams(window.location.search);
+    const urlSubj  = params.get('subject');
+    const urlTopic = params.get('topic');
 
+    const startSubject = (urlSubj && CURRICULUM[urlSubj]) ? urlSubj : (userSubjects[0] || 'mathematics');
     currentSubject = startSubject;
-    renderSidebar(startSubject, params.get('topic'));
 
+    renderSidebar(startSubject, urlTopic);
+
+    // Activate the right subject tab
     document.querySelectorAll('.subject-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.subject === startSubject);
     });
@@ -710,139 +701,203 @@ const CLASSROOM = (function () {
   // tier: 'foundation' | 'standard' | 'mastery' (optional, default 'standard')
   // Fallback chain: requested tier → standard → foundation → mastery → driveId → driveUrl
   function renderLesson(topic, tier) {
+    // Title + meta
     setEl('topic-tag',    topic.id.split('.')[1] || topic.title);
     setEl('topic-title',  topic.title);
     setEl('lesson-duration-badge', topic.duration + ' mins');
 
+    // Video area — supports YouTube, Google Drive ID, Drive URL, or Sheet video tiers
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
-
-      // ── Pick best video URL for the requested tier ──
-      function getVideoUrl(t, requestedTier) {
+      // ── Tier-aware video URL picker with automatic fallback ──
+      // Priority: requested tier → standard → foundation → mastery → legacy driveId/driveUrl
+      // If only one video is in the sheet, every tier falls back to that video automatically.
+      const getVideoUrl = (t, requestedTier) => {
         if (t.videos) {
           const order = [requestedTier, 'standard', 'foundation', 'mastery']
             .filter(Boolean)
-            .filter((v, i, a) => a.indexOf(v) === i);
-          for (const tk of order) {
-            const url = t.videos[tk] && t.videos[tk].url;
+            .filter((v, i, a) => a.indexOf(v) === i); // dedupe
+          for (const t_tier of order) {
+            const url = t.videos[t_tier] && t.videos[t_tier].url;
             if (url) return url;
           }
         }
-        if (t.driveId)  return 'https://drive.google.com/file/d/' + t.driveId + '/preview';
+        if (t.driveId) return `https://drive.google.com/file/d/${t.driveId}/preview`;
         if (t.driveUrl && window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(t.driveUrl);
         return '';
-      }
+      };
 
-      // ── Skeleton helpers ──
+      // ── Helpers for skeleton + tier badge ──
       const skeleton  = document.getElementById('video-skeleton');
       const tierBadge = document.getElementById('video-tier-badge');
+      const driveCover = document.getElementById('video-drive-cover');
 
-      function showSkeleton() { if (skeleton) skeleton.style.display = 'flex'; }
-      function hideSkeleton()  { if (skeleton) skeleton.style.display = 'none'; }
-
+      function showSkeleton() {
+        if (skeleton) skeleton.style.display = 'flex';
+      }
+      function hideSkeleton() {
+        if (skeleton) skeleton.style.display = 'none';
+      }
       function showTierBadge(t) {
         if (!tierBadge) return;
         const labels = { foundation: '🟠 Foundation', standard: '🔵 Standard', mastery: '🟣 Mastery' };
-        tierBadge.textContent  = labels[t] || '';
-        tierBadge.className    = 'video-tier-badge tier-' + t;
+        tierBadge.textContent = labels[t] || '';
+        tierBadge.className = `video-tier-badge tier-${t}`;
         tierBadge.style.display = t ? 'block' : 'none';
       }
 
-      // ── YouTube URL detection ──
+      // ── Detect YouTube URL ──
       function extractYouTubeId(url) {
         if (!url) return null;
         const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
         return m ? m[1] : null;
       }
 
-      // ── Student name for watermark ──
-      const studentName = (
-        (window._ueProfile && (window._ueProfile.full_name || window._ueProfile.email)) || ''
-      ).trim();
+      // ── Get student name for watermark ──
+      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || 'UE School Student').trim();
 
-      // ── Inject iframe with skeleton, arrow blocker, and name watermark ──
+      // ── Lazy iframe injection — show skeleton until iframe loads ──
       function injectIframe(src, isYouTube) {
         showSkeleton();
 
-        // Remove old iframe/watermark if switching topics
-        videoArea.querySelectorAll('iframe, .ue-watermark, .ue-arrow-cover')
-          .forEach(function(el) { el.remove(); });
-
-        var iframe = document.createElement('iframe');
+        const iframe = document.createElement('iframe');
         iframe.src = src;
         iframe.allow = 'autoplay; fullscreen';
         iframe.allowFullscreen = true;
         iframe.loading = 'lazy';
         iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
 
-        iframe.addEventListener('load', function() {
-          hideSkeleton();
-
-          // Show student name pill at bottom-right after video loads
-          if (studentName) {
-            var prev = videoArea.querySelector('.ue-watermark');
-            if (prev) prev.remove();
-            var wm = document.createElement('div');
-            wm.className = 'ue-watermark';
-            wm.textContent = studentName;
-            wm.style.cssText = [
-              'position:absolute', 'bottom:10px', 'right:12px',
-              'color:rgba(255,255,255,0.55)',
-              'background:rgba(0,0,0,0.4)',
-              'font-size:0.65rem', 'font-weight:600',
-              'letter-spacing:0.1em', 'white-space:nowrap',
-              'pointer-events:none', 'user-select:none',
-              'z-index:9', 'padding:3px 10px', 'border-radius:4px',
-              'backdrop-filter:blur(4px)',
-              'text-transform:uppercase',
-              'max-width:70%', 'overflow:hidden', 'text-overflow:ellipsis',
-            ].join(';');
-            videoArea.appendChild(wm);
-          }
-        });
-
-        // Fallback: hide skeleton after 8s on very slow networks
+        iframe.addEventListener('load', hideSkeleton);
         setTimeout(hideSkeleton, 8000);
 
-        // Remove placeholder elements but keep skeleton, badge, cover
+        // Clear placeholder elements
         videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
-          .forEach(function(el) { el.remove(); });
-
+          .forEach(el => el.remove());
         videoArea.appendChild(iframe);
 
-        // Arrow blocker: transparent div covers Drive external-link icon (top-right)
+        // ── Arrow blocker — sits ABOVE the iframe ──
+        // Covers the top-right corner where Drive/YouTube puts the external link icon
         if (!isYouTube) {
-          var cover = document.createElement('div');
-          cover.className = 'ue-arrow-cover';
-          cover.style.cssText = 'position:absolute;top:0;right:0;width:80px;height:60px;z-index:10;background:transparent;pointer-events:all;cursor:default';
+          const cover = document.createElement('div');
+          cover.style.cssText = [
+            'position:absolute',
+            'top:0','right:0',
+            'width:80px','height:60px',
+            'z-index:10',
+            'background:transparent',
+            'pointer-events:all',
+            'cursor:default',
+          ].join(';');
           videoArea.appendChild(cover);
+        }
+
+        // ── Watermark overlay ──
+        if (studentName) {
+          const wm = document.createElement('div');
+          wm.id = 'video-watermark';
+          const escaped = studentName.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+          wm.style.cssText = [
+            'position:absolute','inset:0',
+            'z-index:9',
+            'pointer-events:none',
+            'overflow:hidden',
+          ].join(';');
+
+          // Build a repeating diagonal grid of watermark text (professional DRM style)
+          const rows = 5;
+          const cols = 4;
+          let rowsHTML = '';
+          for (let r = 0; r < rows; r++) {
+            let cells = '';
+            for (let c = 0; c < cols; c++) {
+              cells += `<span style="
+                color:rgba(255,255,255,0.065);
+                font-size:0.62rem;
+                font-weight:600;
+                letter-spacing:0.12em;
+                white-space:nowrap;
+                text-transform:uppercase;
+                padding:0 18px;
+                user-select:none;
+                pointer-events:none;
+                font-family:'DM Sans',system-ui,sans-serif;
+              ">${escaped}</span>`;
+            }
+            rowsHTML += `<div style="
+              display:flex;
+              justify-content:space-around;
+              align-items:center;
+              width:160%;
+              margin-left:-30%;
+            ">${cells}</div>`;
+          }
+
+          wm.innerHTML = `
+            <div style="
+              position:absolute;inset:0;
+              display:flex;flex-direction:column;
+              justify-content:space-around;
+              transform:rotate(-22deg) scale(1.15);
+              transform-origin:center center;
+              pointer-events:none;user-select:none;
+            ">${rowsHTML}</div>
+
+            <div style="
+              position:absolute;bottom:10px;right:12px;
+              display:flex;align-items:center;gap:5px;
+              background:rgba(0,0,0,0.45);
+              backdrop-filter:blur(6px);
+              -webkit-backdrop-filter:blur(6px);
+              border:1px solid rgba(255,255,255,0.1);
+              border-radius:5px;
+              padding:3px 9px 3px 7px;
+              pointer-events:none;user-select:none;
+            ">
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4.5 1a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" stroke="rgba(255,255,255,0.45)" stroke-width="0.9"/>
+                <path d="M3.2 3.2h2.6L3.2 5.8h2.6" stroke="rgba(255,255,255,0.45)" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span style="
+                color:rgba(255,255,255,0.5);
+                font-size:0.58rem;
+                font-weight:600;
+                letter-spacing:0.07em;
+                white-space:nowrap;
+                text-transform:uppercase;
+                font-family:'DM Sans',system-ui,sans-serif;
+              ">${escaped}</span>
+            </div>`;
+
+          videoArea.appendChild(wm);
         }
       }
 
-      // ── Choose source and render ──
-      var rawUrl = getVideoUrl(topic, tier);
-      var ytId   = topic.youtubeId || extractYouTubeId(rawUrl);
+      // Determine video source — YouTube takes priority
+      const rawUrl = getVideoUrl(topic, tier);
+      const ytId   = topic.youtubeId || extractYouTubeId(rawUrl);
 
       if (ytId) {
+        // YouTube embed — no Drive cover needed
         showTierBadge(tier);
         injectIframe(
-          'https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1&playsinline=1',
+          `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`,
           true
         );
       } else if (rawUrl) {
+        // Google Drive embed
         showTierBadge(tier);
         injectIframe(rawUrl, false);
       } else {
-        // No video — show animated placeholder
+        // No video yet — show animated placeholder
         hideSkeleton();
         if (tierBadge) tierBadge.style.display = 'none';
-        videoArea.innerHTML =
-          '<div class="video-bg"></div>' +
-          '<div class="video-grid"></div>' +
-          '<div class="video-play-btn" onclick="CLASSROOM.playVideo(\'' + topic.id + '\')">&#x25B6;</div>' +
-          '<div class="video-duration">' + topic.duration + '</div>';
+        videoArea.innerHTML = `
+          <div class="video-bg"></div>
+          <div class="video-grid"></div>
+          <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
+          <div class="video-duration">${topic.duration}</div>`;
       }
-    }
     }
 
     // Lesson content
@@ -1063,9 +1118,17 @@ const CLASSROOM = (function () {
     selectTopic(topicId, opts.tier);
   }
 
+  // ── Stop floating — dock video back ──
+  function stopFloat() {
+    const va = document.getElementById('video-area');
+    const ph = document.getElementById('video-placeholder-box');
+    if (va) { va.classList.remove('floating'); va.style.left = ''; va.style.top = ''; }
+    if (ph) ph.classList.remove('visible');
+  }
+
   return {
     init, switchSubject, selectTopic, loadTopic, nextLesson, prevLesson,
-    playVideo, toggleSidebar, closeSidebar, CURRICULUM
+    playVideo, toggleSidebar, closeSidebar, stopFloat, CURRICULUM
   };
 
 })();
