@@ -546,7 +546,11 @@ const CLASSROOM = (function () {
   async function init() {
     // Step A: Authenticate
     const result = await AUTH_GUARD.init();
-    if (!result) return;
+    if (!result) {
+      // AUTH_GUARD is redirecting — reveal body so there's no blank flash
+      document.body.style.visibility = 'visible';
+      return;
+    }
 
     const { profile, session } = result;
     userId        = session?.user?.id;
