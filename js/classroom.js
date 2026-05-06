@@ -701,146 +701,139 @@ const CLASSROOM = (function () {
   // tier: 'foundation' | 'standard' | 'mastery' (optional, default 'standard')
   // Fallback chain: requested tier → standard → foundation → mastery → driveId → driveUrl
   function renderLesson(topic, tier) {
-    // Title + meta
     setEl('topic-tag',    topic.id.split('.')[1] || topic.title);
     setEl('topic-title',  topic.title);
     setEl('lesson-duration-badge', topic.duration + ' mins');
 
-    // Video area — supports YouTube, Google Drive ID, Drive URL, or Sheet video tiers
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
-      // ── Tier-aware video URL picker with automatic fallback ──
-      // Priority: requested tier → standard → foundation → mastery → legacy driveId/driveUrl
-      // If only one video is in the sheet, every tier falls back to that video automatically.
-      const getVideoUrl = (t, requestedTier) => {
+
+      // ── Pick best video URL for the requested tier ──
+      function getVideoUrl(t, requestedTier) {
         if (t.videos) {
           const order = [requestedTier, 'standard', 'foundation', 'mastery']
             .filter(Boolean)
-            .filter((v, i, a) => a.indexOf(v) === i); // dedupe
-          for (const t_tier of order) {
-            const url = t.videos[t_tier] && t.videos[t_tier].url;
+            .filter((v, i, a) => a.indexOf(v) === i);
+          for (const tk of order) {
+            const url = t.videos[tk] && t.videos[tk].url;
             if (url) return url;
           }
         }
-        if (t.driveId) return `https://drive.google.com/file/d/${t.driveId}/preview`;
+        if (t.driveId)  return 'https://drive.google.com/file/d/' + t.driveId + '/preview';
         if (t.driveUrl && window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(t.driveUrl);
         return '';
-      };
+      }
 
-      // ── Helpers for skeleton + tier badge ──
+      // ── Skeleton helpers ──
       const skeleton  = document.getElementById('video-skeleton');
       const tierBadge = document.getElementById('video-tier-badge');
-      const driveCover = document.getElementById('video-drive-cover');
 
-      function showSkeleton() {
-        if (skeleton) skeleton.style.display = 'flex';
-      }
-      function hideSkeleton() {
-        if (skeleton) skeleton.style.display = 'none';
-      }
+      function showSkeleton() { if (skeleton) skeleton.style.display = 'flex'; }
+      function hideSkeleton()  { if (skeleton) skeleton.style.display = 'none'; }
+
       function showTierBadge(t) {
         if (!tierBadge) return;
         const labels = { foundation: '🟠 Foundation', standard: '🔵 Standard', mastery: '🟣 Mastery' };
-        tierBadge.textContent = labels[t] || '';
-        tierBadge.className = `video-tier-badge tier-${t}`;
+        tierBadge.textContent  = labels[t] || '';
+        tierBadge.className    = 'video-tier-badge tier-' + t;
         tierBadge.style.display = t ? 'block' : 'none';
       }
 
-      // ── Detect YouTube URL ──
+      // ── YouTube URL detection ──
       function extractYouTubeId(url) {
         if (!url) return null;
         const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
         return m ? m[1] : null;
       }
 
-      // ── Get student name for watermark ──
-      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || 'UE School Student').trim();
+      // ── Student name for watermark ──
+      const studentName = (
+        (window._ueProfile && (window._ueProfile.full_name || window._ueProfile.email)) || ''
+      ).trim();
 
-      // ── Lazy iframe injection — show skeleton until iframe loads ──
+      // ── Inject iframe with skeleton, arrow blocker, and name watermark ──
       function injectIframe(src, isYouTube) {
         showSkeleton();
 
-        const iframe = document.createElement('iframe');
+        // Remove old iframe/watermark if switching topics
+        videoArea.querySelectorAll('iframe, .ue-watermark, .ue-arrow-cover')
+          .forEach(function(el) { el.remove(); });
+
+        var iframe = document.createElement('iframe');
         iframe.src = src;
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allow = 'autoplay; fullscreen';
         iframe.allowFullscreen = true;
-        iframe.setAttribute('frameborder', '0');
         iframe.loading = 'lazy';
         iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
 
-        iframe.addEventListener('load', () => {
+        iframe.addEventListener('load', function() {
           hideSkeleton();
-          // Show name watermark after video loads
-          const prev2 = videoArea.querySelector('.ue-watermark');
-          if (prev2) prev2.remove();
+
+          // Show student name pill at bottom-right after video loads
           if (studentName) {
-            const wm2 = document.createElement('div');
-            wm2.className = 'ue-watermark';
-            wm2.textContent = studentName;
-            wm2.style.cssText = [
-              'position:absolute','bottom:10px','left:50%',
-              'transform:translateX(-50%)',
-              'color:rgba(255,255,255,0.6)',
-              'background:rgba(0,0,0,0.38)',
-              'font-size:0.68rem','font-weight:600',
-              'letter-spacing:0.12em','white-space:nowrap',
-              'pointer-events:none','user-select:none',
-              'z-index:9','padding:3px 12px','border-radius:20px',
-              'backdrop-filter:blur(4px)','text-transform:uppercase',
-              'max-width:85%','overflow:hidden','text-overflow:ellipsis',
+            var prev = videoArea.querySelector('.ue-watermark');
+            if (prev) prev.remove();
+            var wm = document.createElement('div');
+            wm.className = 'ue-watermark';
+            wm.textContent = studentName;
+            wm.style.cssText = [
+              'position:absolute', 'bottom:10px', 'right:12px',
+              'color:rgba(255,255,255,0.55)',
+              'background:rgba(0,0,0,0.4)',
+              'font-size:0.65rem', 'font-weight:600',
+              'letter-spacing:0.1em', 'white-space:nowrap',
+              'pointer-events:none', 'user-select:none',
+              'z-index:9', 'padding:3px 10px', 'border-radius:4px',
+              'backdrop-filter:blur(4px)',
+              'text-transform:uppercase',
+              'max-width:70%', 'overflow:hidden', 'text-overflow:ellipsis',
             ].join(';');
-            videoArea.appendChild(wm2);
+            videoArea.appendChild(wm);
           }
         });
+
+        // Fallback: hide skeleton after 8s on very slow networks
         setTimeout(hideSkeleton, 8000);
 
-        // Clear placeholder elements
+        // Remove placeholder elements but keep skeleton, badge, cover
         videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
-          .forEach(el => el.remove());
+          .forEach(function(el) { el.remove(); });
+
         videoArea.appendChild(iframe);
 
-        // ── Arrow blocker — sits ABOVE the iframe ──
-        // Covers the top-right corner where Drive/YouTube puts the external link icon
+        // Arrow blocker: transparent div covers Drive external-link icon (top-right)
         if (!isYouTube) {
-          const cover = document.createElement('div');
-          cover.style.cssText = [
-            'position:absolute',
-            'top:0','right:0',
-            'width:80px','height:60px',
-            'z-index:10',
-            'background:transparent',
-            'pointer-events:all',
-            'cursor:default',
-          ].join(';');
+          var cover = document.createElement('div');
+          cover.className = 'ue-arrow-cover';
+          cover.style.cssText = 'position:absolute;top:0;right:0;width:80px;height:60px;z-index:10;background:transparent;pointer-events:all;cursor:default';
           videoArea.appendChild(cover);
         }
       }
 
-      // Determine video source — YouTube takes priority
-      const rawUrl = getVideoUrl(topic, tier);
-      const ytId   = topic.youtubeId || extractYouTubeId(rawUrl);
+      // ── Choose source and render ──
+      var rawUrl = getVideoUrl(topic, tier);
+      var ytId   = topic.youtubeId || extractYouTubeId(rawUrl);
 
       if (ytId) {
-        // YouTube embed — no Drive cover needed
         showTierBadge(tier);
         injectIframe(
-          `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1`,
+          'https://www.youtube.com/embed/' + ytId + '?rel=0&modestbranding=1&playsinline=1',
           true
         );
       } else if (rawUrl) {
-        // Google Drive embed
         showTierBadge(tier);
         injectIframe(rawUrl, false);
       } else {
-        // No video yet — show animated placeholder
+        // No video — show animated placeholder
         hideSkeleton();
         if (tierBadge) tierBadge.style.display = 'none';
-        videoArea.innerHTML = `
-          <div class="video-bg"></div>
-          <div class="video-grid"></div>
-          <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
-          <div class="video-duration">${topic.duration}</div>`;
+        videoArea.innerHTML =
+          '<div class="video-bg"></div>' +
+          '<div class="video-grid"></div>' +
+          '<div class="video-play-btn" onclick="CLASSROOM.playVideo(\'' + topic.id + '\')">&#x25B6;</div>' +
+          '<div class="video-duration">' + topic.duration + '</div>';
       }
+    }
     }
 
     // Lesson content
@@ -1059,8 +1052,6 @@ const CLASSROOM = (function () {
   function loadTopic(topicId, opts) {
     opts = opts || {};
     selectTopic(topicId, opts.tier);
-  }
-  if (ph) ph.classList.remove('visible');
   }
 
   return {
