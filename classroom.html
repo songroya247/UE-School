@@ -208,7 +208,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 }
 </style>
 </head>
-<body style="visibility:hidden">
+<body style="visibility:hidden" onload="setTimeout(()=>document.body.style.visibility='visible',3000)">
 <noscript>
   <div style="padding:40px;text-align:center;font-family:system-ui">
     <h2>JavaScript is required</h2>
@@ -334,8 +334,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // classroom.html is a thin bootstrapper only.
   // ALL initialisation logic (auth, gsheet fetch, merge, render)
   // lives inside CLASSROOM.init() — single source of truth.
-  await CLASSROOM.init();
-  document.body.style.visibility = 'visible';
+  try {
+    await CLASSROOM.init();
+  } catch (err) {
+    console.error('[CLASSROOM] init() failed:', err);
+  } finally {
+    // ALWAYS reveal the body — even if init crashes,
+    // so the user never sees a blank/hidden page.
+    document.body.style.visibility = 'visible';
+  }
 });
 </script>
 </body>
