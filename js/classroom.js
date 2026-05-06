@@ -753,7 +753,10 @@ const CLASSROOM = (function () {
         return m ? m[1] : null;
       }
 
-      // ── Lazy iframe injection with skeleton + arrow blocker + watermark ──
+      // ── Get student name for watermark ──
+      const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || 'UE School Student').trim();
+
+      // ── Lazy iframe injection — show skeleton until iframe loads ──
       function injectIframe(src, isYouTube) {
         showSkeleton();
 
@@ -766,61 +769,47 @@ const CLASSROOM = (function () {
 
         iframe.addEventListener('load', () => {
           hideSkeleton();
-
-          // ── Watermark: single name bar at bottom of player ──
-          const prev = videoArea.querySelector('.ue-watermark');
-          if (prev) prev.remove();
-          const name = (
-            window._ueProfile?.full_name ||
-            window._ueProfile?.email     ||
-            ''
-          ).trim();
-          if (name) {
-            const wm = document.createElement('div');
-            wm.className = 'ue-watermark';
-            wm.textContent = name;
-            wm.style.cssText = [
-              'position:absolute',
-              'bottom:10px',
-              'left:50%',
+          // Show name watermark after video loads
+          const prev2 = videoArea.querySelector('.ue-watermark');
+          if (prev2) prev2.remove();
+          if (studentName) {
+            const wm2 = document.createElement('div');
+            wm2.className = 'ue-watermark';
+            wm2.textContent = studentName;
+            wm2.style.cssText = [
+              'position:absolute','bottom:10px','left:50%',
               'transform:translateX(-50%)',
-              'color:rgba(255,255,255,0.55)',
-              'background:rgba(0,0,0,0.35)',
-              'font-size:0.7rem',
-              'font-weight:600',
-              'letter-spacing:0.12em',
-              'white-space:nowrap',
-              'pointer-events:none',
-              'user-select:none',
-              'z-index:9',
-              'padding:3px 10px',
-              'border-radius:20px',
-              'backdrop-filter:blur(4px)',
-              'max-width:80%',
-              'overflow:hidden',
-              'text-overflow:ellipsis',
-              'text-transform:uppercase',
+              'color:rgba(255,255,255,0.6)',
+              'background:rgba(0,0,0,0.38)',
+              'font-size:0.68rem','font-weight:600',
+              'letter-spacing:0.12em','white-space:nowrap',
+              'pointer-events:none','user-select:none',
+              'z-index:9','padding:3px 12px','border-radius:20px',
+              'backdrop-filter:blur(4px)','text-transform:uppercase',
+              'max-width:85%','overflow:hidden','text-overflow:ellipsis',
             ].join(';');
-            videoArea.appendChild(wm);
+            videoArea.appendChild(wm2);
           }
         });
-
-        // Safety fallback: hide skeleton after 8s on slow networks
         setTimeout(hideSkeleton, 8000);
 
-        // Clear placeholder elements, keep skeleton + badge
+        // Clear placeholder elements
         videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
           .forEach(el => el.remove());
         videoArea.appendChild(iframe);
 
-        // ── Arrow blocker: covers Drive/YouTube external-link icon ──
+        // ── Arrow blocker — sits ABOVE the iframe ──
+        // Covers the top-right corner where Drive/YouTube puts the external link icon
         if (!isYouTube) {
           const cover = document.createElement('div');
           cover.style.cssText = [
-            'position:absolute','top:0','right:0',
+            'position:absolute',
+            'top:0','right:0',
             'width:80px','height:60px',
-            'z-index:10','background:transparent',
-            'pointer-events:all','cursor:default',
+            'z-index:10',
+            'background:transparent',
+            'pointer-events:all',
+            'cursor:default',
           ].join(';');
           videoArea.appendChild(cover);
         }
