@@ -483,22 +483,21 @@ const CLASSROOM = (function () {
   let isPremiumUser  = false;
   let userId         = null;
 
-  // ─── Merge Google Sheet topics into CURRICULUM ────
-  // Called once at init after GSHEET_CURRICULUM.init().
-  // Converts every TOPIC_BLUEPRINT entry (from Google Sheets)
-  // into the CURRICULUM format so the sidebar, video player,
-  // and all other classroom features work without any changes.
+  // ─── mergeSheetIntoCurriculum ────────────────────
+  // Single source of truth — called ONLY from init(), after
+  // GSHEET_CURRICULUM.init() has populated TOPIC_BLUEPRINT.
+  // Converts every sheet topic into CURRICULUM format so the
+  // sidebar, video player and quiz all work without changes.
   function mergeSheetIntoCurriculum() {
     const blueprint = window.TOPIC_BLUEPRINT || {};
     let merged = 0;
 
     for (const topic of Object.values(blueprint)) {
       if (topic._source !== 'gsheet') continue;
-
       const subj = topic.subject;
       if (!subj) continue;
 
-      // Create subject bucket if it doesn't exist yet
+      // Ensure the subject bucket exists
       if (!CURRICULUM[subj]) {
         CURRICULUM[subj] = {
           label:  subj.charAt(0).toUpperCase() + subj.slice(1),
@@ -508,7 +507,11 @@ const CLASSROOM = (function () {
         };
       }
 
-      // Build a classroom-compatible topic object from the sheet row
+      // Guard: ensure topics is always an array
+      if (!Array.isArray(CURRICULUM[subj].topics)) {
+        CURRICULUM[subj].topics = [];
+      }
+
       const classroomTopic = {
         id:       topic.id,
         title:    topic.title,
@@ -516,14 +519,15 @@ const CLASSROOM = (function () {
         premium:  false,
         videos:   topic.videos || null,
         content: {
-          intro:    topic.blurb || `${topic.title} — lesson loaded from Google Sheets.`,
-          points:   topic.objectives || [],
-          formulas: (topic.formulas || []).map(f => ({ label: '', formula: f })),
+          intro:    topic.blurb || (topic.title + ' — loaded from Google Sheets.'),
+          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
+          formulas: Array.isArray(topic.formulas)
+            ? topic.formulas.map(f => ({ label: '', formula: f }))
+            : [],
         },
         quiz: [],
       };
 
-      // Replace existing hardcoded topic with same id, or append
       const existing = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
       if (existing >= 0) {
         CURRICULUM[subj].topics[existing] = classroomTopic;
@@ -532,53 +536,54 @@ const CLASSROOM = (function () {
       }
       merged++;
     }
-
-    if (merged > 0) {
-      console.info(`[CLASSROOM] Merged ${merged} sheet topics into CURRICULUM.`);
-    }
+    console.info('[CLASSROOM] mergeSheetIntoCurriculum: ' + merged + ' topics merged.');
   }
 
-  // ─── Init ─────────────────────────────────────────
+  // ─── Init — Single Source of Truth ───────────────
+  // classroom.js is the ONLY entity that drives initialisation.
+  // classroom.html simply calls CLASSROOM.init() and nothing else.
+  // Sequence is strictly sequential — no race conditions possible.
   async function init() {
+    // Step A: Authenticate
     const result = await AUTH_GUARD.init();
     if (!result) return;
 
     const { profile, session } = result;
-    userId = session?.user?.id;
+    userId        = session?.user?.id;
     isPremiumUser = AUTH_GUARD.isPremium(profile);
 
-    // Defaulter banner
+    // Step B: Defaulter banner
     const banner = document.getElementById('defaulter-banner');
     if (banner) {
       const status = AUTH_GUARD.subscriptionStatus(profile);
       banner.style.display = status === 'EXPIRED' ? 'block' : 'none';
     }
 
-    // ── Load Google Sheet curriculum first, then render ──
-    // This ensures sheet videos are available before the sidebar builds.
+    // Step C: Store profile for watermark (used by renderLesson)
+    window._ueProfile = profile || null;
+
+    // Step D: Fetch Google Sheet data — MUST complete before any UI renders
     if (window.GSHEET_CURRICULUM && window.GSHEET_CURRICULUM.isEnabled()) {
       await window.GSHEET_CURRICULUM.init();
       mergeSheetIntoCurriculum();
     }
 
-    // Build subject tabs from user's registered subjects (fall back to all)
-    const userSubjects = profile?.exam_subjects?.length
+    // Step E: Build subject list from user's registered subjects (fallback: all)
+    const userSubjects = (profile?.exam_subjects?.length)
       ? profile.exam_subjects.filter(s => CURRICULUM[s])
       : Object.keys(CURRICULUM);
 
+    // Step F: Render UI — only now that data is fully merged
     renderSubjectTabs(userSubjects);
 
-    // Deep-link from URL params
-    const params   = new URLSearchParams(window.location.search);
-    const urlSubj  = params.get('subject');
-    const urlTopic = params.get('topic');
+    const params       = new URLSearchParams(window.location.search);
+    const startSubject = (params.get('subject') && CURRICULUM[params.get('subject')])
+      ? params.get('subject')
+      : (userSubjects[0] || 'mathematics');
 
-    const startSubject = (urlSubj && CURRICULUM[urlSubj]) ? urlSubj : (userSubjects[0] || 'mathematics');
     currentSubject = startSubject;
+    renderSidebar(startSubject, params.get('topic'));
 
-    renderSidebar(startSubject, urlTopic);
-
-    // Activate the right subject tab
     document.querySelectorAll('.subject-tab').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.subject === startSubject);
     });
