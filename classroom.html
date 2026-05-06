@@ -94,7 +94,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .video-outer{position:sticky;top:0;z-index:50;width:100%;background:var(--bg)}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:0 0 12px 12px;border:none;border-bottom:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.5);transition:box-shadow .3s}
+.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:0;border:none;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.5);transition:box-shadow .3s}
 .video-area:hover{box-shadow:0 10px 40px rgba(0,0,0,.6)}
 
 
@@ -108,9 +108,9 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 /* Drive "open in new tab" blocker */
 .video-drive-cover{position:absolute;top:0;right:0;width:72px;height:56px;z-index:10;background:transparent;pointer-events:all}
 /* Loading skeleton shimmer */
-.video-skeleton{position:absolute;inset:0;background:linear-gradient(90deg,#0d1428 25%,#162040 50%,#0d1428 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:22px;gap:8px}
+.video-skeleton{position:absolute;inset:0;background:linear-gradient(90deg,#0d1428 25%,#162040 50%,#0d1428 75%);background-size:200% 100%;animation:shimmer 1.6s infinite;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:18px;gap:0}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.video-skeleton-spinner{width:36px;height:36px;border:3px solid rgba(79,142,255,.2);border-top-color:#4f8eff;border-radius:50%;animation:spin .8s linear infinite}
+.video-skeleton-spinner{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 .video-skeleton-text{font-size:.75rem;color:rgba(255,255,255,.3);letter-spacing:.08em}
 /* Tier badge */
@@ -335,7 +335,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!authData) return;
 
   // Step 1: Load Google Sheet curriculum into TOPIC_BLUEPRINT
-  await GSHEET_CURRICULUM.init();
+  // Use sessionStorage cache so sheet only fetches ONCE per browser session
+  // — avoids slow reload every time student navigates back to classroom
+  const CACHE_KEY = 'ue_curriculum_cache_v1';
+  const cached = sessionStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try {
+      window.TOPIC_BLUEPRINT = Object.assign(
+        window.TOPIC_BLUEPRINT || {},
+        JSON.parse(cached)
+      );
+      console.info('[CLASSROOM] Curriculum loaded from session cache ⚡');
+    } catch(e) {
+      sessionStorage.removeItem(CACHE_KEY);
+      await GSHEET_CURRICULUM.init();
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(window.TOPIC_BLUEPRINT || {}));
+    }
+  } else {
+    await GSHEET_CURRICULUM.init();
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(window.TOPIC_BLUEPRINT || {}));
+    } catch(e) { /* storage full — skip cache */ }
+  }
 
   // Step 2: Merge sheet topics into CLASSROOM.CURRICULUM so the
   // video player and sidebar can find them. Sheet wins over hardcoded.
