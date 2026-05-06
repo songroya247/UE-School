@@ -762,8 +762,9 @@ const CLASSROOM = (function () {
 
         const iframe = document.createElement('iframe');
         iframe.src = src;
-        iframe.allow = 'autoplay; fullscreen';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
         iframe.allowFullscreen = true;
+        iframe.setAttribute('frameborder', '0');
         iframe.loading = 'lazy';
         iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
 
@@ -823,7 +824,7 @@ const CLASSROOM = (function () {
         // YouTube embed — no Drive cover needed
         showTierBadge(tier);
         injectIframe(
-          `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`,
+          `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1`,
           true
         );
       } else if (rawUrl) {
