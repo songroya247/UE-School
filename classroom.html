@@ -331,61 +331,11 @@ function toast(msg, dur = 2800) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const authData = await AUTH_GUARD.init();
-  if (!authData) return;
-
-  // 1. Load Google Sheet curriculum into TOPIC_BLUEPRINT
-  await GSHEET_CURRICULUM.init();
-
-  // 2. Merge sheet topics into CLASSROOM.CURRICULUM
-  (function mergeSheetIntoCurriculum() {
-    const blueprint = window.TOPIC_BLUEPRINT || {};
-    const CURRICULUM = window.CLASSROOM && window.CLASSROOM.CURRICULUM;
-    if (!CURRICULUM) { console.warn('[MERGE] CLASSROOM.CURRICULUM not found'); return; }
-    let merged = 0;
-    for (const topic of Object.values(blueprint)) {
-      if (topic._source !== 'gsheet') continue;
-      const subj = topic.subject;
-      if (!subj) continue;
-      if (!CURRICULUM[subj]) {
-        CURRICULUM[subj] = {
-          label:  subj.charAt(0).toUpperCase() + subj.slice(1),
-          icon:   '&#x1F4D6;',
-          color:  '#6366f1',
-          topics: [],
-        };
-      }
-      const classroomTopic = {
-        id:       topic.id,
-        title:    topic.title,
-        duration: topic.duration || '14 mins',
-        premium:  false,
-        videos:   topic.videos || null,
-        content: {
-          intro:    topic.blurb || topic.title + ' — loaded from Google Sheets.',
-          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
-          formulas: Array.isArray(topic.formulas)
-            ? topic.formulas.map(f => ({ label: '', formula: f }))
-            : [],
-        },
-        quiz: [],
-      };
-      const idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
-      if (idx >= 0) {
-        CURRICULUM[subj].topics[idx] = classroomTopic;
-      } else {
-        CURRICULUM[subj].topics.push(classroomTopic);
-      }
-      merged++;
-    }
-    console.info('[CLASSROOM] Sheet merge: ' + merged + ' topics injected.');
-  })();
-
-  // 3. Store profile for watermark
-  if (authData.profile) window._ueProfile = authData.profile;
-
-  // 4. Render classroom
+  // classroom.html is a thin bootstrapper only.
+  // ALL initialisation logic (auth, gsheet fetch, merge, render)
+  // lives inside CLASSROOM.init() — single source of truth.
   await CLASSROOM.init();
+  document.body.style.visibility = 'visible';
 });
 </script>
 </body>
