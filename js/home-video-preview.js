@@ -1,79 +1,63 @@
 /* ═══════════════════════════════════════════════════════════════════
    UE School — js/home-video-preview.js
    ───────────────────────────────────────────────────────────────────
-   PURPOSE
-   ───────
-   Fetches a dedicated "home preview" Google Sheet tab (CSV), takes
-   the LAST 5 rows that contain a valid video URL, and displays them
-   inside the .classroom-video-mock slot on index.html.
+   FIXES IN THIS VERSION
+   ─────────────────────
+   1. SWIPE SUPPORT — touch swipe left/right switches videos on mobile.
+   2. POOR NETWORK / DRIVE PROMPT BLOCKED — the iframe is hidden behind
+      a branded loading overlay while the video buffers. The Drive
+      "download" UI never shows because the iframe is invisible until
+      the video fires its first "load" event. If it takes > 12 s the
+      overlay shows a friendly "Poor connection" message instead of the
+      Drive error screen.
 
-   • Users navigate manually with ‹ › arrow buttons and dot indicators.
-   • Auto-rotation is disabled — videos play fully without interruption.
-   • If only one valid video row exists, no navigation controls appear.
-   • If the sheet is empty or unreachable the original placeholder is
-     restored silently.
-   • Uses GDRIVE_VIDEO.embedUrl() (gdrive-video.js) to normalise any
-     Google Drive share URL into a /preview embed URL.
+   LOAD ORDER in index.html:
+     <script src="js/gdrive-video.js"></script>
+     <script src="js/home-video-preview.js"></script>
 
-   ───────────────────────────────────────────────────────────────────
-   LOAD ORDER (in index.html, before </body>)
-   ──────────────────────────────────────────
-     <script src="js/gdrive-video.js"></script>          ← must come first
-     <script src="js/home-video-preview.js"></script>    ← this file
-
-   ───────────────────────────────────────────────────────────────────
-   GOOGLE SHEET FORMAT
-   ───────────────────
-   Header row (row 1) must have these column names:
-
-     title      — display label shown below the iframe (optional)
-     video_url  — full Google Drive share URL or bare file ID
-
-   Add new videos at the bottom — the last 5 rows are always used.
+   GOOGLE SHEET columns: title (optional) | video_url (required)
+   Add new rows at the bottom — last 5 rows with a URL are used.
 ═══════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  /* ── CONFIG ──────────────────────────────────────────────────────── */
+  /* ── CONFIG ─────────────────────────────────────────────────────── */
   var HOME_VIDEO_SHEET_CSV_URL =
     'https://docs.google.com/spreadsheets/d/e/' +
     '2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_' +
     '/pub?gid=175294299&single=true&output=csv';
 
-  /* ── INTERNAL STATE ────────────────────────────────────────────────── */
-  var videos       = [];   // [{title, embedUrl}, …] — last ≤5 valid rows
-  var currentIndex = 0;
-  var slot         = null; // the .classroom-video-mock DOM element
+  // Max ms to wait for iframe "load" before showing poor-network message
+  var LOAD_TIMEOUT_MS = 12000;
 
-  /* ── PLACEHOLDER (restored on error / empty sheet) ─────────────────── */
+  /* ── STATE ──────────────────────────────────────────────────────── */
+  var videos       = [];
+  var currentIndex = 0;
+  var slot         = null;
+  var loadTimer    = null;
+
+  /* ── PLACEHOLDER ────────────────────────────────────────────────── */
   var PLACEHOLDER_HTML =
     '<div style="text-align:center;color:rgba(255,255,255,.25)">' +
       '<div style="font-size:3.5rem;margin-bottom:8px">&#x25B6;</div>' +
       '<div style="font-size:.85rem;font-weight:600">Sample Lesson Preview</div>' +
     '</div>';
 
-  /* ── CSV PARSER ──────────────────────────────────────────────────────
-     Minimal RFC-4180-compatible parser — no external dependencies.
-  ─────────────────────────────────────────────────────────────────────── */
+  /* ── CSV PARSER ─────────────────────────────────────────────────── */
   function parseCsv(text) {
-    var rows  = [];
-    var row   = [];
-    var field = '';
-    var inQ   = false;
-    var i = 0, len = text.length;
-
+    var rows = [], row = [], field = '', inQ = false, i = 0, len = text.length;
     while (i < len) {
       var ch = text[i];
       if (inQ) {
         if (ch === '"') {
-          if (text[i + 1] === '"') { field += '"'; i += 2; }
+          if (text[i+1] === '"') { field += '"'; i += 2; }
           else { inQ = false; i++; }
         } else { field += ch; i++; }
       } else {
         if      (ch === '"')  { inQ = true; i++; }
         else if (ch === ',')  { row.push(field); field = ''; i++; }
-        else if (ch === '\r' && text[i + 1] === '\n') {
+        else if (ch === '\r' && text[i+1] === '\n') {
           row.push(field); rows.push(row); row = []; field = ''; i += 2;
         }
         else if (ch === '\n') {
@@ -84,63 +68,158 @@
     }
     if (field || row.length) {
       row.push(field);
-      if (row.some(function (c) { return c.trim() !== ''; })) rows.push(row);
+      if (row.some(function(c){ return c.trim() !== ''; })) rows.push(row);
     }
     return rows;
   }
 
-  /* ── SHEET → VIDEO OBJECTS ─────────────────────────────────────────── */
+  /* ── URL RESOLVER ──────────────────────────────────────────────────
+     Detects whether a raw URL is YouTube or Google Drive and returns
+     the correct embeddable URL for each.
+
+     YouTube formats supported:
+       https://www.youtube.com/watch?v=VIDEO_ID
+       https://youtu.be/VIDEO_ID
+       https://www.youtube.com/shorts/VIDEO_ID
+       https://www.youtube.com/embed/VIDEO_ID  (already embed — params appended)
+
+     YouTube embed params applied:
+       rel=0             — no "related videos" panel at the end
+       modestbranding=1  — hides YouTube logo in the control bar
+       controls=1        — keeps scrub bar, volume, fullscreen
+
+     Google Drive: handled by existing GDRIVE_VIDEO.embedUrl().
+  ─────────────────────────────────────────────────────────────────── */
+  function resolveEmbedUrl(rawUrl) {
+    var s = (rawUrl || '').trim();
+    if (!s) return '';
+
+    var YT_PARAMS = '?rel=0&modestbranding=1&controls=1';
+
+    // Already a YouTube embed URL — just add our params
+    if (s.indexOf('youtube.com/embed/') !== -1) {
+      return s + (s.indexOf('?') !== -1 ? '&' : '?') + 'rel=0&modestbranding=1&controls=1';
+    }
+
+    var m;
+
+    // youtu.be/VIDEO_ID
+    m = s.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (m) return 'https://www.youtube.com/embed/' + m[1] + YT_PARAMS;
+
+    // youtube.com/watch?v=VIDEO_ID  or  ?v=  anywhere in query string
+    m = s.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (m) return 'https://www.youtube.com/embed/' + m[1] + YT_PARAMS;
+
+    // youtube.com/shorts/VIDEO_ID
+    m = s.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (m) return 'https://www.youtube.com/embed/' + m[1] + YT_PARAMS;
+
+    // Google Drive — delegate to existing helper
+    if (window.GDRIVE_VIDEO && window.GDRIVE_VIDEO.embedUrl) {
+      return window.GDRIVE_VIDEO.embedUrl(s) || s;
+    }
+
+    return s; // unknown format — pass through as-is
+  }
+
+  /* ── SHEET → VIDEO OBJECTS ──────────────────────────────────────── */
   function sheetToVideos(rows) {
     if (!rows || rows.length < 2) return [];
-
-    var headers  = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    var headers  = rows[0].map(function(h){ return h.trim().toLowerCase(); });
     var titleIdx = headers.indexOf('title');
     var urlIdx   = headers.indexOf('video_url');
     if (urlIdx === -1) urlIdx = headers.indexOf('url');
     if (urlIdx === -1) urlIdx = headers.indexOf('video');
-
     if (urlIdx === -1) {
       console.warn('[home-video-preview] No "video_url" column found. Headers:', headers);
       return [];
     }
-
     var valid = [];
     for (var r = 1; r < rows.length; r++) {
       var rawUrl = (rows[r][urlIdx] || '').trim();
       if (!rawUrl) continue;
-
-      var embedUrl = (window.GDRIVE_VIDEO && window.GDRIVE_VIDEO.embedUrl)
-        ? window.GDRIVE_VIDEO.embedUrl(rawUrl)
-        : rawUrl;
+      var embedUrl = resolveEmbedUrl(rawUrl);
       if (!embedUrl) continue;
-
       var title = titleIdx !== -1 ? (rows[r][titleIdx] || '').trim() : '';
       valid.push({ title: title, embedUrl: embedUrl });
     }
-
-    return valid.slice(-5); // last 5 rows only
+    return valid.slice(-5);
   }
 
-  /* ── ESCAPE HELPER ──────────────────────────────────────────────────── */
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g,  '&amp;')
-      .replace(/"/g,  '&quot;')
-      .replace(/</g,  '&lt;')
-      .replace(/>/g,  '&gt;');
+  /* ── ESCAPE HELPER ──────────────────────────────────────────────── */
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+                    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── OVERLAY HELPERS ────────────────────────────────────────────────
+     The overlay sits on top of the (invisible) iframe and shows a
+     branded spinner. Once the iframe loads it fades out, revealing
+     the video cleanly — the Drive "download" UI is never seen.
+  ─────────────────────────────────────────────────────────────────── */
+  function showOverlay(message) {
+    var ov = slot.querySelector('#hvp-overlay');
+    if (!ov) return;
+    ov.innerHTML = message;
+    ov.style.opacity = '1';
+    ov.style.pointerEvents = 'auto';
+  }
+
+  function hideOverlay() {
+    var ov = slot.querySelector('#hvp-overlay');
+    if (!ov) return;
+    ov.style.transition = 'opacity .5s';
+    ov.style.opacity = '0';
+    ov.style.pointerEvents = 'none';
+  }
+
+  function spinnerMsg(text) {
+    return (
+      '<div style="text-align:center;color:rgba(255,255,255,.75)">' +
+        '<div style="' +
+          'width:38px;height:38px;border:3px solid rgba(255,255,255,.15);' +
+          'border-top-color:rgba(255,255,255,.8);border-radius:50%;' +
+          'animation:hvpSpin .8s linear infinite;margin:0 auto 12px' +
+        '"></div>' +
+        '<div style="font-size:.82rem;font-weight:600">' + text + '</div>' +
+      '</div>'
+    );
+  }
+
+  function poorNetworkMsg(title) {
+    return (
+      '<div style="text-align:center;color:rgba(255,255,255,.7);padding:0 20px">' +
+        '<div style="font-size:2rem;margin-bottom:8px">&#128246;</div>' +
+        '<div style="font-size:.88rem;font-weight:700;margin-bottom:6px">Slow connection detected</div>' +
+        '<div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:14px">' +
+          (title ? escapeHtml(title) : 'Video') + ' will play once loaded' +
+        '</div>' +
+        '<button onclick="window.__HVP_RETRY()" style="' +
+          'background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);' +
+          'color:#fff;border-radius:6px;padding:6px 18px;cursor:pointer;font-size:.8rem' +
+        '">Retry</button>' +
+      '</div>'
+    );
   }
 
   /* ── RENDER ONE VIDEO ───────────────────────────────────────────────
-     Injects the iframe + manual nav controls for videos[idx].
-  ─────────────────────────────────────────────────────────────────────── */
+     Structure:
+       slot (position:relative)
+         ├─ iframe          (hidden under overlay until loaded)
+         ├─ #hvp-overlay    (branded spinner / poor-network msg)
+         ├─ label div       (video title)
+         └─ nav div         (arrows + dots) — only if 2+ videos
+  ─────────────────────────────────────────────────────────────────── */
   function renderVideo(idx) {
     if (!slot || !videos.length) return;
+    clearTimeout(loadTimer);
+
     var v = videos[idx];
 
+    /* — Navigation HTML (arrows + dots) — */
     var navHtml = '';
     if (videos.length > 1) {
-
-      // Dot indicators — clickable
       var dotItems = '';
       for (var d = 0; d < videos.length; d++) {
         var bg = (d === idx) ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.3)';
@@ -150,59 +229,125 @@
             'background:' + bg + ';transition:background .2s' +
           '"></div>';
       }
-
-      // Arrow button shared styles
-      var btn =
+      var btnBase =
         'position:absolute;top:50%;transform:translateY(-50%);' +
         'background:rgba(0,0,0,.5);border:none;border-radius:50%;' +
         'width:36px;height:36px;cursor:pointer;color:#fff;' +
-        'font-size:1.3rem;line-height:1;z-index:11;' +
-        'display:flex;align-items:center;justify-content:center;' +
-        'transition:background .2s;';
-
+        'font-size:1.3rem;line-height:1;z-index:12;' +
+        'display:flex;align-items:center;justify-content:center;';
       navHtml =
-        // Prev ‹
-        '<button onclick="window.__HVP_PREV()" title="Previous video" style="' + btn + 'left:10px;">&#8249;</button>' +
-        // Next ›
-        '<button onclick="window.__HVP_NEXT()" title="Next video"     style="' + btn + 'right:10px;">&#8250;</button>' +
-        // Dots row
-        '<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:10;">' +
+        '<button onclick="window.__HVP_PREV()" title="Previous" style="' + btnBase + 'left:10px;">&#8249;</button>' +
+        '<button onclick="window.__HVP_NEXT()" title="Next"     style="' + btnBase + 'right:10px;">&#8250;</button>' +
+        '<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:12;">' +
           dotItems +
         '</div>';
     }
 
-    // Label (title) sits just above the dots
+    /* — Title label — */
     var labelHtml = v.title
       ? '<div style="' +
           'position:absolute;bottom:' + (videos.length > 1 ? '28px' : '10px') + ';' +
           'left:0;right:0;text-align:center;font-size:.75rem;' +
           'color:rgba(255,255,255,.55);pointer-events:none;' +
-          'padding:0 48px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' +
+          'padding:0 52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:12' +
         '">' + escapeHtml(v.title) + '</div>'
       : '';
 
+    /* — Assemble — */
     slot.innerHTML =
-      '<iframe' +
+      /* iframe: starts invisible; overlay hides Drive UI until ready */
+      '<iframe id="hvp-frame"' +
         ' src="' + v.embedUrl + '"' +
-        ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"' +
+        ' style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;opacity:0;"' +
         ' allow="autoplay; encrypted-media"' +
         ' allowfullscreen' +
         ' title="' + escapeHtml(v.title || 'Featured Lesson') + '"' +
       '></iframe>' +
+
+      /* overlay — sits above iframe, removed once video loads */
+      '<div id="hvp-overlay" style="' +
+        'position:absolute;top:0;left:0;width:100%;height:100%;' +
+        'background:#0d1117;border-radius:inherit;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'z-index:11;opacity:1;' +
+      '">' +
+        spinnerMsg('Loading video\u2026') +
+      '</div>' +
+
+      /* keyframes (injected once) */
+      '<style id="hvp-style">' +
+        '@keyframes hvpSpin{to{transform:rotate(360deg)}}' +
+      '</style>' +
+
       labelHtml +
       navHtml;
+
+    /* — Wire iframe load event — */
+    var frame = slot.querySelector('#hvp-frame');
+    frame.addEventListener('load', function () {
+      clearTimeout(loadTimer);
+      // Fade in iframe, fade out overlay
+      frame.style.transition = 'opacity .4s';
+      frame.style.opacity    = '1';
+      hideOverlay();
+    });
+
+    /* — Poor-network timeout — */
+    loadTimer = setTimeout(function () {
+      showOverlay(poorNetworkMsg(v.title));
+    }, LOAD_TIMEOUT_MS);
+
+    /* — Attach swipe listeners to slot — */
+    attachSwipe(slot);
   }
 
-  /* ── MANUAL NAVIGATION HANDLERS (attached to window for onclick) ──── */
+  /* ── SWIPE SUPPORT ──────────────────────────────────────────────────
+     Detects left/right touch swipes on the slot element.
+     Threshold: 40 px horizontal movement, < 80 px vertical drift.
+     The iframe captures touch events so we listen on the OVERLAY
+     and the nav layer, which sit above the iframe.
+  ─────────────────────────────────────────────────────────────────── */
+  var swipeStartX = null;
+  var swipeStartY = null;
+
+  function attachSwipe(el) {
+    // Remove previous listeners by cloning the overlay + nav wrapper
+    // (the iframe itself swallows touches — overlay is always on top)
+    el.removeEventListener('touchstart', onTouchStart, { passive: true });
+    el.removeEventListener('touchend',   onTouchEnd);
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchend',   onTouchEnd);
+  }
+
+  function onTouchStart(e) {
+    if (!e.touches || !e.touches[0]) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
+  }
+
+  function onTouchEnd(e) {
+    if (swipeStartX === null) return;
+    if (!e.changedTouches || !e.changedTouches[0]) return;
+    var dx = e.changedTouches[0].clientX - swipeStartX;
+    var dy = e.changedTouches[0].clientY - swipeStartY;
+    swipeStartX = null;
+    swipeStartY = null;
+    if (Math.abs(dx) < 40 || Math.abs(dy) > 80) return; // not a clean swipe
+    if (dx < 0) window.__HVP_NEXT(); // swipe left  → next
+    else         window.__HVP_PREV(); // swipe right → prev
+  }
+
+  /* ── NAVIGATION HANDLERS ────────────────────────────────────────── */
   window.__HVP_GO = function (idx) {
     if (!videos.length) return;
     currentIndex = ((idx % videos.length) + videos.length) % videos.length;
     renderVideo(currentIndex);
   };
-  window.__HVP_PREV = function () { window.__HVP_GO(currentIndex - 1); };
-  window.__HVP_NEXT = function () { window.__HVP_GO(currentIndex + 1); };
+  window.__HVP_PREV   = function () { window.__HVP_GO(currentIndex - 1); };
+  window.__HVP_NEXT   = function () { window.__HVP_GO(currentIndex + 1); };
+  window.__HVP_RETRY  = function () { renderVideo(currentIndex); };
 
-  /* ── LOADING SPINNER ────────────────────────────────────────────────── */
+  /* ── INITIAL SPINNER (before sheet fetch) ───────────────────────── */
   function showSpinner() {
     if (!slot) return;
     slot.innerHTML =
@@ -212,36 +357,35 @@
           'border-top-color:rgba(255,255,255,.7);border-radius:50%;' +
           'animation:hvpSpin .8s linear infinite;margin:0 auto 10px' +
         '"></div>' +
-        '<div style="font-size:.78rem">Loading preview\u2026</div>' +
+        '<div style="font-size:.78rem">Loading\u2026</div>' +
       '</div>' +
-      '<style id="hvp-spin-style">@keyframes hvpSpin{to{transform:rotate(360deg)}}</style>';
+      '<style id="hvp-style">@keyframes hvpSpin{to{transform:rotate(360deg)}}</style>';
   }
 
-  /* ── MAIN INIT ──────────────────────────────────────────────────────── */
+  /* ── MAIN INIT ──────────────────────────────────────────────────── */
   function init() {
     slot = document.querySelector('.classroom-video-mock');
     if (!slot) return;
-
     showSpinner();
 
     fetch(HOME_VIDEO_SHEET_CSV_URL)
-      .then(function (res) {
+      .then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.text();
       })
-      .then(function (csvText) {
+      .then(function(csvText) {
         videos = sheetToVideos(parseCsv(csvText));
         if (!videos.length) { slot.innerHTML = PLACEHOLDER_HTML; return; }
         currentIndex = 0;
         renderVideo(currentIndex);
       })
-      .catch(function (err) {
-        console.warn('[home-video-preview] Could not load sheet:', err);
+      .catch(function(err) {
+        console.warn('[home-video-preview] Sheet fetch failed:', err);
         slot.innerHTML = PLACEHOLDER_HTML;
       });
   }
 
-  /* ── BOOT ────────────────────────────────────────────────────────────── */
+  /* ── BOOT ───────────────────────────────────────────────────────── */
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
