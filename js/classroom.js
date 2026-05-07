@@ -1192,45 +1192,7 @@ window.CLASSROOM = (function () {
             'overflow:hidden',
           ].join(';');
 
-          // Build a repeating diagonal grid of watermark text (professional DRM style)
-          const rows = 5;
-          const cols = 4;
-          let rowsHTML = '';
-          for (let r = 0; r < rows; r++) {
-            let cells = '';
-            for (let c = 0; c < cols; c++) {
-              cells += `<span style="
-                color:rgba(255,255,255,0.065);
-                font-size:0.62rem;
-                font-weight:600;
-                letter-spacing:0.12em;
-                white-space:nowrap;
-                text-transform:uppercase;
-                padding:0 18px;
-                user-select:none;
-                pointer-events:none;
-                font-family:'DM Sans',system-ui,sans-serif;
-              ">${escaped}</span>`;
-            }
-            rowsHTML += `<div style="
-              display:flex;
-              justify-content:space-around;
-              align-items:center;
-              width:160%;
-              margin-left:-30%;
-            ">${cells}</div>`;
-          }
-
           wm.innerHTML = `
-            <div style="
-              position:absolute;inset:0;
-              display:flex;flex-direction:column;
-              justify-content:space-around;
-              transform:rotate(-22deg) scale(1.15);
-              transform-origin:center center;
-              pointer-events:none;user-select:none;
-            ">${rowsHTML}</div>
-
             <div style="
               position:absolute;bottom:10px;right:12px;
               display:flex;align-items:center;gap:5px;
