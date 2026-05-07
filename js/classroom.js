@@ -94,7 +94,7 @@
      }
 ═══════════════════════════════════════════════════════════════════ */
 
-const CLASSROOM = (function () {
+window.CLASSROOM = (function () {
 
   // ─── Curriculum ───────────────────────────────────
   // Each topic has: id, title, duration, premium, youtubeId (optional),
@@ -731,8 +731,25 @@ const CLASSROOM = (function () {
         quiz: [], // sheets do not supply quiz questions; CBT questions come from a separate sheet
       };
 
-      // Sheet wins: replace hardcoded topic with same ID, or append if new
-      const existing = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      // Sheet wins: replace hardcoded topic with same ID, or append if new.
+      // Use case-insensitive + whitespace/underscore-normalised comparison as a fallback
+      // so 'mathematics.number_bases' (curriculum.js) matches 'mathematics.Number Bases'
+      // (classroom.js CURRICULUM) and any sheet variation in between.
+      const normalise = id => (id || '').toLowerCase().replace(/[\s_]+/g, '');
+      const normalisedSheetId = normalise(topic.id);
+
+      let existing = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      if (existing < 0) {
+        // Fuzzy fallback: match ignoring case and whitespace differences
+        existing = CURRICULUM[subj].topics.findIndex(
+          t => normalise(t.id) === normalisedSheetId
+        );
+        if (existing >= 0) {
+          // ID matched fuzzily — adopt the hardcoded ID so sidebar links still work
+          classroomTopic.id = CURRICULUM[subj].topics[existing].id;
+        }
+      }
+
       if (existing >= 0) {
         CURRICULUM[subj].topics[existing] = classroomTopic; // overwrite hardcoded
       } else {
@@ -1007,7 +1024,7 @@ const CLASSROOM = (function () {
     // Title + meta
     setEl('topic-tag',    topic.id.split('.')[1] || topic.title);
     setEl('topic-title',  topic.title);
-    setEl('lesson-duration-badge', topic.duration + ' mins');
+    { const d = (topic.duration || '').toString().replace(/\s*mins?\s*$/i, '').trim(); setEl('lesson-duration-badge', d ? d + ' mins' : '—'); }
 
     // Video area — supports YouTube, Google Drive ID, Drive URL, or Sheet video tiers
     const videoArea = document.getElementById('video-area');
@@ -1329,7 +1346,7 @@ const CLASSROOM = (function () {
 
     setEl('topic-title', topic.title);
     setEl('topic-tag', 'Premium');
-    setEl('lesson-duration-badge', topic.duration + ' mins');
+    { const d = (topic.duration || '').toString().replace(/\s*mins?\s*$/i, '').trim(); setEl('lesson-duration-badge', d ? d + ' mins' : '—'); }
 
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
