@@ -480,22 +480,49 @@ window.GSHEET_CURRICULUM = (function () {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       const rows = parseCSV(text);
-      if (rows.length < 2) return {}; // header-only or empty sheet
+      if (rows.length < 2) {
+        console.warn('[GSHEET_CURRICULUM] Sheet appears empty (header-only or no rows):', url);
+        return {};
+      }
 
       const idx     = buildIndex(rows[0]); // row 0 is always the header
+
+      // Warn if required columns are missing — helps diagnose header name mismatches
+      const requiredCols = ['topic_id', 'title'];
+      for (const col of requiredCols) {
+        if (idx[col] === -1) {
+          console.error(
+            `[GSHEET_CURRICULUM] Required column "${col}" not found in sheet headers.`,
+            'Found headers:', rows[0]
+          );
+        }
+      }
+
       const partial = {};
       for (let i = 1; i < rows.length; i++) {
         const topic = rowToBlueprint(rows[i], idx, subjectOverride);
         if (topic) partial[topic.id] = topic;
       }
-      console.info(
-        `[GSHEET_CURRICULUM] Loaded ${Object.keys(partial).length} topics` +
-        (subjectOverride ? ` for "${subjectOverride}"` : '') + '.'
-      );
+
+      const loadedCount = Object.keys(partial).length;
+      const dataRows    = rows.length - 1;
+      if (loadedCount === 0 && dataRows > 0) {
+        console.error(
+          `[GSHEET_CURRICULUM] Parsed ${dataRows} rows but produced 0 topics.`,
+          'Check that topic_id, title, and a video column are all filled in.',
+          'Sheet headers detected:', rows[0]
+        );
+      } else {
+        console.info(
+          `[GSHEET_CURRICULUM] Loaded ${loadedCount} topics` +
+          (subjectOverride ? ` for "${subjectOverride}"` : '') + '.'
+        );
+      }
       return partial;
     } catch (e) {
-      // Non-fatal — log and return empty so other sheets still load
-      console.warn('[GSHEET_CURRICULUM] fetch failed for', url, '—', e.message);
+      // Non-fatal — log clearly and return empty so other sheets still load
+      console.error('[GSHEET_CURRICULUM] ❌ Fetch FAILED for', url, '—', e.message,
+        '\nCheck: Is the sheet published? File → Share → Publish to web → CSV.');
       return {};
     }
   }
