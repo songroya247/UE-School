@@ -1,8 +1,98 @@
-/* ═══════════════════════════════════════════════════
-   UE School — Classroom Engine
-   Wires subject tabs, topic list, video area, lesson
-   content, quick quiz, and topic_mastery tracking.
-═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   UE School — js/classroom.js  —  Classroom Engine
+   ───────────────────────────────────────────────────────────────────
+   ⚠️  CRITICAL PATH — CORE OF THE GSHEETS → VIDEO RENDERING PIPELINE
+   ───────────────────────────────────────────────────────────────────
+
+   ROLE IN THE PIPELINE
+   ────────────────────
+   This file is the FINAL CONSUMER of all data prepared by the
+   Google Sheets pipeline.  It owns:
+     • The hardcoded CURRICULUM (fallback content for every subject)
+     • mergeSheetIntoCurriculum() — ingests TOPIC_BLUEPRINT entries
+       (written by gsheet-curriculum.js) into CURRICULUM at runtime
+     • renderLesson() — picks the right video URL from topic.videos
+       and injects it into the <iframe> in the #video-area element
+     • The full UI: tabs, sidebar, lesson panel, quiz, navigation
+
+   FULL PIPELINE IN EXECUTION ORDER
+   ─────────────────────────────────
+   classroom.html loads scripts in this order (script tags, body end):
+
+     1. supabase.min.js        (CDN)
+     2. auth.js                → window.sb (Supabase client)
+     3. auth-guard.js          → AUTH_GUARD (session + premium check)
+     4. storage.js             → adaptive storage (Skill Chamber dep)
+     5. skill_questions.js     → Skill Chamber question bank
+     6. curriculum.js          → TOPIC_BLUEPRINT base (hardcoded)
+     7. intervention_modal.js  → diagnostic modal UI
+     8. gsheet-curriculum.js   → GSHEET_CURRICULUM loader
+     9. gdrive-video.js        → GDRIVE_VIDEO.embedUrl() helper
+    10. classroom.js           ← THIS FILE (registers CLASSROOM global)
+    11. skill_chamber.js       → monkey-patches CLASSROOM.loadTopic
+
+   Then the inline DOMContentLoaded script runs:
+
+     A. await AUTH_GUARD.init()           (auth check / redirect)
+     B. await GSHEET_CURRICULUM.init()    (fetch + parse CSV sheets)
+     C. mergeSheetIntoCurriculum()        (inline — mirrors step inside CLASSROOM.init)
+     D. window._ueProfile = authData.profile  (student name for watermark)
+     E. await CLASSROOM.init()            (renders sidebar + first topic)
+     F. IntersectionObserver setup        (floating video behaviour)
+
+   ───────────────────────────────────────────────────────────────────
+   ⛔  DO NOT MODIFY THIS FILE WITHOUT READING THE FULL PIPELINE NOTES
+   ───────────────────────────────────────────────────────────────────
+
+   WHAT THIS FILE OWNS (do not move these responsibilities elsewhere)
+   ──────────────────────────────────────────────────────────────────
+   • CURRICULUM constant  — the hardcoded topic tree (fallback data)
+   • mergeSheetIntoCurriculum()  — TOPIC_BLUEPRINT → CURRICULUM merge
+   • init()  — auth, sheet load, tab render, first topic selection
+   • renderLesson()  — video URL resolution and iframe injection
+   • injectIframe()  — DOM manipulation for the video player
+   • getVideoUrl()  — tier-aware video URL picker with fallback chain
+   • Free-tier sample tracking  — localStorage + AUTH_GUARD.canSampleFeature
+   • Supabase topic_mastery upsert  — study progress tracking
+
+   WHAT THIS FILE DOES NOT OWN (do not add these here)
+   ──────────────────────────────────────────────────────
+   • Fetching Google Sheets CSV data         → gsheet-curriculum.js
+   • Converting Drive URLs to /preview       → gdrive-video.js
+   • Config constants (URLs, limits)         → config.js (UE_CONFIG)
+   • Auth session management                 → auth.js + auth-guard.js
+   • Supabase client initialisation          → supabase.js + auth.js
+   • Skill Chamber adaptive routing          → skill_chamber.js
+
+   KEY DATA CONTRACT (between gsheet-curriculum.js and this file)
+   ─────────────────────────────────────────────────────────────────
+   After GSHEET_CURRICULUM.init() resolves, window.TOPIC_BLUEPRINT
+   contains entries shaped like:
+     {
+       id:         'mathematics.quadratics',
+       subject:    'mathematics',
+       title:      'Quadratic Equations',
+       duration:   '14 mins',
+       _source:    'gsheet',          ← mergeSheetIntoCurriculum() filters on this
+       videos: {
+         standard:   { url, duration, tagline },
+         foundation: { url, duration, tagline },
+         mastery:    { url, duration, tagline },
+       },
+       blurb:      'One-sentence intro',
+       objectives: ['point 1', 'point 2'],
+       formulas:   ['formula string'],
+     }
+
+   After mergeSheetIntoCurriculum(), CURRICULUM['mathematics'].topics
+   contains classroomTopic objects shaped like:
+     {
+       id, title, duration, premium: false,
+       videos: { standard, foundation, mastery },  ← read by getVideoUrl()
+       content: { intro, points, formulas },        ← rendered in lesson panel
+       quiz: [],
+     }
+═══════════════════════════════════════════════════════════════════ */
 
 const CLASSROOM = (function () {
 
@@ -445,18 +535,60 @@ const CLASSROOM = (function () {
     }
   };
 
-  // ─── Free-tier sample tracking ────────────────────
-  // Free users may watch UE_CONFIG.FREE_SAMPLE.VIDEOS_PER_ACCOUNT
-  // distinct topics in their lifetime on this device. The remembered
-  // topic IDs live in localStorage so they survive reloads, and the
-  // count is shared with auth-guard.js (`video` feature).
-  const FREE_VIDEOS_KEY = 'ue_free_videos_watched';
+  /* ───────────────────────────────────────────────────────────────────
+     FREE-TIER SAMPLE TRACKING  ★ CRITICAL PATH ★
+     ───────────────────────────────────────────────────────────────────
+     Free (registered-but-unpaid) users may watch a limited number of
+     distinct video topics — configured in UE_CONFIG.FREE_SAMPLE.
+     VIDEOS_PER_ACCOUNT (default: 1).
 
+     HOW IT WORKS:
+     ─────────────
+     • When a user opens a topic video for the first time, we store its
+       topic ID in localStorage under FREE_VIDEOS_KEY.
+     • On subsequent visits (or page reloads), we read this list back.
+     • topicUnlockedForUser() uses this list + AUTH_GUARD.canSampleFeature()
+       to decide whether to let the user in or bounce them to pricing.
+
+     TWO SYSTEMS WORKING TOGETHER:
+     ──────────────────────────────
+     1. AUTH_GUARD.canSampleFeature('video')  — reads from Supabase (or
+        local storage fallback) the QUOTA: how many video samples are
+        still available for this account.  Decremented by recordSampleUse().
+
+     2. getWatchedVideoIds() / rememberWatchedVideo()  — local cache of
+        WHICH topic IDs have been watched.  A user who has already watched
+        topic X can re-watch X without spending a new sample credit.
+
+     WHY BOTH?
+     ─────────
+     A user might close the browser and return.  The quota in Supabase
+     (via AUTH_GUARD) is the authoritative cap.  The local list of watched
+     IDs ensures re-opening a previously-viewed topic feels free — without
+     having to re-query Supabase for every click.
+
+     ⚠️  FREE_VIDEOS_KEY is a stable localStorage key name.  Changing it
+         would reset all existing free-sample state for every user on that
+         device.  Do NOT rename this constant.
+
+     ⚠️  This tracking ONLY applies in classroom.js.  The CBT and
+         study-guides pages have their own equivalent tracking logic.
+         Do not centralise it here without updating those pages too.
+  ───────────────────────────────────────────────────────────────────── */
+
+  const FREE_VIDEOS_KEY = 'ue_free_videos_watched'; // ← DO NOT RENAME
+
+  /* getWatchedVideoIds() — returns array of topic IDs already watched
+     by this user on this device.  Catches JSON parse errors silently
+     (corrupted localStorage) and returns [] as a safe default. */
   function getWatchedVideoIds() {
     try { return JSON.parse(localStorage.getItem(FREE_VIDEOS_KEY) || '[]'); }
     catch (_) { return []; }
   }
 
+  /* rememberWatchedVideo(topicId) — adds topicId to the watched list
+     if not already present.  Idempotent; safe to call multiple times.
+     Silently suppresses storage errors (private browsing, quota full). */
   function rememberWatchedVideo(topicId) {
     const ids = getWatchedVideoIds();
     if (!ids.includes(topicId)) {
@@ -465,40 +597,112 @@ const CLASSROOM = (function () {
     }
   }
 
-  // True iff this topic is unlocked for the current user.
-  // Premium → always true.
-  // Free user → true if (a) they've already opened it, or (b) they
-  // still have free-sample credit left to spend.
+  /* ───────────────────────────────────────────────────────────────────
+     topicUnlockedForUser(topic)  ★ CRITICAL PATH ★
+     ───────────────────────────────────────────────────────────────────
+     Central gating function.  Called by:
+       • renderSidebar()   — to show lock icon / PRO badge in topic list
+       • selectTopic()     — to bounce free users to pricing page
+       • nextLesson()      — to skip locked topics in navigation
+
+     Decision logic (in order of precedence):
+       1. Premium user → always unlocked (no further checks)
+       2. Free user, already watched this topic → unlocked (re-watch free)
+       3. Free user, still has sample credits → unlocked (first watch)
+       4. Free user, no credits left → locked (returns false → bounce)
+
+     Returns: boolean
+  ───────────────────────────────────────────────────────────────────── */
   function topicUnlockedForUser(topic) {
     if (isPremiumUser) return true;
     const watched = getWatchedVideoIds();
-    if (watched.includes(topic.id)) return true;          // already paid for with their sample
-    return AUTH_GUARD.canSampleFeature('video');           // still has credits
+    if (watched.includes(topic.id)) return true;      // re-watch: always free
+    return AUTH_GUARD.canSampleFeature('video');       // first watch: check quota
   }
 
-  // ─── State ────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────────────
+     Module-level state (private — NOT exported)
+
+     currentSubject  — key of the active subject tab ('mathematics' etc)
+     currentTopicId  — id of the topic currently rendered in the player
+     quizState       — tracks current quiz question index and score
+     isPremiumUser   — cached from AUTH_GUARD.isPremium() at init time
+     userId          — Supabase user UUID, used for topic_mastery upserts
+  ───────────────────────────────────────────────────────────────────── */
   let currentSubject = 'mathematics';
   let currentTopicId = null;
   let quizState      = { idx: 0, questions: [] };
   let isPremiumUser  = false;
   let userId         = null;
 
-  // ─── Merge Google Sheet topics into CURRICULUM ────
-  // Called once at init after GSHEET_CURRICULUM.init().
-  // Converts every TOPIC_BLUEPRINT entry (from Google Sheets)
-  // into the CURRICULUM format so the sidebar, video player,
-  // and all other classroom features work without any changes.
+  /* ─────────────────────────────────────────────────────────────────
+     mergeSheetIntoCurriculum()  ★ CRITICAL PATH ★
+     ─────────────────────────────────────────────────────────────────
+     WHEN CALLED:
+       1. By CLASSROOM.init() after GSHEET_CURRICULUM.init() resolves.
+       2. By classroom.html DOMContentLoaded inline script (Step C) —
+          this second call is intentional redundancy to handle timing
+          edge cases where the HTML script runs after DOM load but
+          before CLASSROOM.init() is called.
+
+     WHAT IT DOES:
+     ─────────────
+     Reads window.TOPIC_BLUEPRINT (written by gsheet-curriculum.js)
+     and converts each entry with _source='gsheet' into a
+     classroomTopic object that matches the CURRICULUM topic shape.
+     These objects are then injected into CURRICULUM[subject].topics,
+     either replacing an existing hardcoded topic of the same ID or
+     being appended as a new topic.
+
+     After this function runs, CURRICULUM is fully populated with
+     both hardcoded AND sheet-sourced topics.  Every downstream
+     function (renderSidebar, selectTopic, renderLesson) reads from
+     CURRICULUM — none of them read from TOPIC_BLUEPRINT directly.
+
+     DATA SHAPE TRANSLATION:
+     ────────────────────────
+     TOPIC_BLUEPRINT entry (from gsheet-curriculum.js):
+       { id, subject, title, duration, videos, blurb, objectives, formulas }
+
+     classroomTopic (the CURRICULUM topic shape):
+       {
+         id, title, duration,
+         premium: false,           ← sheet topics are always free-gated via subscription,
+                                      not topic-level premium flag; false = show in sidebar
+         videos: topic.videos,     ← { standard, foundation, mastery } — read by getVideoUrl()
+         content: {
+           intro:    topic.blurb,
+           points:   topic.objectives,
+           formulas: topic.formulas.map(f => ({ label:'', formula:f }))
+                                   ← CURRICULUM expects { label, formula } objects;
+                                      sheet stores bare strings; we normalise here
+         },
+         quiz: [],                 ← sheets don't supply quizzes; left empty
+       }
+
+     SHEET WINS:
+     ───────────
+     If a hardcoded CURRICULUM topic has the same ID as a sheet topic,
+     the sheet version REPLACES the hardcoded one.  This lets operators
+     update content without touching classroom.js.
+
+     ⚠️  The _source check (`topic._source !== 'gsheet'`) is the guard
+         that prevents non-sheet entries in TOPIC_BLUEPRINT from being
+         double-processed.  Do NOT remove this check.
+  ───────────────────────────────────────────────────────────────────── */
   function mergeSheetIntoCurriculum() {
     const blueprint = window.TOPIC_BLUEPRINT || {};
     let merged = 0;
 
     for (const topic of Object.values(blueprint)) {
+      // Only process entries that came from Google Sheets
       if (topic._source !== 'gsheet') continue;
 
       const subj = topic.subject;
       if (!subj) continue;
 
-      // Create subject bucket if it doesn't exist yet
+      // Create a new subject bucket if the sheet introduces a subject
+      // not present in the hardcoded CURRICULUM (e.g. 'further_maths')
       if (!CURRICULUM[subj]) {
         CURRICULUM[subj] = {
           label:  subj.charAt(0).toUpperCase() + subj.slice(1),
@@ -508,27 +712,31 @@ const CLASSROOM = (function () {
         };
       }
 
-      // Build a classroom-compatible topic object from the sheet row
+      // Build the classroomTopic object from the TOPIC_BLUEPRINT entry
+      // This is the shape that renderSidebar(), selectTopic(), and
+      // renderLesson() all expect.
       const classroomTopic = {
         id:       topic.id,
         title:    topic.title,
         duration: topic.duration || '14 mins',
-        premium:  false,
-        videos:   topic.videos || null,
+        premium:  false, // sheet topics are always subscription-gated, not topic-level locked
+        videos:   topic.videos || null, // { standard, foundation, mastery } — see getVideoUrl()
         content: {
           intro:    topic.blurb || `${topic.title} — lesson loaded from Google Sheets.`,
           points:   topic.objectives || [],
+          // CURRICULUM formulas expect { label, formula } objects;
+          // sheet formulas are bare strings → normalise with empty label
           formulas: (topic.formulas || []).map(f => ({ label: '', formula: f })),
         },
-        quiz: [],
+        quiz: [], // sheets do not supply quiz questions; CBT questions come from a separate sheet
       };
 
-      // Replace existing hardcoded topic with same id, or append
+      // Sheet wins: replace hardcoded topic with same ID, or append if new
       const existing = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
       if (existing >= 0) {
-        CURRICULUM[subj].topics[existing] = classroomTopic;
+        CURRICULUM[subj].topics[existing] = classroomTopic; // overwrite hardcoded
       } else {
-        CURRICULUM[subj].topics.push(classroomTopic);
+        CURRICULUM[subj].topics.push(classroomTopic);       // append new
       }
       merged++;
     }
@@ -538,30 +746,85 @@ const CLASSROOM = (function () {
     }
   }
 
-  // ─── Init ─────────────────────────────────────────
+  /* ─────────────────────────────────────────────────────────────────
+     init()  ★ CRITICAL PATH ★
+     ─────────────────────────────────────────────────────────────────
+     The main entry point for the classroom page.  Called by the
+     classroom.html DOMContentLoaded inline script as Step E (after
+     auth, sheet loading, and merging are complete).
+
+     SEQUENCE OF OPERATIONS:
+     ────────────────────────
+     1. AUTH_GUARD.init() — verify session + load user profile.
+        Redirects to login.html if unauthenticated.  Sets isPremiumUser
+        and userId for use throughout this module.
+
+     2. Defaulter banner — show/hide the "subscription expired" banner
+        based on subscriptionStatus(profile) from auth-guard.js.
+
+     3. GSHEET_CURRICULUM.init() + mergeSheetIntoCurriculum() —
+        If the sheet loader is enabled (SUBJECT_SHEET_URLS configured),
+        fetch and parse CSV data NOW, then merge into CURRICULUM.
+        This must happen BEFORE renderSubjectTabs() so that any
+        sheet-introduced subjects appear in the tab bar.
+
+        NOTE: The classroom.html inline script also calls
+        GSHEET_CURRICULUM.init() and mergeSheetIntoCurriculum() before
+        calling CLASSROOM.init().  That means in most cases the sheet
+        data is already in CURRICULUM by the time we reach step 3 here.
+        The GSHEET_CURRICULUM.init() call is idempotent (_loaded guard),
+        and the mergeSheetIntoCurriculum() call is also safe to run
+        twice (replace-or-append logic is idempotent for same IDs).
+        So this double-call is intentional and harmless.
+
+     4. renderSubjectTabs() — build the horizontal tab bar from the
+        user's registered exam_subjects (from Supabase profile), or all
+        subjects if none are registered.
+
+     5. Deep-link handling — parse ?subject= and ?topic= from the URL
+        to allow external links to jump directly to a specific lesson.
+
+     6. renderSidebar() — build the topic list for the initial subject
+        and auto-select the first unlocked topic (or the URL-specified one).
+
+     ⚠️  Do not reorder steps 3 and 4.  renderSubjectTabs() reads
+         CURRICULUM which must be fully merged before tabs are built.
+  ───────────────────────────────────────────────────────────────────── */
   async function init() {
     const result = await AUTH_GUARD.init();
-    if (!result) return;
+    if (!result) return; // unauthenticated — AUTH_GUARD redirected to login.html
 
     const { profile, session } = result;
-    userId = session?.user?.id;
+    userId        = session?.user?.id;
     isPremiumUser = AUTH_GUARD.isPremium(profile);
 
-    // Defaulter banner
+    // Show "subscription expired" banner for lapsed subscribers
     const banner = document.getElementById('defaulter-banner');
     if (banner) {
       const status = AUTH_GUARD.subscriptionStatus(profile);
       banner.style.display = status === 'EXPIRED' ? 'block' : 'none';
     }
 
-    // ── Load Google Sheet curriculum first, then render ──
-    // This ensures sheet videos are available before the sidebar builds.
+    /* ── Load Google Sheet curriculum, then render ──────────────────
+       This is the SECOND call to GSHEET_CURRICULUM.init() in the page
+       lifecycle (the first is in the inline DOMContentLoaded script).
+       It is safe because init() is idempotent (_loaded guard).
+
+       This call exists here as a defensive measure: if the HTML inline
+       script order ever changes, the classroom still loads sheet data
+       correctly because CLASSROOM.init() also ensures the load happens.
+
+       ⚠️  Do NOT remove this block.  Without it, classroom.js would
+           silently fall back to hardcoded content if the inline script
+           failed or was removed, with no error visible to developers.
+    ───────────────────────────────────────────────────────────────── */
     if (window.GSHEET_CURRICULUM && window.GSHEET_CURRICULUM.isEnabled()) {
       await window.GSHEET_CURRICULUM.init();
       mergeSheetIntoCurriculum();
     }
 
-    // Build subject tabs from user's registered subjects (fall back to all)
+    // Build subject tabs: use the user's registered subjects if available,
+    // otherwise show all subjects in CURRICULUM (including sheet-sourced ones)
     const userSubjects = profile?.exam_subjects?.length
       ? profile.exam_subjects.filter(s => CURRICULUM[s])
       : Object.keys(CURRICULUM);
@@ -697,9 +960,49 @@ const CLASSROOM = (function () {
     if (window.innerWidth <= 720) closeSidebar();
   }
 
-  // ─── Render lesson ────────────────────────────────
-  // tier: 'foundation' | 'standard' | 'mastery' (optional, default 'standard')
-  // Fallback chain: requested tier → standard → foundation → mastery → driveId → driveUrl
+  /* ─────────────────────────────────────────────────────────────────
+     renderLesson(topic, tier)  ★ CRITICAL PATH ★
+     ─────────────────────────────────────────────────────────────────
+     The VIDEO RENDERING function.  This is where the Google Sheets
+     data ultimately delivers its payload: the video URL is resolved
+     from topic.videos (built by gsheet-curriculum.js → buildVideos)
+     and injected as an <iframe> into the #video-area element.
+
+     PARAMETERS:
+     ───────────
+     topic  — classroomTopic object from CURRICULUM (merged from
+               TOPIC_BLUEPRINT or hardcoded).  Shape:
+               { id, title, duration, videos, youtubeId, driveId,
+                 driveUrl, content: { intro, points, formulas }, quiz }
+
+     tier   — optional string: 'foundation' | 'standard' | 'mastery'
+               Provided by skill_chamber.js after its adaptive
+               diagnostic determines the student's level.
+               If undefined, defaults to 'standard' via fallback chain.
+
+     EXECUTION STEPS:
+     ────────────────
+     1. Set title, tag, and duration badge in the DOM.
+     2. Resolve video URL via getVideoUrl() (tier-aware, with fallback).
+     3. Determine YouTube vs Google Drive source.
+     4. Inject the appropriate <iframe> via injectIframe().
+     5. Render lesson text (intro, key points, formula box).
+     6. Initialise the quick quiz.
+     7. Set the "Practice in CBT" button href.
+     8. Upsert topic_mastery row in Supabase (fire-and-forget).
+
+     FALLBACK CHAIN (step 2 above — see getVideoUrl):
+     ─────────────────────────────────────────────────
+       requested tier → 'standard' → 'foundation' → 'mastery'
+       → topic.driveId  (legacy)
+       → topic.driveUrl (legacy, via GDRIVE_VIDEO.embedUrl)
+       → '' (no video → show animated placeholder)
+
+     ⚠️  renderLesson() reads topic.videos which is set during
+         mergeSheetIntoCurriculum() (from gsheet-curriculum.js).
+         If you change the `videos` object shape in gsheet-curriculum.js
+         you MUST update getVideoUrl() in this function accordingly.
+  ───────────────────────────────────────────────────────────────────── */
   function renderLesson(topic, tier) {
     // Title + meta
     setEl('topic-tag',    topic.id.split('.')[1] || topic.title);
@@ -709,9 +1012,35 @@ const CLASSROOM = (function () {
     // Video area — supports YouTube, Google Drive ID, Drive URL, or Sheet video tiers
     const videoArea = document.getElementById('video-area');
     if (videoArea) {
-      // ── Tier-aware video URL picker with automatic fallback ──
-      // Priority: requested tier → standard → foundation → mastery → legacy driveId/driveUrl
-      // If only one video is in the sheet, every tier falls back to that video automatically.
+      /* ── getVideoUrl(t, requestedTier) — TIER-AWARE URL RESOLVER  ★ CRITICAL PATH ★
+         ─────────────────────────────────────────────────────────────────────────────
+         Resolves the video URL to embed for the given topic and requested tier.
+
+         This is the BRIDGE between the Google Sheet data and the iframe player:
+           • topic.videos  → built by gsheet-curriculum.js buildVideos()
+                             normalised via gdrive-video.js embedUrl()
+                             stored in CURRICULUM via mergeSheetIntoCurriculum()
+           • Returns       → a /preview or YouTube embed URL string for injectIframe()
+
+         FALLBACK CHAIN (applied when a tier's URL is missing):
+         ────────────────────────────────────────────────────────
+         1. requestedTier  — the tier skill_chamber.js selected for this student
+         2. 'standard'     — the default lesson (most complete)
+         3. 'foundation'   — slower walkthrough
+         4. 'mastery'      — exam-focused rapid version
+         5. topic.driveId  — legacy field (hardcoded in classroom.js CURRICULUM)
+         6. topic.driveUrl — legacy field (converted via GDRIVE_VIDEO.embedUrl)
+         7. ''             — no video available; caller shows animated placeholder
+
+         DEDUPLICATION:
+         The order array is deduplicated with filter+indexOf to prevent the same
+         tier from being tried twice (e.g. if requestedTier === 'standard', we
+         don't want standard appearing at both positions 0 and 1).
+
+         ⚠️  The tier key names ('foundation', 'standard', 'mastery') must match
+             exactly what gsheet-curriculum.js uses in buildVideos().  If you
+             rename a tier there, rename it in the order array here too.
+         ──────────────────────────────────────────────────────────────────── */
       const getVideoUrl = (t, requestedTier) => {
         if (t.videos) {
           const order = [requestedTier, 'standard', 'foundation', 'mastery']
@@ -756,7 +1085,47 @@ const CLASSROOM = (function () {
       // ── Get student name for watermark ──
       const studentName = (window._ueProfile?.full_name || window._ueProfile?.email || 'UE School Student').trim();
 
-      // ── Lazy iframe injection — show skeleton until iframe loads ──
+      /* ── injectIframe(src, isYouTube)  ★ CRITICAL PATH ★
+         ─────────────────────────────────────────────────────────────────
+         The final step of the video pipeline — injects the <iframe>
+         element into #video-area with the resolved embed URL.
+
+         Called by renderLesson() with either:
+           • A YouTube embed URL (isYouTube = true):
+               https://www.youtube.com/embed/{ytId}?rel=0&...
+           • A Google Drive /preview URL (isYouTube = false):
+               https://drive.google.com/file/d/{FILE_ID}/preview
+             (the URL comes from getVideoUrl() → gsheet-curriculum.js
+              buildVideos() → gdrive-video.js embedUrl())
+
+         WHAT injectIframe DOES:
+         ───────────────────────
+         1. Shows the loading skeleton (#video-skeleton) immediately.
+         2. Creates an <iframe> with the resolved src.
+         3. Hides the skeleton when iframe fires 'load' (or after 8s timeout).
+         4. For Drive iframes only: overlays a transparent cover div in the
+            top-right corner to block the Drive external-link arrow icon.
+         5. Adds a repeating diagonal watermark overlay with the student's
+            name (read from window._ueProfile, set in DOMContentLoaded).
+
+         ⚠️  The `isYouTube` parameter controls the arrow blocker:
+             YouTube iframes do not have the Drive external-link icon,
+             so the blocker is only added for Drive embeds.  Do not add
+             the blocker for YouTube embeds — it would cover the player UI.
+
+         ⚠️  window._ueProfile is set by the DOMContentLoaded inline script
+             (Step D) BEFORE CLASSROOM.init() is called.  If you change the
+             profile storage point, the watermark will break.
+
+         ⚠️  The iframe src is the direct output of the Google Sheets pipeline:
+             Sheet CSV → gsheet-curriculum.js normaliseVideoUrl()
+                       → gdrive-video.js embedUrl()
+                       → TOPIC_BLUEPRINT[id].videos.standard.url
+                       → CURRICULUM[subj].topics[n].videos.standard.url
+                       → getVideoUrl() → here.
+             Any breakage in that chain produces an empty src, which will
+             result in a blank video area (no iframe injected).
+      ──────────────────────────────────────────────────────────────── */
       function injectIframe(src, isYouTube) {
         showSkeleton();
 
