@@ -240,7 +240,11 @@ window.GSHEET_CURRICULUM = (function () {
   function normaliseVideoUrl(raw) {
     const v = norm(raw);
     if (!v) return '';
-    // Prefer the dedicated GDRIVE_VIDEO helper (loaded before this file)
+    // ── YouTube: return as-is so classroom.js extractYouTubeId() handles it
+    // Must check BEFORE passing to GDRIVE_VIDEO — Drive helper has no YouTube
+    // awareness and will silently return '' for any youtu.be / youtube.com URL.
+    if (/youtu\.be\/|youtube\.com\//i.test(v)) return v;
+    // ── Google Drive: use the dedicated helper (loaded before this file)
     if (window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(v);
     // Fallback: extract /file/d/ID pattern directly
     const m = v.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
