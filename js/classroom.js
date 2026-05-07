@@ -1095,7 +1095,9 @@ window.CLASSROOM = (function () {
       // ── Detect YouTube URL ──
       function extractYouTubeId(url) {
         if (!url) return null;
-        const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+        // Strip ?si= tracking params (e.g. youtu.be/ID?si=xxx) before matching
+        const clean = url.replace(/[?&]si=[^&]*/i, '');
+        const m = clean.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
         return m ? m[1] : null;
       }
 
