@@ -522,7 +522,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         quiz: [],
       };
-      const idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      const normalise = id => (id || '').toLowerCase().replace(/[\s_]+/g, '');
+      const normSheetId = normalise(topic.id);
+      let idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      if (idx < 0) {
+        idx = CURRICULUM[subj].topics.findIndex(t => normalise(t.id) === normSheetId);
+        if (idx >= 0) classroomTopic.id = CURRICULUM[subj].topics[idx].id;
+      }
       if (idx >= 0) {
         CURRICULUM[subj].topics[idx] = classroomTopic; // sheet wins over hardcoded
       } else {
