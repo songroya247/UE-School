@@ -4,10 +4,12 @@
    PURPOSE
    ───────
    Fetches a dedicated "home preview" Google Sheet tab (CSV), takes
-   the LAST 5 rows that contain a valid video URL, and rotates them
-   automatically inside the .classroom-video-mock slot on index.html.
+   the LAST 5 rows that contain a valid video URL, and displays them
+   inside the .classroom-video-mock slot on index.html.
 
-   • If only one valid video row exists it plays on a loop (no rotation).
+   • Users navigate manually with ‹ › arrow buttons and dot indicators.
+   • Auto-rotation is disabled — videos play fully without interruption.
+   • If only one valid video row exists, no navigation controls appear.
    • If the sheet is empty or unreachable the original placeholder is
      restored silently.
    • Uses GDRIVE_VIDEO.embedUrl() (gdrive-video.js) to normalise any
@@ -19,150 +21,86 @@
      <script src="js/gdrive-video.js"></script>          ← must come first
      <script src="js/home-video-preview.js"></script>    ← this file
 
-   NO other UE School module is required on the home page.
-
    ───────────────────────────────────────────────────────────────────
    GOOGLE SHEET FORMAT
    ───────────────────
-   The sheet tab must have a header row (row 1) and at least these
-   two columns (column names are case-insensitive, extra columns are
-   ignored):
+   Header row (row 1) must have these column names:
 
-     title      — display label shown below the iframe  (optional but nice)
+     title      — display label shown below the iframe (optional)
      video_url  — full Google Drive share URL or bare file ID
 
-   Example:
-     title              | video_url
-     Quadratic Equations| https://drive.google.com/file/d/ABC123/view?usp=sharing
-     Number Theory      | https://drive.google.com/file/d/DEF456/view?usp=sharing
-
-   The module reads the LAST 5 rows that have a non-empty video_url.
-   Add new rows to the bottom of your sheet — the newest always wins.
-
-   ───────────────────────────────────────────────────────────────────
-   CONFIGURATION
-   ─────────────
-   Edit the two constants directly below.
+   Add new videos at the bottom — the last 5 rows are always used.
 ═══════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  /* ── CONFIG ──────────────────────────────────────────────────────
-     HOME_VIDEO_SHEET_CSV_URL
-       The "Publish to web → CSV" URL for the dedicated preview tab.
-
-     ROTATION_INTERVAL_MS
-       How long each video plays before switching to the next one.
-       Default: 30 seconds. Set to 0 to disable auto-rotation.
-  ─────────────────────────────────────────────────────────────────── */
+  /* ── CONFIG ──────────────────────────────────────────────────────── */
   var HOME_VIDEO_SHEET_CSV_URL =
     'https://docs.google.com/spreadsheets/d/e/' +
     '2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_' +
     '/pub?gid=175294299&single=true&output=csv';
 
-  var ROTATION_INTERVAL_MS = 30000; // 30 s per video
+  /* ── INTERNAL STATE ────────────────────────────────────────────────── */
+  var videos       = [];   // [{title, embedUrl}, …] — last ≤5 valid rows
+  var currentIndex = 0;
+  var slot         = null; // the .classroom-video-mock DOM element
 
-  /* ── INTERNAL STATE ──────────────────────────────────────────────── */
-  var videos        = [];   // [{title, embedUrl}, …] — last ≤5 valid rows
-  var currentIndex  = 0;
-  var rotationTimer = null;
-  var slot          = null; // the .classroom-video-mock DOM element
-
-  /* ── PLACEHOLDER (restored on error / empty sheet) ──────────────── */
+  /* ── PLACEHOLDER (restored on error / empty sheet) ─────────────────── */
   var PLACEHOLDER_HTML =
     '<div style="text-align:center;color:rgba(255,255,255,.25)">' +
       '<div style="font-size:3.5rem;margin-bottom:8px">&#x25B6;</div>' +
       '<div style="font-size:.85rem;font-weight:600">Sample Lesson Preview</div>' +
     '</div>';
 
-  /* ── CSV PARSER ──────────────────────────────────────────────────
-     Minimal RFC-4180-compatible parser.
-     Handles quoted fields (including commas and newlines inside quotes)
-     without relying on any external library.
-  ─────────────────────────────────────────────────────────────────── */
+  /* ── CSV PARSER ──────────────────────────────────────────────────────
+     Minimal RFC-4180-compatible parser — no external dependencies.
+  ─────────────────────────────────────────────────────────────────────── */
   function parseCsv(text) {
-    var rows   = [];
-    var row    = [];
-    var field  = '';
-    var inQ    = false;
-    var i      = 0;
-    var len    = text.length;
+    var rows  = [];
+    var row   = [];
+    var field = '';
+    var inQ   = false;
+    var i = 0, len = text.length;
 
     while (i < len) {
       var ch = text[i];
-
       if (inQ) {
         if (ch === '"') {
-          if (text[i + 1] === '"') {   // escaped quote ""
-            field += '"';
-            i += 2;
-          } else {                      // closing quote
-            inQ = false;
-            i++;
-          }
-        } else {
-          field += ch;
-          i++;
-        }
+          if (text[i + 1] === '"') { field += '"'; i += 2; }
+          else { inQ = false; i++; }
+        } else { field += ch; i++; }
       } else {
-        if (ch === '"') {
-          inQ = true;
-          i++;
-        } else if (ch === ',') {
-          row.push(field);
-          field = '';
-          i++;
-        } else if (ch === '\r' && text[i + 1] === '\n') {
-          row.push(field);
-          rows.push(row);
-          row   = [];
-          field = '';
-          i += 2;
-        } else if (ch === '\n') {
-          row.push(field);
-          rows.push(row);
-          row   = [];
-          field = '';
-          i++;
-        } else {
-          field += ch;
-          i++;
+        if      (ch === '"')  { inQ = true; i++; }
+        else if (ch === ',')  { row.push(field); field = ''; i++; }
+        else if (ch === '\r' && text[i + 1] === '\n') {
+          row.push(field); rows.push(row); row = []; field = ''; i += 2;
         }
+        else if (ch === '\n') {
+          row.push(field); rows.push(row); row = []; field = ''; i++;
+        }
+        else { field += ch; i++; }
       }
     }
-
-    // Flush last field / row
     if (field || row.length) {
       row.push(field);
-      if (row.some(function (c) { return c.trim() !== ''; })) {
-        rows.push(row);
-      }
+      if (row.some(function (c) { return c.trim() !== ''; })) rows.push(row);
     }
-
     return rows;
   }
 
-  /* ── SHEET → VIDEO OBJECTS ───────────────────────────────────────
-     Reads parsed CSV rows, finds the header indices for
-     "title" and "video_url", then converts each data row into a
-     {title, embedUrl} object, filtering out rows with no URL.
-     Returns the LAST ≤5 valid entries (newest rows first for display,
-     but we keep sheet order so the rotation feels natural).
-  ─────────────────────────────────────────────────────────────────── */
+  /* ── SHEET → VIDEO OBJECTS ─────────────────────────────────────────── */
   function sheetToVideos(rows) {
     if (!rows || rows.length < 2) return [];
 
-    var headers = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    var headers  = rows[0].map(function (h) { return h.trim().toLowerCase(); });
     var titleIdx = headers.indexOf('title');
     var urlIdx   = headers.indexOf('video_url');
-
-    // Also accept "url" or "video" as column aliases
     if (urlIdx === -1) urlIdx = headers.indexOf('url');
     if (urlIdx === -1) urlIdx = headers.indexOf('video');
 
     if (urlIdx === -1) {
-      console.warn('[home-video-preview] No "video_url" column found in sheet header:', headers);
+      console.warn('[home-video-preview] No "video_url" column found. Headers:', headers);
       return [];
     }
 
@@ -173,49 +111,73 @@
 
       var embedUrl = (window.GDRIVE_VIDEO && window.GDRIVE_VIDEO.embedUrl)
         ? window.GDRIVE_VIDEO.embedUrl(rawUrl)
-        : rawUrl;   // fallback: use URL as-is (e.g. a YouTube embed)
-
+        : rawUrl;
       if (!embedUrl) continue;
 
       var title = titleIdx !== -1 ? (rows[r][titleIdx] || '').trim() : '';
       valid.push({ title: title, embedUrl: embedUrl });
     }
 
-    // Keep only the last 5 valid rows
-    return valid.slice(-5);
+    return valid.slice(-5); // last 5 rows only
   }
 
-  /* ── RENDER ONE VIDEO ────────────────────────────────────────────
-     Injects the iframe for videos[idx] into the slot.
-     Includes navigation dots when there are multiple videos.
-  ─────────────────────────────────────────────────────────────────── */
+  /* ── ESCAPE HELPER ──────────────────────────────────────────────────── */
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,  '&amp;')
+      .replace(/"/g,  '&quot;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;');
+  }
+
+  /* ── RENDER ONE VIDEO ───────────────────────────────────────────────
+     Injects the iframe + manual nav controls for videos[idx].
+  ─────────────────────────────────────────────────────────────────────── */
   function renderVideo(idx) {
     if (!slot || !videos.length) return;
     var v = videos[idx];
 
-    var dotsHtml = '';
+    var navHtml = '';
     if (videos.length > 1) {
-      dotsHtml = '<div style="' +
-        'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);' +
-        'display:flex;gap:6px;z-index:10;pointer-events:none' +
-      '">';
+
+      // Dot indicators — clickable
+      var dotItems = '';
       for (var d = 0; d < videos.length; d++) {
-        var active = d === idx
-          ? 'background:rgba(255,255,255,.9);'
-          : 'background:rgba(255,255,255,.3);';
-        dotsHtml +=
-          '<div style="width:7px;height:7px;border-radius:50%;' + active + '"></div>';
+        var bg = (d === idx) ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.3)';
+        dotItems +=
+          '<div onclick="window.__HVP_GO(' + d + ')" style="' +
+            'width:9px;height:9px;border-radius:50%;cursor:pointer;' +
+            'background:' + bg + ';transition:background .2s' +
+          '"></div>';
       }
-      dotsHtml += '</div>';
+
+      // Arrow button shared styles
+      var btn =
+        'position:absolute;top:50%;transform:translateY(-50%);' +
+        'background:rgba(0,0,0,.5);border:none;border-radius:50%;' +
+        'width:36px;height:36px;cursor:pointer;color:#fff;' +
+        'font-size:1.3rem;line-height:1;z-index:11;' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'transition:background .2s;';
+
+      navHtml =
+        // Prev ‹
+        '<button onclick="window.__HVP_PREV()" title="Previous video" style="' + btn + 'left:10px;">&#8249;</button>' +
+        // Next ›
+        '<button onclick="window.__HVP_NEXT()" title="Next video"     style="' + btn + 'right:10px;">&#8250;</button>' +
+        // Dots row
+        '<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:10;">' +
+          dotItems +
+        '</div>';
     }
 
+    // Label (title) sits just above the dots
     var labelHtml = v.title
       ? '<div style="' +
           'position:absolute;bottom:' + (videos.length > 1 ? '28px' : '10px') + ';' +
-          'left:0;right:0;text-align:center;' +
-          'font-size:.75rem;color:rgba(255,255,255,.55);' +
-          'pointer-events:none;padding:0 12px;' +
-          'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' +
+          'left:0;right:0;text-align:center;font-size:.75rem;' +
+          'color:rgba(255,255,255,.55);pointer-events:none;' +
+          'padding:0 48px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' +
         '">' + escapeHtml(v.title) + '</div>'
       : '';
 
@@ -228,37 +190,19 @@
         ' title="' + escapeHtml(v.title || 'Featured Lesson') + '"' +
       '></iframe>' +
       labelHtml +
-      dotsHtml;
+      navHtml;
   }
 
-  /* ── ROTATION LOGIC ──────────────────────────────────────────────
-     Advances to the next video and re-schedules itself.
-     Stops automatically if the slot is removed from the DOM.
-  ─────────────────────────────────────────────────────────────────── */
-  function advance() {
-    if (!slot || !document.body.contains(slot)) {
-      clearInterval(rotationTimer);
-      return;
-    }
-    currentIndex = (currentIndex + 1) % videos.length;
+  /* ── MANUAL NAVIGATION HANDLERS (attached to window for onclick) ──── */
+  window.__HVP_GO = function (idx) {
+    if (!videos.length) return;
+    currentIndex = ((idx % videos.length) + videos.length) % videos.length;
     renderVideo(currentIndex);
-  }
+  };
+  window.__HVP_PREV = function () { window.__HVP_GO(currentIndex - 1); };
+  window.__HVP_NEXT = function () { window.__HVP_GO(currentIndex + 1); };
 
-  function startRotation() {
-    if (videos.length < 2 || ROTATION_INTERVAL_MS <= 0) return;
-    rotationTimer = setInterval(advance, ROTATION_INTERVAL_MS);
-  }
-
-  /* ── ESCAPE HELPER ───────────────────────────────────────────────── */
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
-
-  /* ── LOADING SPINNER ─────────────────────────────────────────────── */
+  /* ── LOADING SPINNER ────────────────────────────────────────────────── */
   function showSpinner() {
     if (!slot) return;
     slot.innerHTML =
@@ -268,21 +212,15 @@
           'border-top-color:rgba(255,255,255,.7);border-radius:50%;' +
           'animation:hvpSpin .8s linear infinite;margin:0 auto 10px' +
         '"></div>' +
-        '<div style="font-size:.78rem">Loading preview…</div>' +
+        '<div style="font-size:.78rem">Loading preview\u2026</div>' +
       '</div>' +
-      // Inject keyframes once into <head> if not already there
-      '<style id="hvp-spin-style">' +
-        '@keyframes hvpSpin{to{transform:rotate(360deg)}}' +
-      '</style>';
+      '<style id="hvp-spin-style">@keyframes hvpSpin{to{transform:rotate(360deg)}}</style>';
   }
 
-  /* ── MAIN INIT ───────────────────────────────────────────────────
-     Called on DOMContentLoaded.  Fetches the sheet, parses videos,
-     renders the first one, and starts the rotation timer.
-  ─────────────────────────────────────────────────────────────────── */
+  /* ── MAIN INIT ──────────────────────────────────────────────────────── */
   function init() {
     slot = document.querySelector('.classroom-video-mock');
-    if (!slot) return;  // not on the home page — do nothing
+    if (!slot) return;
 
     showSpinner();
 
@@ -292,17 +230,10 @@
         return res.text();
       })
       .then(function (csvText) {
-        var rows   = parseCsv(csvText);
-        videos     = sheetToVideos(rows);
-
-        if (!videos.length) {
-          slot.innerHTML = PLACEHOLDER_HTML;
-          return;
-        }
-
+        videos = sheetToVideos(parseCsv(csvText));
+        if (!videos.length) { slot.innerHTML = PLACEHOLDER_HTML; return; }
         currentIndex = 0;
         renderVideo(currentIndex);
-        startRotation();
       })
       .catch(function (err) {
         console.warn('[home-video-preview] Could not load sheet:', err);
@@ -310,11 +241,11 @@
       });
   }
 
-  /* ── BOOT ────────────────────────────────────────────────────────── */
+  /* ── BOOT ────────────────────────────────────────────────────────────── */
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init();   // already parsed (e.g. script is deferred)
+    init();
   }
 
 })();
