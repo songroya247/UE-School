@@ -478,37 +478,12 @@ document.addEventListener('DOMContentLoaded', async () => {
      ⚠️  MUST complete (await) before Step 3 reads TOPIC_BLUEPRINT. */
   await GSHEET_CURRICULUM.init();
 
-  /* TEMP DEBUG — remove after testing */
-  (function() {
-    const bp = window.TOPIC_BLUEPRINT || {};
-    const keys = Object.keys(bp);
-    const gsheetKeys = keys.filter(k => bp[k]._source === 'gsheet');
-    alert(
-      'TOPIC_BLUEPRINT entries: ' + keys.length + '\n' +
-      'gsheet entries: ' + gsheetKeys.length + '\n' +
-      (gsheetKeys.length ? gsheetKeys.join('\n') : '(none)')
-    );
-  })();
-  /* END TEMP DEBUG */
-
   /* Step 3 — Merge: inject sheet topics into CLASSROOM.CURRICULUM.
      ★ CRITICAL PATH: runs BEFORE CLASSROOM.init() so the sidebar has
        fully merged data when it renders.
      Single source of truth: logic lives in classroom.js → CLASSROOM.mergeSheetIntoCurriculum(). */
   CLASSROOM.mergeSheetIntoCurriculum();
 
-  /* TEMP DEBUG 2 — remove after testing */
-  (function() {
-    const topics = window.CLASSROOM && window.CLASSROOM.CURRICULUM &&
-                   window.CLASSROOM.CURRICULUM.mathematics &&
-                   window.CLASSROOM.CURRICULUM.mathematics.topics;
-    if (!topics) { alert('CURRICULUM.mathematics not found after merge'); return; }
-    alert(
-      'CURRICULUM after merge (' + topics.length + ' topics):\n' +
-      topics.map(t => t.id + ' | ' + t.title).join('\n')
-    );
-  })();
-  /* END TEMP DEBUG 2 */
 
   /* Step 4 — Profile: store globally for watermark access.
      ⚠️  MUST happen before CLASSROOM.init() renders any lesson.
