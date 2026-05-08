@@ -496,6 +496,10 @@
     shell.style.right  = 'auto';
     shell.style.width  = w + 'px';
 
+    /* overflow:hidden on slot traps fixed children — remove while pip active */
+    var slot = document.querySelector('.classroom-video-mock');
+    if (slot) slot.style.overflow = 'visible';
+
     var frame = getFrame();
     if (frame) {
       frame.style.position     = 'fixed';
@@ -534,6 +538,9 @@
   function hidePip() {
     if (shell) shell.classList.remove('hvp-pip--visible');
     pipActive = false;
+    /* restore slot overflow */
+    var slot = document.querySelector('.classroom-video-mock');
+    if (slot) slot.style.overflow = 'hidden';
     var frame = getFrame();
     if (!frame) return;
     frame.style.position     = 'absolute';
