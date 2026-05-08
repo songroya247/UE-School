@@ -104,8 +104,8 @@
 
    CACHE
    ─────
-   Parsed rows are cached in memory for GS_CURRICULUM_CACHE_MIN minutes
-   (default 30). A hard refresh (Ctrl+Shift+R / ⌘+Shift+R) clears it.
+   Results are cached for the page session via the _loaded flag.
+   Call clearCache() to force a re-fetch (admin/debug use only).
 ═══════════════════════════════════════════════════════════════════ */
 
 window.GSHEET_CURRICULUM = (function () {
@@ -121,15 +121,11 @@ window.GSHEET_CURRICULUM = (function () {
      LEGACY_URL  — single CSV URL, used only when SUBJECT_SHEET_URLS
        is empty. Kept for backwards compatibility.
 
-     CACHE_MS  — milliseconds to reuse the last-fetched blueprint
-       without hitting the network again. Avoids re-parsing on soft
-       navigation within the same page session.
   ───────────────────────────────────────────────────────────────────── */
   const cfg = window.UE_CONFIG || {};
 
   const SUBJECT_URLS = cfg.SUBJECT_SHEET_URLS || {};
   const LEGACY_URL   = cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL || '';
-  const CACHE_MS     = (cfg.GS_CURRICULUM_CACHE_MIN || 30) * 60 * 1000;
 
   /* ─────────────────────────────────────────────────────────────────
      getSheetEntries() — INTERNAL HELPER
@@ -157,9 +153,6 @@ window.GSHEET_CURRICULUM = (function () {
   /* ─────────────────────────────────────────────────────────────────
      Module-level state (all private — NOT exported)
 
-     _cache     — { blueprint: {}, at: timestamp } or null.
-                  Avoids re-fetching/re-parsing within CACHE_MS window.
-
      _inflight  — a Promise while a fetch is in progress.
                   Prevents duplicate parallel fetches if init() is
                   called twice rapidly (e.g. by classroom.html AND
@@ -167,7 +160,6 @@ window.GSHEET_CURRICULUM = (function () {
 
      _loaded    — boolean guard; init() is idempotent after first run.
   ───────────────────────────────────────────────────────────────────── */
-  let _cache    = null;
   let _inflight = null;
   let _loaded   = false;
 
@@ -285,7 +277,6 @@ window.GSHEET_CURRICULUM = (function () {
     dur_foundation:     ['duration_foundation', 'foundation_duration', 'dur_foundation'],
     dur_standard:       ['duration_standard',   'standard_duration',   'dur_standard'],
     dur_mastery:        ['duration_mastery',    'mastery_duration',    'dur_mastery'],
-    locked:             ['locked', 'lock', 'is_locked', 'status'],
   };
 
   /* ─────────────────────────────────────────────────────────────────
@@ -445,23 +436,22 @@ window.GSHEET_CURRICULUM = (function () {
     if (!topicId || !subject || !title) return null;
 
     const videos = buildVideos(row, idx);
-    // Skip rows with no video — UNLESS the row is locked (coming soon placeholder).
-    // Locked rows appear in the sidebar as greyed-out stubs even before a video exists.
-    const isLocked = /^(yes|true|1|locked)$/i.test(g(row, idx, 'locked'));
-    if (!videos && !isLocked) return null;
+    // Skip rows that have no video at all — a text-only row is useless
+    // in the classroom player which is primarily a video delivery interface.
+    if (!videos) return null;
 
     return {
       id:         topicId,
       subject,
       title,
       duration:   g(row, idx, 'duration') || '14 mins',
-      videos:     videos || null,
+      videos,
       blurb:      g(row, idx, 'blurb') || '',
+      // Split pipe-delimited strings into arrays; classroom.js renders them as lists
       objectives: (g(row, idx, 'objectives') || '').split('|').map(s => s.trim()).filter(Boolean),
       formulas:   (g(row, idx, 'formulas')   || '').split('|').map(s => s.trim()).filter(Boolean),
-      subSkills:  [],
-      locked:     isLocked,
-      _source:    'gsheet',
+      subSkills:  [], // reserved for Skill Chamber adaptive layer
+      _source:    'gsheet', // ← classroom.js mergeSheetIntoCurriculum() filters on this
     };
   }
 
@@ -539,24 +529,14 @@ window.GSHEET_CURRICULUM = (function () {
      Fetches ALL subject sheets in parallel (Promise.all) and merges
      their partial blueprints into one combined object.
 
-     Cache behaviour:
-       • If a valid in-memory cache exists and hasn't expired, returns
-         it immediately — no network request.
-       • If a fetch is already in-flight (_inflight Promise), returns
-         that same Promise — prevents duplicate parallel requests if
-         init() is called twice before the first resolves.
-       • On success, stores { blueprint, at: Date.now() } in _cache.
-
-     force=true bypasses the cache check (used by clearCache() after
-     an operator manually refreshes the sheet).
+     If a fetch is already in-flight (_inflight Promise), returns that
+     same Promise — prevents duplicate parallel requests if init() is
+     called twice before the first resolves.
   ───────────────────────────────────────────────────────────────────── */
-  async function fetchBlueprint(force = false) {
+  async function fetchBlueprint() {
     const entries = getSheetEntries();
     if (entries.length === 0) return {}; // no URLs configured → nothing to fetch
 
-    const now = Date.now();
-    // Return cached data if still fresh
-    if (!force && _cache && (now - _cache.at) < CACHE_MS) return _cache.blueprint;
     // Return existing in-flight Promise to avoid duplicate fetches
     if (_inflight) return _inflight;
 
@@ -568,9 +548,7 @@ window.GSHEET_CURRICULUM = (function () {
         );
         // Merge all partial blueprints — later entries overwrite earlier ones
         // if topic_ids collide (intentional: allows overriding by order)
-        const blueprint = Object.assign({}, ...results);
-        _cache = { blueprint, at: now };
-        return blueprint;
+        return Object.assign({}, ...results);
       } finally {
         _inflight = null; // always clear the in-flight guard
       }
@@ -612,8 +590,9 @@ window.GSHEET_CURRICULUM = (function () {
     const sheetBlueprint = await fetchBlueprint();
     const count = Object.keys(sheetBlueprint).length;
     if (count === 0) {
+      // Do NOT set _loaded — a network failure or empty sheet should
+      // be retried on the next init() call, not silently skipped.
       console.info('[GSHEET_CURRICULUM] No sheet data — using built-in curriculum.');
-      _loaded = true;
       return;
     }
     // Merge into TOPIC_BLUEPRINT, sheet data wins over any pre-existing entries
@@ -629,10 +608,10 @@ window.GSHEET_CURRICULUM = (function () {
 
   /* ─────────────────────────────────────────────────────────────────
      clearCache() — UTILITY (admin / debugging use only)
-     Resets the in-memory cache and _loaded flag so the next init()
-     call re-fetches from Google Sheets.  Not called in normal flow.
+     Resets the _loaded flag so the next init() call re-fetches
+     from Google Sheets.  Not called in normal flow.
   ───────────────────────────────────────────────────────────────────── */
-  function clearCache() { _cache = null; _loaded = false; }
+  function clearCache() { _loaded = false; }
 
   /* ─────────────────────────────────────────────────────────────────
      isEnabled() — GUARD USED BY classroom.js
