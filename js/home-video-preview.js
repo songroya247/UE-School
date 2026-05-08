@@ -393,3 +393,270 @@
   }
 
 })();
+
+/* ═══════════════════════════════════════════════════════════════════
+   FLOATING VIDEO PIP — v5: CSS reposition + drag to move
+   ───────────────────────────────────────────────────────────────────
+   The iframe NEVER moves in the DOM (browsers reload on any relocation).
+   Instead it stays in .classroom-video-mock always. When the slot
+   scrolls out of view the iframe is switched to position:fixed at pip
+   coordinates. A decorative shell provides the chrome (handle, close,
+   label). Drag moves both the shell and the iframe in lockstep.
+═══════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  /* ── Default pip geometry ────────────────────────────────────────── */
+  var PIP_W      = 320;
+  var PIP_BOTTOM = 24;
+  var PIP_RIGHT  = 24;
+
+  /* ── State ───────────────────────────────────────────────────────── */
+  var shell       = null;
+  var viewport    = null;   // clip div inside shell
+  var dismissed   = false;
+  var pipActive   = false;
+
+  /* pip position (top/left fixed coords, computed on first show) */
+  var pipTop  = -1;
+  var pipLeft = -1;
+
+  /* drag state */
+  var dragging   = false;
+  var dragStartX = 0;
+  var dragStartY = 0;
+  var dragOrigT  = 0;
+  var dragOrigL  = 0;
+
+  /* ── Helpers ─────────────────────────────────────────────────────── */
+  function getFrame() {
+    var slot = document.querySelector('.classroom-video-mock');
+    return slot ? slot.querySelector('iframe#hvp-frame') : null;
+  }
+
+  function pipWidth() {
+    return Math.min(PIP_W, window.innerWidth - PIP_RIGHT * 2);
+  }
+
+  function pipHeight(w) {
+    return Math.round((w || pipWidth()) * 9 / 16);
+  }
+
+  /* Compute default top/left from bottom/right defaults */
+  function defaultPosition() {
+    var w = pipWidth();
+    var h = pipHeight(w);
+    return {
+      top:  window.innerHeight - h - PIP_BOTTOM,
+      left: window.innerWidth  - w - PIP_RIGHT
+    };
+  }
+
+  /* ── Build the decorative shell ──────────────────────────────────── */
+  function buildShell() {
+    if (document.getElementById('hvp-pip')) {
+      shell    = document.getElementById('hvp-pip');
+      viewport = document.getElementById('hvp-pip-viewport');
+      return;
+    }
+
+    shell    = document.createElement('div');
+    shell.id = 'hvp-pip';
+
+    /* drag handle */
+    var handle = document.createElement('div');
+    handle.id  = 'hvp-pip-handle';
+
+    /* close button */
+    var closeBtn       = document.createElement('button');
+    closeBtn.id        = 'hvp-pip-close';
+    closeBtn.title     = 'Close';
+    closeBtn.innerHTML = '&#x2715;';
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      dismissed = true;
+      hidePip();
+    });
+
+    /* label */
+    var label    = document.createElement('div');
+    label.id     = 'hvp-pip-label';
+    label.textContent = 'Now Playing';
+
+    /* viewport — iframe gets clipped inside this */
+    viewport    = document.createElement('div');
+    viewport.id = 'hvp-pip-viewport';
+
+    shell.appendChild(handle);
+    shell.appendChild(closeBtn);
+    shell.appendChild(label);
+    shell.appendChild(viewport);
+    document.body.appendChild(shell);
+
+    /* wire drag on handle (and shell itself for convenience) */
+    handle.addEventListener('mousedown',  onDragStart);
+    handle.addEventListener('touchstart', onDragStart, { passive: false });
+  }
+
+  /* ── Position both shell and iframe at (top, left) ──────────────── */
+  function applyPosition(top, left) {
+    var w = pipWidth();
+    var h = pipHeight(w);
+
+    /* clamp inside viewport */
+    top  = Math.max(0, Math.min(top,  window.innerHeight - h - 4));
+    left = Math.max(0, Math.min(left, window.innerWidth  - w - 4));
+
+    pipTop  = top;
+    pipLeft = left;
+
+    /* shell */
+    shell.style.top    = top  + 'px';
+    shell.style.left   = left + 'px';
+    shell.style.bottom = 'auto';
+    shell.style.right  = 'auto';
+    shell.style.width  = w + 'px';
+
+    /* iframe — covers only the viewport area (below handle) */
+    var frame = getFrame();
+    if (frame) {
+      var handleH = 28;
+      frame.style.position     = 'fixed';
+      frame.style.top          = (top + handleH) + 'px';
+      frame.style.left         = left + 'px';
+      frame.style.bottom       = 'auto';
+      frame.style.right        = 'auto';
+      frame.style.width        = w + 'px';
+      frame.style.height       = (h - handleH) + 'px';
+      frame.style.opacity      = '1';
+      frame.style.zIndex       = '8999';
+      frame.style.borderRadius = '0 0 14px 14px';
+      frame.style.boxShadow    = 'none';
+    }
+  }
+
+  /* ── Show pip ────────────────────────────────────────────────────── */
+  function showPip() {
+    var frame = getFrame();
+    if (!frame || !frame.src || frame.src === 'about:blank') return;
+
+    /* First show: compute position from defaults */
+    if (pipTop < 0) {
+      var pos = defaultPosition();
+      pipTop  = pos.top;
+      pipLeft = pos.left;
+    }
+
+    applyPosition(pipTop, pipLeft);
+
+    /* update label */
+    var slot    = document.querySelector('.classroom-video-mock');
+    var titleEl = slot ? slot.querySelector('div[style*="bottom"]') : null;
+    var labelEl = document.getElementById('hvp-pip-label');
+    if (labelEl) {
+      labelEl.textContent =
+        (titleEl && titleEl.textContent.trim()) ? titleEl.textContent.trim() : 'Now Playing';
+    }
+
+    shell.classList.add('hvp-pip--visible');
+    pipActive = true;
+  }
+
+  /* ── Hide pip & restore iframe to slot styles ────────────────────── */
+  function hidePip() {
+    shell.classList.remove('hvp-pip--visible');
+    pipActive = false;
+    var frame = getFrame();
+    if (!frame) return;
+    frame.style.position     = 'absolute';
+    frame.style.top          = '0';
+    frame.style.left         = '0';
+    frame.style.bottom       = '';
+    frame.style.right        = '';
+    frame.style.width        = '100%';
+    frame.style.height       = '100%';
+    frame.style.zIndex       = '';
+    frame.style.borderRadius = '';
+    frame.style.boxShadow    = '';
+  }
+
+  /* ── Drag handlers ───────────────────────────────────────────────── */
+  function clientXY(e) {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function onDragStart(e) {
+    if (e.type === 'touchstart') e.preventDefault();
+    var pt   = clientXY(e);
+    dragging  = true;
+    dragStartX = pt.x;
+    dragStartY = pt.y;
+    dragOrigT  = pipTop;
+    dragOrigL  = pipLeft;
+    shell.classList.add('hvp-pip--dragging');
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('mouseup',   onDragEnd);
+    document.addEventListener('touchend',  onDragEnd);
+  }
+
+  function onDragMove(e) {
+    if (!dragging) return;
+    if (e.type === 'touchmove') e.preventDefault();
+    var pt = clientXY(e);
+    var dx = pt.x - dragStartX;
+    var dy = pt.y - dragStartY;
+    applyPosition(dragOrigT + dy, dragOrigL + dx);
+  }
+
+  function onDragEnd() {
+    dragging = false;
+    shell.classList.remove('hvp-pip--dragging');
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('touchmove', onDragMove);
+    document.removeEventListener('mouseup',   onDragEnd);
+    document.removeEventListener('touchend',  onDragEnd);
+  }
+
+  /* ── MutationObserver: re-apply pip styles after video switch ────── */
+  function watchForVideoSwitch() {
+    var slot = document.querySelector('.classroom-video-mock');
+    if (!slot) return;
+    var mo = new MutationObserver(function () {
+      if (pipActive) setTimeout(showPip, 30);
+    });
+    mo.observe(slot, { childList: true });
+  }
+
+  /* ── IntersectionObserver ────────────────────────────────────────── */
+  function setupObserver() {
+    var slot = document.querySelector('.classroom-video-mock');
+    if (!slot) return;
+    var io = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) {
+        if (!dismissed) showPip();
+      } else {
+        dismissed = false;
+        hidePip();
+      }
+    }, { threshold: 0, rootMargin: '0px' });
+    io.observe(slot);
+  }
+
+  /* ── Init ────────────────────────────────────────────────────────── */
+  function init() {
+    setTimeout(function () {
+      buildShell();
+      setupObserver();
+      watchForVideoSwitch();
+    }, 300);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
