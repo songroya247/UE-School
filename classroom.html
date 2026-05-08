@@ -513,6 +513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         title:    topic.title,
         duration: topic.duration || '14 mins',
         premium:  false,
+        locked:   topic.locked === true, // hard-lock from sheet "locked" column
         videos:   topic.videos || null, // ← THE VIDEO URLs from gsheet-curriculum.js
         content: {
           intro:    topic.blurb || topic.title + ' — loaded from Google Sheets.',
