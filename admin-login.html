@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login — UE School</title>
+<meta name="robots" content="noindex,nofollow">
+<script src="js/config.js"></script>
+<style>
+:root {
+  --bg:       #0a0c10;
+  --surface:  #111318;
+  --surface2: #181c24;
+  --border:   rgba(255,255,255,.07);
+  --border2:  rgba(255,255,255,.14);
+  --accent:   #1a56ff;
+  --accent-glow: rgba(26,86,255,.18);
+  --danger:   #ef4444;
+  --text:     #f0f2f7;
+  --muted:    #7a849a;
+  --font-head:'Syne', sans-serif;
+  --font-body:'DM Sans', sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.45);
+}
+
+.logo {
+  font-family: var(--font-head);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: .06em;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  font-size: .8rem;
+  color: var(--muted);
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtitle::before {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+input[type=email],
+input[type=password] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .15s;
+  margin-bottom: 18px;
+}
+input:focus { border-color: var(--accent); }
+
+.pw-wrap { position: relative; margin-bottom: 28px; }
+.pw-wrap input { margin-bottom: 0; padding-right: 44px; }
+.pw-toggle {
+  position: absolute; right: 13px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 1.05rem; padding: 0; line-height: 1;
+}
+.pw-toggle:hover { color: var(--text); }
+
+.btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-head);
+  font-size: .95rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: filter .15s, opacity .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.12); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.spinner {
+  width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-box {
+  display: none;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.35);
+  border-radius: 9px;
+  padding: 11px 14px;
+  font-size: .85rem;
+  color: #fca5a5;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.back-link {
+  display: block;
+  text-align: center;
+  margin-top: 22px;
+  font-size: .78rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--text); }
+
+/* Shield icon */
+.shield {
+  font-size: 2rem;
+  margin-bottom: 16px;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <span class="shield">🛡️</span>
+  <div class="logo">UE School</div>
+  <div class="subtitle">Admin Portal — Restricted Access</div>
+
+  <div class="error-box" id="err"></div>
+
+  <label for="email">Email</label>
+  <input type="email" id="email" placeholder="admin@example.com" autocomplete="username" />
+
+  <label for="password">Password</label>
+  <div class="pw-wrap">
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+    <button class="pw-toggle" type="button" id="pw-toggle" aria-label="Show/hide password">👁</button>
+  </div>
+
+  <button class="btn" id="login-btn" onclick="doLogin()">
+    Login as Admin
+  </button>
+
+  <a class="back-link" href="login.html">← Back to student login</a>
+</div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Init Supabase client ──────────────────────────────────────────
+  const cfg = window.UE_CONFIG;
+  if (!cfg || !cfg.SUPABASE_URL) {
+    document.getElementById('err').textContent = 'Configuration failed to load. Please refresh or contact support.';
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('login-btn').disabled = true;
+    throw new Error('UE_CONFIG not loaded');
+  }
+  const sb  = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON);
+
+  // ── DOM helpers ───────────────────────────────────────────────────
+  const $     = (id) => document.getElementById(id);
+  const errEl = $('err');
+  const btn   = $('login-btn');
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+  function clearError() {
+    errEl.style.display = 'none';
+    errEl.textContent   = '';
+  }
+  function setLoading(on) {
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? '<span class="spinner"></span> Verifying…'
+      : 'Login as Admin';
+  }
+
+  // ── Password toggle ───────────────────────────────────────────────
+  $('pw-toggle').addEventListener('click', () => {
+    const inp = $('password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  // ── Enter key ────────────────────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  // ── Login flow ───────────────────────────────────────────────────
+  window.doLogin = async function () {
+    clearError();
+
+    const email    = $('email').value.trim();
+    const password = $('password').value;
+
+    if (!email || !password) {
+      showError('Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 1. Sign in
+      const { data: authData, error: authErr } =
+        await sb.auth.signInWithPassword({ email, password });
+
+      if (authErr) {
+        if (authErr.message.includes('Invalid login credentials')) {
+          showError('Incorrect email or password.');
+        } else if (authErr.message.includes('Email not confirmed')) {
+          showError('Email not confirmed. Check your inbox.');
+        } else {
+          showError(authErr.message);
+        }
+        return;
+      }
+
+      // 2. Verify is_admin in profiles
+      const { data: profile, error: profileErr } = await sb
+        .from('profiles')
+        .select('is_admin, full_name')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      if (profileErr) {
+        showError('Could not verify admin status: ' + profileErr.message);
+        await sb.auth.signOut();
+        return;
+      }
+
+      // 3. Also check ADMIN_EMAILS fallback from config
+      const adminEmails = (cfg.ADMIN_EMAILS || []).map(e => e.toLowerCase());
+      const isAdmin = profile?.is_admin === true ||
+                      adminEmails.includes(email.toLowerCase());
+
+      if (!isAdmin) {
+        showError('Access denied. This portal is for admins only.');
+        await sb.auth.signOut();
+        return;
+      }
+
+      // 4. All good — go straight to admin actions
+      window.location.replace('admin-actions.html');
+
+    } catch (err) {
+      showError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+})();
+</script>
+</body>
+</html>
