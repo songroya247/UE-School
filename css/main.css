@@ -489,13 +489,8 @@ select, input, textarea { font-family: inherit; }
   pointer-events: auto;
   transform: translateY(0) scale(1);
 }
-#hvp-pip iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-}
+/* iframe is never a child of #hvp-pip in v5 — it stays in the slot,
+   repositioned to fixed via JS. No rule needed here. */
 #hvp-pip-close {
   position: absolute;
   top: 7px;
