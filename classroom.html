@@ -478,6 +478,19 @@ document.addEventListener('DOMContentLoaded', async () => {
      ⚠️  MUST complete (await) before Step 3 reads TOPIC_BLUEPRINT. */
   await GSHEET_CURRICULUM.init();
 
+  /* TEMP DEBUG — remove after testing */
+  (function() {
+    const bp = window.TOPIC_BLUEPRINT || {};
+    const keys = Object.keys(bp);
+    const gsheetKeys = keys.filter(k => bp[k]._source === 'gsheet');
+    alert(
+      'TOPIC_BLUEPRINT entries: ' + keys.length + '\n' +
+      'gsheet entries: ' + gsheetKeys.length + '\n' +
+      (gsheetKeys.length ? gsheetKeys.join('\n') : '(none)')
+    );
+  })();
+  /* END TEMP DEBUG */
+
   /* Step 3 — Merge: inject sheet topics into CLASSROOM.CURRICULUM.
      ★ CRITICAL PATH: runs BEFORE CLASSROOM.init() so the sidebar has
        fully merged data when it renders.
