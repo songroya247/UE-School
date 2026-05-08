@@ -614,6 +614,7 @@ window.CLASSROOM = (function () {
      Returns: boolean
   ───────────────────────────────────────────────────────────────────── */
   function topicUnlockedForUser(topic) {
+    if (topic.locked === true) return false; // operator hard-lock (sheet "locked" column)
     if (isPremiumUser) return true;
     const watched = getWatchedVideoIds();
     if (watched.includes(topic.id)) return true;      // re-watch: always free
@@ -720,15 +721,14 @@ window.CLASSROOM = (function () {
         title:    topic.title,
         duration: topic.duration || '14 mins',
         premium:  false, // sheet topics are always subscription-gated, not topic-level locked
+        locked:   topic.locked === true, // hard-lock from sheet "locked" column
         videos:   topic.videos || null, // { standard, foundation, mastery } — see getVideoUrl()
         content: {
           intro:    topic.blurb || `${topic.title} — lesson loaded from Google Sheets.`,
           points:   topic.objectives || [],
-          // CURRICULUM formulas expect { label, formula } objects;
-          // sheet formulas are bare strings → normalise with empty label
           formulas: (topic.formulas || []).map(f => ({ label: '', formula: f })),
         },
-        quiz: [], // sheets do not supply quiz questions; CBT questions come from a separate sheet
+        quiz: [],
       };
 
       // Sheet wins: replace hardcoded topic with same ID, or append if new.
@@ -904,20 +904,29 @@ window.CLASSROOM = (function () {
     if (!list) return;
 
     list.innerHTML = subj.topics.map((topic, idx) => {
-      const isLocked   = !topicUnlockedForUser(topic);
-      const isActive   = topic.id === currentTopicId;
+      const isHardLocked = topic.locked === true;           // operator lock from sheet
+      const isLocked     = !topicUnlockedForUser(topic);   // any lock (includes hard)
+      const isActive     = topic.id === currentTopicId;
 
-      const icon = isLocked ? '&#x1F512;'
-                 : isActive  ? '<span style="color:var(--accent)">▶</span>'
-                 :             '<span style="color:var(--muted2)">&#x1F4D6;</span>';
+      const icon = isHardLocked ? '<span style="color:var(--muted);opacity:.5">&#x1F512;</span>'
+                 : isLocked     ? '&#x1F512;'
+                 : isActive     ? '<span style="color:var(--accent)">▶</span>'
+                 :                '<span style="color:var(--muted2)">&#x1F4D6;</span>';
+
+      const badge = isHardLocked
+        ? '<span style="font-size:.68rem;color:var(--muted);margin-left:auto;opacity:.6">SOON</span>'
+        : isLocked
+          ? '<span style="font-size:.7rem;color:var(--muted);margin-left:auto">PRO</span>'
+          : '';
 
       return `<button class="topic-item ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}"
                 data-topic-id="${topic.id}"
                 onclick="CLASSROOM.loadTopic('${topic.id}')">
                 ${icon}
                 <span class="topic-text">${idx + 1}. ${topic.title}</span>
-                ${isLocked ? '<span style="font-size:.7rem;color:var(--muted);margin-left:auto">PRO</span>' : ''}
+                ${badge}
               </button>`;
+    }).join('');
     }).join('');
 
     // Auto-select first unlocked topic or the URL-specified topic
@@ -951,6 +960,11 @@ window.CLASSROOM = (function () {
     // of showing an in-page locked state. (Already-watched topics
     // remain available so the sample never feels like a punishment.)
     if (!topicUnlockedForUser(topic)) {
+      if (topic.locked === true) {
+        // Operator hard-lock: show a toast, don't send them to pricing
+        (window.toast || (m => alert(m)))('This lesson is coming soon — check back shortly! 🚀');
+        return;
+      }
       AUTH_GUARD.bouncePremium(
         'You\'ve used your free video sample. Upgrade to UE Premium to unlock every lesson.'
       );
