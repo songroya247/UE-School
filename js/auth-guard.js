@@ -485,6 +485,10 @@ const AUTH_GUARD = (function () {
     window.UE_PROFILE = profile;
     window.UE_USER_ID = session.user.id;
 
+    // Signal that auth-guard has finished — pages can listen for this
+    // instead of using a fragile timed poll (fixes admin-actions login issue).
+    try { document.dispatchEvent(new CustomEvent('ue:ready')); } catch (_) {}
+
     renderNavUser(profile);
     renderDefaulterBanner(profile);
 
