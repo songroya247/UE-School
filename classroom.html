@@ -439,17 +439,13 @@ function toast(msg, dur = 2800) {
           → MUST complete before Step 3 reads TOPIC_BLUEPRINT.
           → Idempotent (_loaded guard): safe if CLASSROOM.init() calls it again.
 
-  Step 3: mergeSheetIntoCurriculum() [inline IIFE]
+  Step 3: CLASSROOM.mergeSheetIntoCurriculum()
           → Reads window.TOPIC_BLUEPRINT (written in Step 2).
-          → Reads window.CLASSROOM.CURRICULUM (registered by classroom.js).
-          → Injects sheet topics into CURRICULUM[subject].topics.
+          → Injects sheet topics into CLASSROOM.CURRICULUM[subject].topics.
           → Sheet topics overwrite hardcoded topics with the same ID.
           → MUST run before Step 5 (CLASSROOM.init) which renders the sidebar
             from CURRICULUM — topics not yet merged would be invisible.
-          ★ This inline merge is a DEFENSIVE DUPLICATE of the same merge
-            inside CLASSROOM.init().  Both are intentional.  The inline
-            version runs first to guarantee CURRICULUM is populated before
-            CLASSROOM.init() tries to render the sidebar.
+          Logic lives in classroom.js (single source of truth).
 
   Step 4: window._ueProfile = authData.profile
           → Stores the user profile globally for watermark access.
@@ -483,63 +479,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   await GSHEET_CURRICULUM.init();
 
   /* Step 3 — Merge: inject sheet topics into CLASSROOM.CURRICULUM.
-     ★ CRITICAL PATH: this inline IIFE runs BEFORE CLASSROOM.init()
-       so the sidebar has fully merged data when it renders.
-     ⚠️  DO NOT remove or move this block.  Without it, sheet topics
-         would not appear in the tab bar or sidebar until after a race
-         condition resolves inside CLASSROOM.init().
-     ⚠️  The logic here MUST stay in sync with mergeSheetIntoCurriculum()
-         inside classroom.js.  If the TOPIC_BLUEPRINT shape changes in
-         gsheet-curriculum.js, update BOTH merge functions. */
-  (function mergeSheetIntoCurriculum() {
-    const blueprint = window.TOPIC_BLUEPRINT || {};
-    const CURRICULUM = window.CLASSROOM && window.CLASSROOM.CURRICULUM;
-    if (!CURRICULUM) { console.warn('[MERGE] CLASSROOM.CURRICULUM not found'); return; }
-    let merged = 0;
-    for (const topic of Object.values(blueprint)) {
-      if (topic._source !== 'gsheet') continue; // only process sheet-sourced entries
-      const subj = topic.subject;
-      if (!subj) continue;
-      if (!CURRICULUM[subj]) {
-        CURRICULUM[subj] = {
-          label:  subj.charAt(0).toUpperCase() + subj.slice(1),
-          icon:   '&#x1F4D6;',
-          color:  '#6366f1',
-          topics: [],
-        };
-      }
-      const classroomTopic = {
-        id:       topic.id,
-        title:    topic.title,
-        duration: topic.duration || '14 mins',
-        premium:  false,
-        locked:   topic.locked === true, // hard-lock from sheet "locked" column
-        videos:   topic.videos || null, // ← THE VIDEO URLs from gsheet-curriculum.js
-        content: {
-          intro:    topic.blurb || topic.title + ' — loaded from Google Sheets.',
-          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
-          formulas: Array.isArray(topic.formulas)
-            ? topic.formulas.map(f => ({ label: '', formula: f }))
-            : [],
-        },
-        quiz: [],
-      };
-      const normalise = id => (id || '').toLowerCase().replace(/[\s_]+/g, '');
-      const normSheetId = normalise(topic.id);
-      let idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
-      if (idx < 0) {
-        idx = CURRICULUM[subj].topics.findIndex(t => normalise(t.id) === normSheetId);
-        if (idx >= 0) classroomTopic.id = CURRICULUM[subj].topics[idx].id;
-      }
-      if (idx >= 0) {
-        CURRICULUM[subj].topics[idx] = classroomTopic; // sheet wins over hardcoded
-      } else {
-        CURRICULUM[subj].topics.push(classroomTopic);
-      }
-      merged++;
-    }
-    console.info('[CLASSROOM] Sheet merge: ' + merged + ' topics injected.');
-  })();
+     ★ CRITICAL PATH: runs BEFORE CLASSROOM.init() so the sidebar has
+       fully merged data when it renders.
+     Single source of truth: logic lives in classroom.js → CLASSROOM.mergeSheetIntoCurriculum(). */
+  CLASSROOM.mergeSheetIntoCurriculum();
 
   /* Step 4 — Profile: store globally for watermark access.
      ⚠️  MUST happen before CLASSROOM.init() renders any lesson.
