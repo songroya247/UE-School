@@ -285,6 +285,7 @@ window.GSHEET_CURRICULUM = (function () {
     dur_foundation:     ['duration_foundation', 'foundation_duration', 'dur_foundation'],
     dur_standard:       ['duration_standard',   'standard_duration',   'dur_standard'],
     dur_mastery:        ['duration_mastery',    'mastery_duration',    'dur_mastery'],
+    locked:             ['locked', 'lock', 'is_locked', 'status'],
   };
 
   /* ─────────────────────────────────────────────────────────────────
@@ -455,11 +456,13 @@ window.GSHEET_CURRICULUM = (function () {
       duration:   g(row, idx, 'duration') || '14 mins',
       videos,
       blurb:      g(row, idx, 'blurb') || '',
-      // Split pipe-delimited strings into arrays; classroom.js renders them as lists
       objectives: (g(row, idx, 'objectives') || '').split('|').map(s => s.trim()).filter(Boolean),
       formulas:   (g(row, idx, 'formulas')   || '').split('|').map(s => s.trim()).filter(Boolean),
-      subSkills:  [], // reserved for Skill Chamber adaptive layer
-      _source:    'gsheet', // ← classroom.js mergeSheetIntoCurriculum() filters on this
+      subSkills:  [],
+      // locked: true when the sheet cell is "yes"/"true"/"1"/"locked" (case-insensitive).
+      // false/blank = normal premium/sample gating.  Passed to classroom.js via TOPIC_BLUEPRINT.
+      locked:     /^(yes|true|1|locked)$/i.test(g(row, idx, 'locked')),
+      _source:    'gsheet',
     };
   }
 
