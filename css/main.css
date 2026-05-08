@@ -464,6 +464,7 @@ select, input, textarea { font-family: inherit; }
 
 /* ═══════════════════════════════════════════════════════════════════
    FLOATING VIDEO PIP  (home-video-preview.js — scroll-away widget)
+   Added surgically — does NOT touch any existing rules above.
 ═══════════════════════════════════════════════════════════════════ */
 #hvp-pip {
   position: fixed;
@@ -472,86 +473,63 @@ select, input, textarea { font-family: inherit; }
   width: 320px;
   aspect-ratio: 16 / 9;
   background: #0d1117;
-  border: 1.5px solid rgba(255,255,255,.18);
+  border: 1.5px solid rgba(255,255,255,.15);
   border-radius: 14px;
-  overflow: visible;
-  box-shadow: 0 8px 40px rgba(0,0,0,.6);
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,.55);
   z-index: 9000;
+  /* hidden by default; JS drives visibility */
   opacity: 0;
   pointer-events: none;
   transform: translateY(16px) scale(.97);
   transition: opacity .28s ease, transform .28s ease;
-  cursor: grab;
-  user-select: none;
 }
 #hvp-pip.hvp-pip--visible {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0) scale(1);
 }
-#hvp-pip.hvp-pip--dragging {
-  cursor: grabbing;
-  transition: none;        /* no animation while dragging */
-  box-shadow: 0 16px 56px rgba(0,0,0,.75);
-}
-/* drag handle bar across the top */
-#hvp-pip-handle {
+#hvp-pip iframe {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 28px;
-  border-radius: 14px 14px 0 0;
-  background: rgba(255,255,255,.06);
-  cursor: grab;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-#hvp-pip-handle::after {
-  content: '';
-  width: 32px; height: 3px;
-  border-radius: 2px;
-  background: rgba(255,255,255,.25);
-}
-#hvp-pip.hvp-pip--dragging #hvp-pip-handle { cursor: grabbing; }
-/* iframe clip area sits below the handle */
-#hvp-pip-viewport {
-  position: absolute;
-  top: 28px; left: 0; right: 0; bottom: 0;
-  border-radius: 0 0 14px 14px;
-  overflow: hidden;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
 }
 #hvp-pip-close {
   position: absolute;
-  top: 4px;
+  top: 7px;
   right: 8px;
-  width: 22px; height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: rgba(0,0,0,.55);
+  background: rgba(0,0,0,.6);
   border: 1px solid rgba(255,255,255,.2);
   color: #fff;
-  font-size: .8rem;
+  font-size: .9rem;
+  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 4;
+  z-index: 2;
   transition: background .18s;
 }
-#hvp-pip-close:hover { background: rgba(220,50,50,.8); }
+#hvp-pip-close:hover { background: rgba(220,50,50,.75); }
 #hvp-pip-label {
   position: absolute;
-  bottom: -22px;
-  left: 0; right: 0;
-  text-align: center;
+  bottom: 7px;
+  left: 10px;
+  right: 36px;
   font-size: .68rem;
-  color: rgba(255,255,255,.4);
+  color: rgba(255,255,255,.5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: none;
-  z-index: 3;
+  z-index: 2;
 }
+/* On very small screens push pip to fill width */
 @media (max-width: 400px) {
-  #hvp-pip { width: calc(100vw - 32px); right: 16px; bottom: 16px; }
+  #hvp-pip { width: calc(100vw - 24px); right: 12px; bottom: 12px; }
 }
