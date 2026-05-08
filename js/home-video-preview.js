@@ -396,46 +396,47 @@
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   FLOATING VIDEO PIP — scroll-away widget  (v2: single-iframe move)
+   FLOATING VIDEO PIP — v4: single iframe, DOM move, slot preserved
    ───────────────────────────────────────────────────────────────────
-   Strategy: ONE iframe element is physically relocated between the
-   original .classroom-video-mock slot and the fixed #hvp-pip shell.
-   No src reset → no reload → continuous, uninterrupted playback.
+   ONE iframe element is physically relocated so playback never
+   interrupts. The slot is never left broken — a transparent placeholder
+   div occupies its space while the iframe is in the pip, so the page
+   layout and all existing JS (overlay, nav, swipe) stay intact.
 
    Flow:
-     scroll OUT → move iframe node into #hvp-pip, show pip shell
-     scroll IN  → move iframe node back into slot, hide pip shell
-     ✕ click    → hide pip shell but leave iframe in pip;
-                  on next scroll-in it moves back to slot silently.
+     scroll OUT  → drop a placeholder into slot, move iframe → pip shell
+     scroll IN   → remove placeholder, move iframe → back into slot
+     ✕ button    → pip hides visually; iframe stays in pip until
+                   user scrolls back to slot (then silently returned)
 ═══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  var pip         = null;   // #hvp-pip fixed shell
-  var observer    = null;
-  var frameInPip  = false;  // tracks where the iframe currently lives
+  var pip         = null;
+  var placeholder = null;   // transparent div that keeps slot layout intact
+  var frameInPip  = false;
+  var dismissed   = false;
 
-  /* ── Build the pip SHELL (no iframe inside yet) ─────────────────── */
+  /* ── Build the pip shell ────────────────────────────────────────── */
   function buildPip() {
     if (document.getElementById('hvp-pip')) {
       pip = document.getElementById('hvp-pip');
       return;
     }
-
     pip = document.createElement('div');
     pip.id = 'hvp-pip';
 
     var closeBtn = document.createElement('button');
-    closeBtn.id    = 'hvp-pip-close';
-    closeBtn.title = 'Close';
+    closeBtn.id        = 'hvp-pip-close';
+    closeBtn.title     = 'Close';
     closeBtn.innerHTML = '&#x2715;';
     closeBtn.addEventListener('click', function () {
+      dismissed = true;
       pip.classList.remove('hvp-pip--visible');
-      /* iframe stays inside pip; it will be moved back on next scroll-in */
     });
 
     var label = document.createElement('div');
-    label.id = 'hvp-pip-label';
+    label.id          = 'hvp-pip-label';
     label.textContent = 'Now Playing';
 
     pip.appendChild(closeBtn);
@@ -443,39 +444,37 @@
     document.body.appendChild(pip);
   }
 
-  /* ── Get the live iframe from whichever container holds it ──────── */
-  function getLiveFrame() {
-    var slot = document.querySelector('.classroom-video-mock');
-    if (!slot) return null;
-    /* iframe may currently be in slot OR in pip */
-    return slot.querySelector('iframe') || (pip && pip.querySelector('iframe')) || null;
+  /* ── Build the invisible placeholder that holds the slot's space ── */
+  function buildPlaceholder() {
+    if (placeholder) return;
+    placeholder = document.createElement('div');
+    /* Fills slot exactly — slot is position:relative so this works */
+    placeholder.style.cssText =
+      'position:absolute;inset:0;width:100%;height:100%;' +
+      'background:transparent;pointer-events:none;';
   }
 
-  /* ── Get title text from the slot's label div ───────────────────── */
-  function getTitle() {
-    var slot = document.querySelector('.classroom-video-mock');
-    if (!slot) return 'Now Playing';
-    /* home-video-preview renders a label div with position:absolute;bottom:... */
-    var labelEl = slot.querySelector('div[style*="bottom"][style*="text-align:center"]') ||
-                  slot.querySelector('div[style*="bottom"]');
-    return (labelEl && labelEl.textContent.trim()) ? labelEl.textContent.trim() : 'Now Playing';
+  /* ── Get the live iframe — slot first, then pip (video switch case) */
+  function getSlotFrame() {
+    var slot  = document.querySelector('.classroom-video-mock');
+    var frame = slot ? slot.querySelector('iframe#hvp-frame') : null;
+    if (!frame && pip) frame = pip.querySelector('iframe#hvp-frame');
+    return frame || null;
   }
 
-  /* ── Move iframe INTO the pip shell ─────────────────────────────── */
-  function moveFrameToPip() {
-    if (frameInPip) return;
-    var frame = getLiveFrame();
-    if (!frame || !frame.src) return;          // no video loaded yet — skip
+  /* ── Move iframe into pip ───────────────────────────────────────── */
+  function moveToPip() {
+    if (frameInPip) { pip.classList.add('hvp-pip--visible'); return; }
 
-    /* Update label */
-    var labelEl = document.getElementById('hvp-pip-label');
-    if (labelEl) labelEl.textContent = getTitle();
+    var slot  = document.querySelector('.classroom-video-mock');
+    var frame = getSlotFrame();
+    if (!slot || !frame) return;   // video not loaded yet — skip
 
-    /* Physically move the node — no reload, playback continues */
-    pip.insertBefore(frame, pip.firstChild);
-    frameInPip = true;
+    /* 1. Drop placeholder into slot so layout/existing JS stays intact */
+    buildPlaceholder();
+    slot.insertBefore(placeholder, slot.firstChild);
 
-    /* Make iframe fill the pip shell */
+    /* 2. Style the iframe to fill the pip shell */
     frame.style.position = 'absolute';
     frame.style.top      = '0';
     frame.style.left     = '0';
@@ -483,46 +482,92 @@
     frame.style.height   = '100%';
     frame.style.opacity  = '1';
 
+    /* 3. Move iframe node into pip — no src change → no reload */
+    pip.insertBefore(frame, pip.firstChild);
+    frameInPip = true;
+
+    /* 4. Update label */
+    var labelEl = document.getElementById('hvp-pip-label');
+    if (labelEl) {
+      var titleEl = slot.querySelector('div[style*="bottom"]');
+      labelEl.textContent =
+        (titleEl && titleEl.textContent.trim()) ? titleEl.textContent.trim() : 'Now Playing';
+    }
+
     pip.classList.add('hvp-pip--visible');
   }
 
-  /* ── Move iframe BACK to the slot ───────────────────────────────── */
-  function moveFrameToSlot() {
-    if (!frameInPip) return;
-    var slot  = document.querySelector('.classroom-video-mock');
-    if (!slot) return;
-    var frame = pip.querySelector('iframe');
-    if (!frame) return;
-
-    /* Put it back as first child of slot (behind overlay/nav layers) */
-    slot.insertBefore(frame, slot.firstChild);
-    frameInPip = false;
-
+  /* ── Move iframe back to slot ───────────────────────────────────── */
+  function moveToSlot() {
     pip.classList.remove('hvp-pip--visible');
+    dismissed = false;
+    if (!frameInPip) return;
+
+    var slot  = document.querySelector('.classroom-video-mock');
+    var frame = pip.querySelector('iframe');
+    if (!slot || !frame) return;
+
+    /* 1. Return iframe to slot as first child (original position) */
+    slot.insertBefore(frame, slot.firstChild);
+
+    /* 2. Remove placeholder */
+    if (placeholder && placeholder.parentNode === slot) {
+      slot.removeChild(placeholder);
+    }
+
+    frameInPip = false;
   }
 
-  /* ── IntersectionObserver on the slot ──────────────────────────── */
+  /* ── IntersectionObserver ───────────────────────────────────────── */
   function setupObserver() {
     var slot = document.querySelector('.classroom-video-mock');
     if (!slot) return;
 
-    observer = new IntersectionObserver(function (entries) {
-      var entry = entries[0];
-      if (!entry.isIntersecting) {
-        moveFrameToPip();
+    var io = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) {
+        if (!dismissed) moveToPip();
       } else {
-        moveFrameToSlot();
+        moveToSlot();
       }
     }, { threshold: 0, rootMargin: '0px' });
 
-    observer.observe(slot);
+    io.observe(slot);
   }
 
-  /* ── Init — wait for home-video-preview to finish its own init ──── */
+  /* ── MutationObserver: handle video switch while pip is showing ────
+     renderVideo() calls slot.innerHTML = '...' which wipes the slot
+     entirely. If the iframe is in the pip when this fires, a fresh
+     iframe lands in the slot while the old one is still in pip —
+     frameInPip goes stale. We watch for that, discard the stale pip
+     iframe, reset state, and re-trigger moveToPip for the new video.
+  ─────────────────────────────────────────────────────────────────── */
+  function watchForVideoSwitch() {
+    var slot = document.querySelector('.classroom-video-mock');
+    if (!slot) return;
+
+    var mo = new MutationObserver(function () {
+      if (!frameInPip) return;
+      var freshFrame = slot.querySelector('iframe#hvp-frame');
+      if (!freshFrame) return;
+      /* New iframe in slot while old one is in pip — clean up */
+      var stale = pip.querySelector('iframe');
+      if (stale) pip.removeChild(stale);
+      if (placeholder && placeholder.parentNode === slot) {
+        slot.removeChild(placeholder);
+      }
+      frameInPip = false;
+      setTimeout(function () { if (!dismissed) moveToPip(); }, 50);
+    });
+
+    mo.observe(slot, { childList: true });
+  }
+
+  /* ── Init ───────────────────────────────────────────────────────── */
   function init() {
     setTimeout(function () {
       buildPip();
       setupObserver();
+      watchForVideoSwitch();
     }, 300);
   }
 
