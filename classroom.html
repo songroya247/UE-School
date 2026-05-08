@@ -497,6 +497,19 @@ document.addEventListener('DOMContentLoaded', async () => {
      Single source of truth: logic lives in classroom.js → CLASSROOM.mergeSheetIntoCurriculum(). */
   CLASSROOM.mergeSheetIntoCurriculum();
 
+  /* TEMP DEBUG 2 — remove after testing */
+  (function() {
+    const topics = window.CLASSROOM && window.CLASSROOM.CURRICULUM &&
+                   window.CLASSROOM.CURRICULUM.mathematics &&
+                   window.CLASSROOM.CURRICULUM.mathematics.topics;
+    if (!topics) { alert('CURRICULUM.mathematics not found after merge'); return; }
+    alert(
+      'CURRICULUM after merge (' + topics.length + ' topics):\n' +
+      topics.map(t => t.id + ' | ' + t.title).join('\n')
+    );
+  })();
+  /* END TEMP DEBUG 2 */
+
   /* Step 4 — Profile: store globally for watermark access.
      ⚠️  MUST happen before CLASSROOM.init() renders any lesson.
      classroom.js injectIframe() reads window._ueProfile.full_name. */
