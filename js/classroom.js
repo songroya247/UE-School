@@ -927,7 +927,6 @@ window.CLASSROOM = (function () {
                 ${badge}
               </button>`;
     }).join('');
-    }).join('');
 
     // Auto-select first unlocked topic or the URL-specified topic
     const firstUnlocked = subj.topics.find(t => topicUnlockedForUser(t));
