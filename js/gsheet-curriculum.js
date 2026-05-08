@@ -445,23 +445,22 @@ window.GSHEET_CURRICULUM = (function () {
     if (!topicId || !subject || !title) return null;
 
     const videos = buildVideos(row, idx);
-    // Skip rows that have no video at all — a text-only row is useless
-    // in the classroom player which is primarily a video delivery interface.
-    if (!videos) return null;
+    // Skip rows with no video — UNLESS the row is locked (coming soon placeholder).
+    // Locked rows appear in the sidebar as greyed-out stubs even before a video exists.
+    const isLocked = /^(yes|true|1|locked)$/i.test(g(row, idx, 'locked'));
+    if (!videos && !isLocked) return null;
 
     return {
       id:         topicId,
       subject,
       title,
       duration:   g(row, idx, 'duration') || '14 mins',
-      videos,
+      videos:     videos || null,
       blurb:      g(row, idx, 'blurb') || '',
       objectives: (g(row, idx, 'objectives') || '').split('|').map(s => s.trim()).filter(Boolean),
       formulas:   (g(row, idx, 'formulas')   || '').split('|').map(s => s.trim()).filter(Boolean),
       subSkills:  [],
-      // locked: true when the sheet cell is "yes"/"true"/"1"/"locked" (case-insensitive).
-      // false/blank = normal premium/sample gating.  Passed to classroom.js via TOPIC_BLUEPRINT.
-      locked:     /^(yes|true|1|locked)$/i.test(g(row, idx, 'locked')),
+      locked:     isLocked,
       _source:    'gsheet',
     };
   }
