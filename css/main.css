@@ -461,3 +461,75 @@ select, input, textarea { font-family: inherit; }
   .container { padding: 0 16px; }
   .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FLOATING VIDEO PIP  (home-video-preview.js — scroll-away widget)
+   Added surgically — does NOT touch any existing rules above.
+═══════════════════════════════════════════════════════════════════ */
+#hvp-pip {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
+  aspect-ratio: 16 / 9;
+  background: #0d1117;
+  border: 1.5px solid rgba(255,255,255,.15);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,.55);
+  z-index: 9000;
+  /* hidden by default; JS drives visibility */
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px) scale(.97);
+  transition: opacity .28s ease, transform .28s ease;
+}
+#hvp-pip.hvp-pip--visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+#hvp-pip iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+#hvp-pip-close {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  font-size: .9rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background .18s;
+}
+#hvp-pip-close:hover { background: rgba(220,50,50,.75); }
+#hvp-pip-label {
+  position: absolute;
+  bottom: 7px;
+  left: 10px;
+  right: 36px;
+  font-size: .68rem;
+  color: rgba(255,255,255,.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 2;
+}
+/* On very small screens push pip to fill width */
+@media (max-width: 400px) {
+  #hvp-pip { width: calc(100vw - 24px); right: 12px; bottom: 12px; }
+}
