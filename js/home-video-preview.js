@@ -394,37 +394,35 @@
 
 })();
 
-
 /* ═══════════════════════════════════════════════════════════════════
-   FLOATING VIDEO PIP — v4: single iframe, DOM move, slot preserved
+   FLOATING VIDEO PIP — v5: CSS reposition (no DOM move)
    ───────────────────────────────────────────────────────────────────
-   ONE iframe element is physically relocated so playback never
-   interrupts. The slot is never left broken — a transparent placeholder
-   div occupies its space while the iframe is in the pip, so the page
-   layout and all existing JS (overlay, nav, swipe) stay intact.
-
-   Flow:
-     scroll OUT  → drop a placeholder into slot, move iframe → pip shell
-     scroll IN   → remove placeholder, move iframe → back into slot
-     ✕ button    → pip hides visually; iframe stays in pip until
-                   user scrolls back to slot (then silently returned)
+   The iframe NEVER moves in the DOM — browsers reload iframes on any
+   DOM relocation regardless of technique. Instead, the iframe stays
+   inside .classroom-video-mock always. When the slot scrolls out of
+   view we switch the iframe to position:fixed with pip coordinates.
+   When the slot returns we restore its original inline styles.
+   One iframe. One playback session. Zero reloads.
 ═══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  var pip         = null;
-  var placeholder = null;   // transparent div that keeps slot layout intact
-  var frameInPip  = false;
-  var dismissed   = false;
+  var pipShell   = null;   // decorative fixed shell (border, shadow, close btn, label)
+  var dismissed  = false;
 
-  /* ── Build the pip shell ────────────────────────────────────────── */
-  function buildPip() {
+  /* pip geometry — must match #hvp-pip CSS */
+  var PIP_WIDTH  = 320;
+  var PIP_BOTTOM = 24;
+  var PIP_RIGHT  = 24;
+
+  /* ── Build the decorative pip shell (NO iframe inside) ──────────── */
+  function buildShell() {
     if (document.getElementById('hvp-pip')) {
-      pip = document.getElementById('hvp-pip');
+      pipShell = document.getElementById('hvp-pip');
       return;
     }
-    pip = document.createElement('div');
-    pip.id = 'hvp-pip';
+    pipShell = document.createElement('div');
+    pipShell.id = 'hvp-pip';
 
     var closeBtn = document.createElement('button');
     closeBtn.id        = 'hvp-pip-close';
@@ -432,140 +430,119 @@
     closeBtn.innerHTML = '&#x2715;';
     closeBtn.addEventListener('click', function () {
       dismissed = true;
-      pip.classList.remove('hvp-pip--visible');
+      hideShell();
+      restoreFrame();   // put iframe back to normal slot position
     });
 
     var label = document.createElement('div');
     label.id          = 'hvp-pip-label';
     label.textContent = 'Now Playing';
 
-    pip.appendChild(closeBtn);
-    pip.appendChild(label);
-    document.body.appendChild(pip);
+    pipShell.appendChild(closeBtn);
+    pipShell.appendChild(label);
+    document.body.appendChild(pipShell);
   }
 
-  /* ── Build the invisible placeholder that holds the slot's space ── */
-  function buildPlaceholder() {
-    if (placeholder) return;
-    placeholder = document.createElement('div');
-    /* Fills slot exactly — slot is position:relative so this works */
-    placeholder.style.cssText =
-      'position:absolute;inset:0;width:100%;height:100%;' +
-      'background:transparent;pointer-events:none;';
+  /* ── Show / hide the decorative shell ───────────────────────────── */
+  function showShell() {
+    if (pipShell) pipShell.classList.add('hvp-pip--visible');
+  }
+  function hideShell() {
+    if (pipShell) pipShell.classList.remove('hvp-pip--visible');
   }
 
-  /* ── Get the live iframe — slot first, then pip (video switch case) */
-  function getSlotFrame() {
-    var slot  = document.querySelector('.classroom-video-mock');
-    var frame = slot ? slot.querySelector('iframe#hvp-frame') : null;
-    if (!frame && pip) frame = pip.querySelector('iframe#hvp-frame');
-    return frame || null;
+  /* ── Get current live iframe from the slot ──────────────────────── */
+  function getFrame() {
+    var slot = document.querySelector('.classroom-video-mock');
+    return slot ? slot.querySelector('iframe#hvp-frame') : null;
   }
 
-  /* ── Move iframe into pip ───────────────────────────────────────── */
-  function moveToPip() {
-    if (frameInPip) { pip.classList.add('hvp-pip--visible'); return; }
+  /* ── Fix the iframe to pip position (slot scrolled away) ────────── */
+  function fixFrameToPip() {
+    var frame = getFrame();
+    if (!frame || !frame.src || frame.src === 'about:blank') return;
 
-    var slot  = document.querySelector('.classroom-video-mock');
-    var frame = getSlotFrame();
-    if (!slot || !frame) return;   // video not loaded yet — skip
+    var vw = window.innerWidth;
+    var w  = Math.min(PIP_WIDTH, vw - PIP_RIGHT * 2);
+    var h  = Math.round(w * 9 / 16);
 
-    /* 1. Drop placeholder into slot so layout/existing JS stays intact */
-    buildPlaceholder();
-    slot.insertBefore(placeholder, slot.firstChild);
+    frame.style.position   = 'fixed';
+    frame.style.bottom     = PIP_BOTTOM + 'px';
+    frame.style.right      = PIP_RIGHT  + 'px';
+    frame.style.top        = 'auto';
+    frame.style.left       = 'auto';
+    frame.style.width      = w + 'px';
+    frame.style.height     = h + 'px';
+    frame.style.opacity    = '1';
+    frame.style.zIndex     = '8999';   // just below shell (9000) so shell chrome shows
+    frame.style.borderRadius = '14px';
+    frame.style.boxShadow  = '0 8px 40px rgba(0,0,0,.55)';
 
-    /* 2. Style the iframe to fill the pip shell */
-    frame.style.position = 'absolute';
-    frame.style.top      = '0';
-    frame.style.left     = '0';
-    frame.style.width    = '100%';
-    frame.style.height   = '100%';
-    frame.style.opacity  = '1';
-
-    /* 3. Move iframe node into pip — no src change → no reload */
-    pip.insertBefore(frame, pip.firstChild);
-    frameInPip = true;
-
-    /* 4. Update label */
+    /* Update label */
+    var slot    = document.querySelector('.classroom-video-mock');
+    var titleEl = slot ? slot.querySelector('div[style*="bottom"]') : null;
     var labelEl = document.getElementById('hvp-pip-label');
     if (labelEl) {
-      var titleEl = slot.querySelector('div[style*="bottom"]');
       labelEl.textContent =
         (titleEl && titleEl.textContent.trim()) ? titleEl.textContent.trim() : 'Now Playing';
     }
 
-    pip.classList.add('hvp-pip--visible');
+    showShell();
   }
 
-  /* ── Move iframe back to slot ───────────────────────────────────── */
-  function moveToSlot() {
-    pip.classList.remove('hvp-pip--visible');
-    dismissed = false;
-    if (!frameInPip) return;
-
-    var slot  = document.querySelector('.classroom-video-mock');
-    var frame = pip.querySelector('iframe');
-    if (!slot || !frame) return;
-
-    /* 1. Return iframe to slot as first child (original position) */
-    slot.insertBefore(frame, slot.firstChild);
-
-    /* 2. Remove placeholder */
-    if (placeholder && placeholder.parentNode === slot) {
-      slot.removeChild(placeholder);
-    }
-
-    frameInPip = false;
+  /* ── Restore iframe to its original slot styles ─────────────────── */
+  function restoreFrame() {
+    var frame = getFrame();
+    if (!frame) return;
+    frame.style.position     = 'absolute';
+    frame.style.top          = '0';
+    frame.style.left         = '0';
+    frame.style.bottom       = '';
+    frame.style.right        = '';
+    frame.style.width        = '100%';
+    frame.style.height       = '100%';
+    frame.style.zIndex       = '';
+    frame.style.borderRadius = '';
+    frame.style.boxShadow    = '';
+    /* opacity stays 1 — video was already playing */
+    hideShell();
   }
 
-  /* ── IntersectionObserver ───────────────────────────────────────── */
+  /* ── Watch for video switches — re-apply pip position if active ─── */
+  function watchForVideoSwitch() {
+    var slot = document.querySelector('.classroom-video-mock');
+    if (!slot) return;
+    var mo = new MutationObserver(function () {
+      /* renderVideo() just replaced the iframe — if pip is visible,
+         the new frame needs the pip styles applied immediately */
+      if (pipShell && pipShell.classList.contains('hvp-pip--visible')) {
+        setTimeout(fixFrameToPip, 30);
+      }
+    });
+    mo.observe(slot, { childList: true });
+  }
+
+  /* ── IntersectionObserver on the slot ──────────────────────────── */
   function setupObserver() {
     var slot = document.querySelector('.classroom-video-mock');
     if (!slot) return;
 
     var io = new IntersectionObserver(function (entries) {
       if (!entries[0].isIntersecting) {
-        if (!dismissed) moveToPip();
+        if (!dismissed) fixFrameToPip();
       } else {
-        moveToSlot();
+        dismissed = false;
+        restoreFrame();
       }
     }, { threshold: 0, rootMargin: '0px' });
 
     io.observe(slot);
   }
 
-  /* ── MutationObserver: handle video switch while pip is showing ────
-     renderVideo() calls slot.innerHTML = '...' which wipes the slot
-     entirely. If the iframe is in the pip when this fires, a fresh
-     iframe lands in the slot while the old one is still in pip —
-     frameInPip goes stale. We watch for that, discard the stale pip
-     iframe, reset state, and re-trigger moveToPip for the new video.
-  ─────────────────────────────────────────────────────────────────── */
-  function watchForVideoSwitch() {
-    var slot = document.querySelector('.classroom-video-mock');
-    if (!slot) return;
-
-    var mo = new MutationObserver(function () {
-      if (!frameInPip) return;
-      var freshFrame = slot.querySelector('iframe#hvp-frame');
-      if (!freshFrame) return;
-      /* New iframe in slot while old one is in pip — clean up */
-      var stale = pip.querySelector('iframe');
-      if (stale) pip.removeChild(stale);
-      if (placeholder && placeholder.parentNode === slot) {
-        slot.removeChild(placeholder);
-      }
-      frameInPip = false;
-      setTimeout(function () { if (!dismissed) moveToPip(); }, 50);
-    });
-
-    mo.observe(slot, { childList: true });
-  }
-
   /* ── Init ───────────────────────────────────────────────────────── */
   function init() {
     setTimeout(function () {
-      buildPip();
+      buildShell();
       setupObserver();
       watchForVideoSwitch();
     }, 300);
