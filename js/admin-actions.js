@@ -29,17 +29,26 @@
 
   // ── Boot: wait for auth-guard to finish ──────────────────────────
   async function boot() {
-    // auth-guard.js redirects to login if no session, so by the time
-    // this runs we either have window.sb + window.UE_USER set, or
-    // we've already been bounced.
-    let attempts = 0;
-    while ((!window.sb || !window.UE_USER) && attempts < 50) {
-      await new Promise(r => setTimeout(r, 100));
-      attempts++;
-    }
+    // Wait for auth-guard to dispatch 'ue:ready' instead of using a
+    // blind poll. The old 50×100ms poll (5s max) timed out on slow
+    // connections — this waits up to 20s and resolves instantly on fast ones.
+    await new Promise((resolve) => {
+      if (window.sb && window.UE_USER) { resolve(); return; }
+      const onReady = () => {
+        document.removeEventListener('ue:ready', onReady);
+        resolve();
+      };
+      document.addEventListener('ue:ready', onReady);
+      // Hard timeout — covers the slowest connections
+      setTimeout(() => {
+        document.removeEventListener('ue:ready', onReady);
+        resolve();
+      }, 20000);
+    });
+
     if (!window.sb || !window.UE_USER) {
-      // Fallback — head-gatekeeper hadn't redirected yet.
-      window.location.href = window.UE_CONFIG.LOGIN_PAGE;
+      // Auth-guard timed out or redirected — send to login.
+      window.location.href = (window.UE_CONFIG?.LOGIN_PAGE) || 'login.html';
       return;
     }
 
