@@ -35,7 +35,7 @@
 
      A. await AUTH_GUARD.init()           (auth check / redirect)
      B. await GSHEET_CURRICULUM.init()    (fetch + parse CSV sheets)
-     C. mergeSheetIntoCurriculum()        (inline — mirrors step inside CLASSROOM.init)
+     C. mergeSheetIntoCurriculum()        (sheet topics → CURRICULUM)
      D. window._ueProfile = authData.profile  (student name for watermark)
      E. await CLASSROOM.init()            (renders sidebar + first topic)
      F. IntersectionObserver setup        (floating video behaviour)
@@ -438,15 +438,50 @@ window.CLASSROOM = (function () {
   function switchSubject(subjKey, tabEl) {
     if (!CURRICULUM[subjKey]) return;
     currentSubject = subjKey;
+    currentTopicId = null;
+
+    // Stop and clear the current video — the previous subject's video
+    // should not keep playing or showing when you switch subjects.
+    const videoArea = document.getElementById('video-area');
+    if (videoArea) {
+      // Stop and blank any playing iframe — cuts audio immediately
+      videoArea.querySelectorAll('iframe').forEach(f => { f.src = ''; f.remove(); });
+      // Remove per-video overlays (watermark, arrow blocker)
+      videoArea.querySelectorAll('#video-watermark, #video-arrow-blocker').forEach(el => el.remove());
+      // Restore placeholder visuals without destroying structural elements
+      // (video-skeleton, video-tier-badge must survive for renderLesson to find them)
+      videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
+        .forEach(el => el.remove());
+      const ph = ['<div class="video-bg"></div>',
+                   '<div class="video-grid"></div>',
+                   '<div class="video-play-btn" onclick="CLASSROOM.playVideo(null)">&#x25B6;</div>'].join('');
+      videoArea.insertAdjacentHTML('beforeend', ph);
+      // Hide skeleton and tier badge
+      const sk = document.getElementById('video-skeleton');
+      if (sk) sk.style.display = 'none';
+      const tb = document.getElementById('video-tier-badge');
+      if (tb) tb.style.display = 'none';
+      if (skeletonTimeoutId) { clearTimeout(skeletonTimeoutId); skeletonTimeoutId = null; }
+    }
+
+    // Reset lesson panel
+    const titleEl = document.getElementById('topic-title');
+    if (titleEl) titleEl.textContent = 'Select a topic';
+    const tagEl = document.getElementById('topic-tag');
+    if (tagEl) tagEl.textContent = 'Topic';
+    const contentEl = document.getElementById('lesson-content');
+    if (contentEl) contentEl.innerHTML = '<p style="color:var(--muted)">Select a topic from the sidebar to begin.</p>';
+    const quizSection = document.getElementById('quiz-section');
+    if (quizSection) quizSection.style.display = 'none';
 
     document.querySelectorAll('.subject-tab').forEach(t => t.classList.remove('active'));
     if (tabEl) tabEl.classList.add('active');
 
-    renderSidebar(subjKey, null);
+    renderSidebar(subjKey, null, /* autoPlay= */ false);
   }
 
   // ─── Render sidebar topic list ────────────────────
-  function renderSidebar(subjKey, autoSelectTopic) {
+  function renderSidebar(subjKey, autoSelectTopic, autoPlay = true) {
     const subj    = CURRICULUM[subjKey];
     if (!subj) return;
 
@@ -497,7 +532,7 @@ window.CLASSROOM = (function () {
       targetId = firstUnlocked ? firstUnlocked.id : null;
     }
 
-    if (targetId) selectTopic(targetId);
+    if (targetId && autoPlay) selectTopic(targetId);
   }
 
   // ─── Select topic ─────────────────────────────────
@@ -640,7 +675,6 @@ window.CLASSROOM = (function () {
       // ── Helpers for skeleton + tier badge ──
       const skeleton  = document.getElementById('video-skeleton');
       const tierBadge = document.getElementById('video-tier-badge');
-      const driveCover = document.getElementById('video-drive-cover');
 
       function showSkeleton() {
         if (skeleton) skeleton.style.display = 'flex';
@@ -818,14 +852,20 @@ window.CLASSROOM = (function () {
         showTierBadge(tier);
         injectIframe(rawUrl, false);
       } else {
-        // No video yet — show animated placeholder
+        // No video yet — show animated placeholder.
+        // Remove any existing iframe/overlays but preserve structural elements
+        // (video-skeleton, video-tier-badge) so they remain findable later.
+        videoArea.querySelectorAll('iframe').forEach(f => { f.src = ''; f.remove(); });
+        videoArea.querySelectorAll('#video-watermark, #video-arrow-blocker').forEach(el => el.remove());
+        videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration').forEach(el => el.remove());
+        videoArea.insertAdjacentHTML('beforeend',
+          '<div class="video-bg"></div>' +
+          '<div class="video-grid"></div>' +
+          `<div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>` +
+          `<div class="video-duration">${topic.duration}</div>`
+        );
         hideSkeleton();
         if (tierBadge) tierBadge.style.display = 'none';
-        videoArea.innerHTML = `
-          <div class="video-bg"></div>
-          <div class="video-grid"></div>
-          <div class="video-play-btn" onclick="CLASSROOM.playVideo('${topic.id}')">&#x25B6;</div>
-          <div class="video-duration">${topic.duration}</div>`;
       }
     }
 
@@ -882,8 +922,6 @@ window.CLASSROOM = (function () {
   function playVideo(topicId) {
     toast('Video lesson coming soon! Practice with CBT questions in the meantime.');
   }
-
-
 
   // ─── Next / Prev lesson navigation ───────────────
   function nextLesson() {
@@ -961,10 +999,10 @@ window.CLASSROOM = (function () {
       fb.style.display = 'block';
       if (isCorrect) {
         fb.style.cssText = 'display:block;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.25);padding:12px 16px;border-radius:10px;font-weight:600;margin-top:12px';
-        fb.textContent = '&#x2713; Correct! Well done.';
+        fb.innerHTML   = '&#x2713; Correct! Well done.';
       } else {
         fb.style.cssText = 'display:block;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.25);padding:12px 16px;border-radius:10px;font-weight:600;margin-top:12px';
-        fb.textContent = `&#x2717; Not quite. Correct answer: ${q.opts[q.ans]}.`;
+        fb.innerHTML   = `&#x2717; Not quite. Correct answer: ${q.opts[q.ans]}.`;
         const allBtns = document.querySelectorAll('#quiz-options .drill-option');
         if (allBtns[q.ans]) allBtns[q.ans].style.borderColor = '#22c55e';
       }
@@ -1019,6 +1057,7 @@ window.CLASSROOM = (function () {
     const ph = document.getElementById('video-placeholder-box');
     if (va) { va.classList.remove('floating'); va.style.left = ''; va.style.top = ''; }
     if (ph) ph.classList.remove('visible');
+    if (skeletonTimeoutId) { clearTimeout(skeletonTimeoutId); skeletonTimeoutId = null; }
   }
 
   return {
