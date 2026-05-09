@@ -7,24 +7,7 @@
      + Payments + Audit Log + Alerts + System Config
      Self-contained: all JS inline, loads Supabase SDK from CDN.
 ──────────────────────────────────────────────────────────────────── -->
-<script>
-/* ── Instant session veil: hide page from non-authenticated visitors ── */
-(function(){
-  var hasSession = false;
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
-        var v = localStorage.getItem(k);
-        if (v && v.length > 10) { hasSession = true; break; }
-      }
-    }
-  } catch(e) {}
-  if (!hasSession) {
-    window.location.replace('login.html?next=the-administrator.html');
-  }
-})();
-</script>
+<!-- Security: PIN gate is the primary access control for this page -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UE School — The Administrator</title>
@@ -40,7 +23,6 @@
 ════════════════════════════════════════════════════════════ */
 :root {
   --bg:       #080a0f;
-  --bg2:      #0d1017;
   --surface:  #111520;
   --surface2: #161b2a;
   --surface3: #1c2235;
@@ -223,7 +205,6 @@ body {
   letter-spacing: -.01em;
 }
 .topbar-crumb { font-size: .75rem; color: var(--muted2); }
-.topbar-sep { color: var(--muted); margin: 0 4px; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 
 .hamburger {
@@ -371,9 +352,6 @@ tr:hover td { background: rgba(255,255,255,.02); }
 .pill-neco    { background: rgba(245,158,11,.15); color: var(--accent); border: 1px solid rgba(245,158,11,.2); }
 .pill-postutme { background: rgba(139,92,246,.15); color: var(--purple); border: 1px solid rgba(139,92,246,.2); }
 
-.plan-prem { background: rgba(245,158,11,.12); color: var(--accent); border: 1px solid rgba(245,158,11,.2); }
-.plan-free { background: rgba(255,255,255,.06); color: var(--muted2); border: 1px solid var(--border); }
-
 .dot-badge { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; font-weight: 600; }
 .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .dot-active   { background: var(--good); box-shadow: 0 0 6px var(--good); }
@@ -485,8 +463,6 @@ tr:hover td { background: rgba(255,255,255,.02); }
    USER LOOKUP (Admin Actions section)
 ═══════════════════════════════════════ */
 .lookup-result {
-  background: var(--surface2); border: 1px solid var(--border2);
-  border-radius: 10px; padding: 18px;
   display: none; margin-top: 14px;
 }
 .lookup-result.show { display: block; }
@@ -615,7 +591,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
 }
 </style>
 </head>
-<body style="visibility:hidden">
+<body>
 
 <!-- ══════════════════════════════════════════════
      PIN GATE
@@ -814,7 +790,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
         <div class="card">
           <div class="card-header">
             <div class="card-title">🆕 Recent Sign-ups</div>
-            <button class="btn btn-ghost btn-sm" onclick="nav('users', document.querySelector('.sb-item:nth-of-type(3)'))">View all users →</button>
+            <button class="btn btn-ghost btn-sm" onclick="navToUsers()">View all users →</button>
           </div>
           <div class="tbl-wrap">
             <table id="recent-tbl">
@@ -937,7 +913,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <div class="view" id="view-payments">
         <div class="section-head">
           <div class="section-title">All Payments</div>
-          <button class="btn btn-ghost btn-sm" onclick="loadPaymentsView()">↻ Refresh</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadPaymentsView(true)">↻ Refresh</button>
         </div>
         <div class="card">
           <div class="tbl-toolbar">
@@ -1056,7 +1032,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
               then paste the hash into <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">PIN_HASH</code> in this file.
             </p>
             <p style="margin-bottom:10px">
-              <strong style="color:var(--text)">Admin Access:</strong> Set <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">is_admin = TRUE</code> on a profiles row in Supabase. Only that account will be able to see this page after <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">auth-guard.js</code> validates it.
+              <strong style="color:var(--text)">Admin Access:</strong> Set <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">is_admin = TRUE</code> on a profiles row in Supabase. Once set, only that account can perform privileged actions through the Edge Function — the PIN gate handles page-level access.
             </p>
             <p>
               <strong style="color:var(--text)">Login as User:</strong> In Supabase Dashboard → Authentication → Users, find the user and click <strong>Send magic link</strong>. Paste that link in an incognito window to log in as them.
@@ -1115,14 +1091,14 @@ tr:hover td { background: rgba(255,255,255,.02); }
      SCRIPTS
 ══════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/auth-guard.js"></script>
+<!-- auth-guard.js removed: PIN gate handles access control -->
 
 <script>
 'use strict';
 /* ════════════════════════════════════════════════════════════════════
    THE ADMINISTRATOR — Unified Admin Script
    Merges: admin-dashboard.js + admin-actions.js
-   Auth: uses window.UE_CONFIG (from config.js) + auth-guard.js
+   Auth: uses window.UE_CONFIG (from config.js) + PIN gate
 ════════════════════════════════════════════════════════════════════ */
 
 // ── PIN Config ─────────────────────────────────────────────────────
@@ -1154,7 +1130,7 @@ function updateDots(state) {
 function clearPinMsg() { document.getElementById('pin-msg').textContent=''; }
 async function checkPin() {
   const h = await hashPin(pinBuf);
-  if (h === PIN_HASH || sessionStorage.getItem('ue_adm_unlocked') === PIN_HASH) {
+  if (h === PIN_HASH) {
     sessionStorage.setItem('ue_adm_unlocked', PIN_HASH);
     unlock(); return;
   }
@@ -1170,25 +1146,34 @@ function startLockout() {
   document.getElementById('pin-cd').textContent = s;
   pinTimer = setInterval(()=>{ s--; document.getElementById('pin-cd').textContent=s; if(s<=0){ clearInterval(pinTimer); pinLocked=false; pinAttempts=0; document.getElementById('pin-lockout').style.display='none'; } }, 1000);
 }
+let _keyListenerAdded = false;
 function unlock() {
+  if (pinTimer) { clearInterval(pinTimer); pinTimer=null; } // clear any lockout timer
   const g = document.getElementById('pin-gate');
   g.classList.add('unlocked');
   g.addEventListener('animationend', ()=>g.remove(), {once:true});
-  document.addEventListener('keydown', e => {
-    if (e.key>='0'&&e.key<='9') pinPress(e.key);
-    else if (e.key==='Backspace') pinDel();
-  });
+  if (!_keyListenerAdded) {
+    _keyListenerAdded = true;
+    document.addEventListener('keydown', e => {
+      if (document.getElementById('pin-gate')) return; // gate still up, handled below
+      if (e.key>='0'&&e.key<='9') pinPress(e.key);
+      else if (e.key==='Backspace') pinDel();
+    });
+  }
   bootApp();
 }
-// Check existing session
+// Check existing session — if PIN already verified this tab session, skip gate
 (async()=>{
   const tok = sessionStorage.getItem('ue_adm_unlocked');
   if (tok && tok===PIN_HASH) { unlock(); return; }
-  document.addEventListener('keydown', e => {
-    if (!document.getElementById('pin-gate')) return;
-    if (e.key>='0'&&e.key<='9') pinPress(e.key);
-    else if (e.key==='Backspace') pinDel();
-  });
+  // Add keyboard listener for PIN entry
+  if (!_keyListenerAdded) {
+    document.addEventListener('keydown', e => {
+      if (!document.getElementById('pin-gate')) return;
+      if (e.key>='0'&&e.key<='9') pinPress(e.key);
+      else if (e.key==='Backspace') pinDel();
+    });
+  }
 })();
 
 // ── App State ──────────────────────────────────────────────────────
@@ -1206,7 +1191,6 @@ const fmtDate = s => s ? new Date(s).toLocaleString('en-GB',{day:'numeric',month
 const fmtDateShort = s => s ? new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
 const fmtMoney = k => '₦' + (Number(k||0)/100).toLocaleString('en-NG',{minimumFractionDigits:0});
 const timeSince = ts => { const s=Math.floor((Date.now()-ts)/1000); if(s<60) return s+'s ago'; if(s<3600) return Math.floor(s/60)+'m ago'; if(s<86400) return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; };
-const calcStreak = logs => { if(!logs||!logs.length) return 0; const days=new Set(logs.map(l=>new Date(l.ts).toDateString())); let n=0,d=new Date(); while(days.has(d.toDateString())){n++;d.setDate(d.getDate()-1);} return n; };
 
 function toast(msg, kind='ok') {
   const t = $('#toast');
@@ -1241,6 +1225,13 @@ function nav(id, el) {
   closeSidebar();
 }
 
+function navToUsers() {
+  // Find the 'All Users' sidebar item by text content
+  const items = document.querySelectorAll('.sb-item');
+  const el = [...items].find(i=>i.textContent.includes('All Users'));
+  nav('users', el||null);
+}
+
 // ── Sidebar ─────────────────────────────────────────────────────────
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -1253,18 +1244,8 @@ function closeSidebar() {
 
 // ── Boot ────────────────────────────────────────────────────────────
 async function bootApp() {
-  // Reveal page
-  document.body.style.visibility = 'visible';
-
-  // Run AUTH_GUARD
-  try {
-    const ok = await AUTH_GUARD.init();
-    if (!ok) return;
-  } catch(e) {
-    console.error('[admin] AUTH_GUARD failed:', e);
-    window.location.replace('login.html?next=the-administrator.html');
-    return;
-  }
+  // Security: PIN gate + Supabase session via connectSb() handles auth.
+  // No external auth-guard needed here.
 
   // Try auto-connect from saved config
   const url = localStorage.getItem('ue_admin_url');
@@ -1295,7 +1276,9 @@ async function connectSb(url, key, silent=false) {
     hideCfg();
     await loadAllData();
   } catch(e) {
+    console.error('[admin] connectSb error:', e);
     if (!silent) toast('Connection failed: '+e.message, 'err');
+    else toast('Auto-connect failed — check Config', 'err');
   }
 }
 async function connectFromModal() {
@@ -1309,8 +1292,17 @@ async function connectInline() {
   await connectSb(url,key,false);
 }
 function clearConfig() {
+  if (!confirm('Clear saved Supabase credentials? You will need to reconnect.')) return;
   localStorage.removeItem('ue_admin_url'); localStorage.removeItem('ue_admin_key');
-  toast('Credentials cleared.','ok'); sb=null; allUsers=[]; filteredUsers=[];
+  sb=null;
+  allUsers=[]; filteredUsers=[];
+  allPayments=[]; filteredPayments=[];
+  uaTarget=null; activeUser=null;
+  // Reset UI to disconnected state
+  document.getElementById('admin-name').textContent='Not connected';
+  document.getElementById('sys-role').textContent='❌ Not connected';
+  showUsersError('Credentials cleared. Click ⚙ Config to reconnect.');
+  toast('Credentials cleared','ok');
 }
 function showCfgErr(msg, id) { const el=$('#'+id); if(el){el.textContent=msg;el.style.display='block';} }
 
@@ -1320,32 +1312,31 @@ async function loadAllData() {
   showLoadingUsers();
 
   try {
-    // Profiles
-    const { data: profiles, error: pe } = await sb.from('profiles').select('*').order('created_at',{ascending:false});
+    // Fetch all three tables in parallel for speed
+    const [profilesRes, scoresRes, paysRes] = await Promise.all([
+      sb.from('profiles').select('*').order('created_at',{ascending:false}),
+      sb.from('session_scores').select('user_id, score, total_questions, accuracy, exam_type, created_at').order('created_at',{ascending:false}),
+      sb.from('payments').select('user_id, amount, plan, status, paid_at, created_at, reference').order('created_at',{ascending:false})
+    ]);
+    const { data: profiles, error: pe } = profilesRes;
+    const { data: scores, error: se } = scoresRes;
+    const { data: pays, error: pye } = paysRes;
     if (pe) { showUsersError(pe.message); return; }
-
-    // Session scores
-    const { data: scores } = await sb.from('session_scores')
-      .select('user_id, score, total_questions, accuracy, exam_type, created_at')
-      .order('created_at',{ascending:false});
-
-    // Payments (for revenue KPIs)
-    const { data: pays } = await sb.from('payments')
-      .select('user_id, amount, plan, status, paid_at, created_at, reference')
-      .order('created_at',{ascending:false});
+    if (se) console.warn('[admin] session_scores fetch error:', se.message);
+    if (pye) console.warn('[admin] payments fetch error:', pye.message);
 
     allPayments = pays || [];
     allUsers = (profiles||[]).map(p => {
       const us = (scores||[]).filter(s=>s.user_id===p.id);
-      const avgAcc = us.length>0 ? Math.round(us.reduce((a,x)=>a+parseFloat(x.accuracy||0),0)/us.length*100) : null;
+      const avgAcc = us.length>0 ? Math.round(us.reduce((a,x)=>a+parseFloat(x.accuracy||0),0)/us.length) : null;
       return { ...p, _scores:us, _latestScore:us[0]||null, _avgAcc:avgAcc };
     });
     filteredUsers = [...allUsers];
     filteredPayments = [...allPayments];
 
     // Set admin name
-    const { data: {session} } = await sb.auth.getSession();
-    const email = session?.user?.email||'Admin';
+    const sessionRes = await sb.auth.getSession();
+    const email = sessionRes?.data?.session?.user?.email || 'Admin';
     document.getElementById('admin-name').textContent = email;
     document.getElementById('sys-admin').textContent = email;
 
@@ -1410,7 +1401,7 @@ function renderKPIs() {
 function classify(u) {
   const scores = u._scores || [];
   if (!scores.length) return 'inactive';
-  const lastTs = Math.max(...scores.map(s=>new Date(s.created_at).getTime()));
+  const lastTs = scores.reduce((m,s)=>Math.max(m,new Date(s.created_at).getTime()),0);
   const days = (Date.now()-lastTs)/864e5;
   if (days>14) return 'inactive';
   if (days>5 || (u._avgAcc!==null && u._avgAcc<35)) return 'at-risk';
@@ -1454,7 +1445,7 @@ function renderOverviewAlerts() {
   if (!atRisk.length) { el.innerHTML='<div style="color:var(--good);text-align:center;padding:20px">✅ No users need immediate support</div>'; return; }
   el.innerHTML = atRisk.map(u => {
     const s=classify(u), scores=u._scores||[];
-    const last=scores.length>0?timeSince(Math.max(...scores.map(s=>new Date(s.created_at).getTime()))):'Never';
+    const last=scores.length>0?timeSince(scores.reduce((m,s)=>Math.max(m,new Date(s.created_at).getTime()),0)):'Never';
     const reason=s==='inactive'?'No activity — may need a check-in':(u._avgAcc!==null&&u._avgAcc<35)?`Low accuracy (${u._avgAcc}%) — struggling`:'Reduced activity';
     return `<div class="alert-item" onclick="openDrawer('${u.id}')">
       <div class="alert-icon ${s==='inactive'?'danger':'warn'}">${s==='inactive'?'😴':'⚠️'}</div>
@@ -1499,7 +1490,7 @@ function renderAlertsView() {
   if (!atRisk.length) { el.innerHTML='<div style="color:var(--good);text-align:center;padding:40px">✅ All users are active — no alerts.</div>'; return; }
   el.innerHTML = `<div class="card"><div class="card-body">` + atRisk.map(u=>{
     const s=classify(u), scores=u._scores||[];
-    const last=scores.length>0?timeSince(Math.max(...scores.map(x=>new Date(x.created_at).getTime()))):'Never active';
+    const last=scores.length>0?timeSince(scores.reduce((m,x)=>Math.max(m,new Date(x.created_at).getTime()),0)):'Never active';
     const reason=s==='inactive'?'No sessions — needs a check-in':(u._avgAcc!==null&&u._avgAcc<35)?`Low accuracy (${u._avgAcc}%) — content is difficult`:'Reduced activity in past 5 days';
     return `<div class="alert-item" onclick="openDrawer('${u.id}')">
       <div class="alert-icon ${s==='inactive'?'danger':'warn'}">${s==='inactive'?'😴':'⚠️'}</div>
@@ -1569,7 +1560,11 @@ function renderUsersTable() {
 function renderPagination() {
   const pages=Math.ceil(filteredUsers.length/PAGE), pg=$('#pagination');
   if (pages<=1){pg.innerHTML='';return;}
-  let h=''; for(let i=1;i<=pages;i++) h+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  let h='';
+  for(let i=1;i<=pages;i++){
+    if(pages>7 && i>2 && i<pages-1 && Math.abs(i-currentPage)>1){ if(i===3||i===pages-2) h+='<span style="color:var(--muted);padding:0 4px;line-height:28px">…</span>'; continue; }
+    h+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
   pg.innerHTML=h;
 }
 function goPage(n){currentPage=n;renderUsersTable();}
@@ -1606,7 +1601,7 @@ function openDrawer(uid) {
       <td class="mono">${escH((p.reference||'').slice(0,16))}</td>
       <td>${escH(p.plan||'—')}</td>
       <td>${fmtMoney(p.amount)}</td>
-      <td><span class="badge ${p.status==='success'?'b-good':p.status==='refunded'?'b-warn':'b-danger'}">${escH(p.status)}</span></td>
+      <td><span class="badge ${p.status==='success'?'b-good':p.status==='refunded'?'b-purple':p.status==='failed'?'b-danger':'b-warn'}">${escH(p.status)}</span></td>
       <td style="font-size:.72rem;color:var(--muted2)">${fmtDateShort(p.paid_at||p.created_at)}</td>
     </tr>`).join('');
 
@@ -1635,7 +1630,7 @@ function openDrawer(uid) {
       <div class="info-row"><span class="info-key">Plan</span><span class="info-val"><span class="badge ${u.is_premium?'b-prem':'b-free'}">${u.is_premium?'Premium':'Free'}</span>${u.is_admin?'<span class="badge b-admin" style="margin-left:6px">Admin</span>':''}</span></div>
       <div class="info-row"><span class="info-key">Expires</span><span class="info-val">${u.subscription_expiry?fmtDateShort(u.subscription_expiry):'—'}</span></div>
     </div>
-    ${payRows ? `<div style="margin-bottom:14px">
+    ${payRows.length ? `<div style="margin-bottom:14px">
       <div class="section-micro">Recent Payments (${userPays.length})</div>
       <div style="overflow-x:auto"><table><thead><tr><th>Ref</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>${payRows}</tbody></table></div>
     </div>` : ''}
@@ -1657,14 +1652,26 @@ function copyContact() {
   if (!activeUser) return;
   const u=activeUser;
   const t=`Name: ${u.full_name}\nEmail: ${u.email}\nPhone: ${u.phone||'N/A'}\nExams: ${(u.exam_types||[]).join(', ')}\nPlan: ${u.is_premium?'Premium':'Free'}\nStatus: ${classify(u)}`;
-  navigator.clipboard.writeText(t).then(()=>toast('Contact copied!','ok'));
+  navigator.clipboard.writeText(t)
+    .then(()=>toast('Contact copied!','ok'))
+    .catch(()=>{
+      // Fallback for browsers that block clipboard API
+      const ta=document.createElement('textarea');
+      ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('Contact copied!','ok'); }
+      catch(e) { toast('Copy failed — select manually','err'); }
+      document.body.removeChild(ta);
+    });
 }
 function quickAction() {
   if (!activeUser) return;
-  nav('user-actions', null);
-  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
-  document.getElementById('ua-email').value = activeUser.email;
-  closeDrawer();
+  const email = activeUser.email;
+  closeDrawer(); // close first so ua-email is accessible
+  const items = document.querySelectorAll('.sb-item');
+  const el = [...items].find(i=>i.textContent.includes('User Actions'));
+  nav('user-actions', el||null);
+  document.getElementById('ua-email').value = email;
   lookupUser();
 }
 
@@ -1687,7 +1694,10 @@ function callUser(uid) {
 }
 function flagUser(uid) {
   const u=allUsers.find(x=>x.id===uid); if(!u||!sb) return;
-  const note=`[FLAGGED ${new Date().toLocaleDateString('en-NG')}] follow-up needed\n`+(u.cs_notes||'');
+  const existing=u.cs_notes||'';
+  const today=new Date().toLocaleDateString('en-NG');
+  if (existing.includes('[FLAGGED '+today+']')) { toast('Already flagged today','info'); return; }
+  const note='[FLAGGED '+today+'] follow-up needed\n'+existing;
   sb.from('profiles').update({cs_notes:note}).eq('id',u.id).then(({error})=>{
     if(error){toast('Flag failed: '+error.message,'err');return;}
     u.cs_notes=note; toast('⚑ '+u.full_name+' flagged','ok');
@@ -1695,7 +1705,11 @@ function flagUser(uid) {
 }
 function openUserActions(uid) {
   const u=allUsers.find(x=>x.id===uid); if(!u) return;
-  nav('user-actions',null); document.getElementById('ua-email').value=u.email; lookupUser();
+  const items=document.querySelectorAll('.sb-item');
+  const el=[...items].find(i=>i.textContent.includes('User Actions'));
+  nav('user-actions',el||null);
+  document.getElementById('ua-email').value=u.email;
+  lookupUser();
 }
 
 // ── User Actions (Privileged) ─────────────────────────────────────────
@@ -1737,7 +1751,7 @@ async function loadUaPayments(uid) {
     <td class="mono">${escH(p.reference||'—')}</td>
     <td>${escH(p.plan||'—')}</td>
     <td>${fmtMoney(p.amount)}</td>
-    <td><span class="badge ${p.status==='success'?'b-good':'b-warn'}">${escH(p.status)}</span></td>
+    <td><span class="badge ${p.status==='success'?'b-good':p.status==='refunded'?'b-purple':p.status==='failed'?'b-danger':'b-warn'}">${escH(p.status)}</span></td>
     <td style="font-size:.72rem">${fmtDateShort(p.paid_at||p.created_at)}</td>
     <td>${p.status==='success'?`<button class="btn btn-sm btn-warn" onclick="window.__refund('${escH(p.reference)}')">Refund</button>`:''}</td>
   </tr>`).join('');
@@ -1755,19 +1769,24 @@ async function doAction(kind, days) {
     if (!v) return; const n=parseInt(v,10);
     if (!n||n<1||n>3650){toast('Invalid number','err');return;}
     payload.action='grant_premium';payload.days=n;confirmMsg=`Grant ${n} days of premium to ${u.email}?`;
-  } else if (kind==='revoke'){payload.action='revoke_premium';confirmMsg=`REVOKE premium from ${u.email}?`;}
+  } else if (kind==='revoke'){payload.action='revoke_premium';confirmMsg='REVOKE premium from '+u.email+'?';}
+  if (!confirmMsg){toast('Unknown action','err');return;}
   if (!confirm(confirmMsg)) return;
   const reason=prompt('Reason (stored in audit log):','');
   if (reason) payload.reason=reason;
   await callAdminFn(payload);
-  await lookupUser(); loadAudit();
-  loadAllData(); // refresh badges
+  await lookupUser();   // refresh the target user card
+  loadAudit();          // refresh audit log (no await — fire and forget)
+  await loadAllData();  // refresh KPIs + badge counts
 }
 window.__refund = async function(ref) {
-  if (!confirm(`Mark ${ref} as refunded and revoke premium?`)) return;
+  if (!confirm('Mark '+ref+' as refunded and revoke premium?')) return;
   const reason=prompt('Refund reason:','');
   await callAdminFn({action:'mark_refunded',reference:ref,reason:reason||undefined});
-  if(uaTarget) loadUaPayments(uaTarget.id); loadAudit();
+  allPayments = []; // invalidate cache so Payments view re-fetches fresh
+  if (uaTarget) await loadUaPayments(uaTarget.id);
+  loadAudit();
+  await loadAllData(); // refresh KPIs
 };
 async function callAdminFn(payload) {
   let token;
@@ -1785,9 +1804,15 @@ async function callAdminFn(payload) {
 
 // ── Payments View ─────────────────────────────────────────────────────
 let payFilterStatus='', paySearch='';
-async function loadPaymentsView() {
+async function loadPaymentsView(force=false) {
   if (!sb) return;
   const tbody=$('#pay-tbody');
+  // Use cached data unless forced (Refresh button) or cache was invalidated
+  if (!force && allPayments.length) {
+    filteredPayments=[...allPayments];
+    filteredPayments.forEach(p=>{if(!p._email){const u=allUsers.find(x=>x.id===p.user_id);p._email=u?.email||p.user_id?.slice(0,8)+'…';}});
+    renderPayTable(); return;
+  }
   tbody.innerHTML=`<tr><td colspan="7" class="empty-state"><div class="shimmer" style="width:60%;margin:0 auto"></div></td></tr>`;
   const {data,error}=await sb.from('payments')
     .select('reference,user_id,amount,plan,status,paid_at,created_at')
@@ -1795,7 +1820,6 @@ async function loadPaymentsView() {
   if (error){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">${escH(error.message)}</td></tr>`;return;}
   allPayments=data||[];
   filteredPayments=[...allPayments];
-  // Merge email from allUsers
   filteredPayments.forEach(p=>{const u=allUsers.find(x=>x.id===p.user_id);p._email=u?.email||p.user_id?.slice(0,8)+'…';});
   renderPayTable();
 }
@@ -1822,17 +1846,21 @@ function renderPayTable() {
     <td style="font-size:.76rem;color:var(--muted2)">${fmtDateShort(p.paid_at||p.created_at)}</td>
     <td>${p.status==='success'?`<button class="btn btn-sm btn-warn" onclick="window.__refund('${escH(p.reference)}')">Refund</button>`:''}</td>
   </tr>`).join('');
-  // pagination
+  // pagination with ellipsis
   const pages=Math.ceil(filteredPayments.length/PAY_PAGE), pag=$('#pay-pagination');
   if(pages<=1){pag.innerHTML='';return;}
-  let h='';for(let i=1;i<=pages;i++) h+=`<button class="page-btn ${i===currentPayPage?'active':''}" onclick="goPayPage(${i})">${i}</button>`;
+  let h='';
+  for(let i=1;i<=pages;i++){
+    if(pages>7 && i>2 && i<pages-1 && Math.abs(i-currentPayPage)>1){ if(i===3||i===pages-2) h+='<span style="color:var(--muted);padding:0 4px;line-height:28px">…</span>'; continue; }
+    h+=`<button class="page-btn ${i===currentPayPage?'active':''}" onclick="goPayPage(${i})">${i}</button>`;
+  }
   pag.innerHTML=h;
 }
 function goPayPage(n){currentPayPage=n;renderPayTable();}
 function exportPaymentsCSV(){
   if(!filteredPayments.length){toast('No data','err');return;}
-  const rows=[['Reference','User','Plan','Amount (kobo)','Status','Date']];
-  filteredPayments.forEach(p=>rows.push([p.reference||'',p._email||'',p.plan||'',p.amount||'0',p.status,p.paid_at||p.created_at]));
+  const rows=[['Reference','User','Plan','Amount (₦)','Status','Date']];
+  filteredPayments.forEach(p=>rows.push([p.reference||'',p._email||'',p.plan||'',(Number(p.amount||0)/100).toFixed(2),p.status,p.paid_at||p.created_at]));
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='ue-payments-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
