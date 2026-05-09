@@ -477,11 +477,11 @@ window.CLASSROOM = (function () {
     document.querySelectorAll('.subject-tab').forEach(t => t.classList.remove('active'));
     if (tabEl) tabEl.classList.add('active');
 
-    renderSidebar(subjKey, null, /* autoPlay= */ false);
+    renderSidebar(subjKey, null); // auto-selects and plays first unlocked topic
   }
 
   // ─── Render sidebar topic list ────────────────────
-  function renderSidebar(subjKey, autoSelectTopic, autoPlay = true) {
+  function renderSidebar(subjKey, autoSelectTopic) {
     const subj    = CURRICULUM[subjKey];
     if (!subj) return;
 
@@ -532,7 +532,7 @@ window.CLASSROOM = (function () {
       targetId = firstUnlocked ? firstUnlocked.id : null;
     }
 
-    if (targetId && autoPlay) selectTopic(targetId);
+    if (targetId) selectTopic(targetId);
   }
 
   // ─── Select topic ─────────────────────────────────
