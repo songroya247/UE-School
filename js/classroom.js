@@ -458,6 +458,15 @@ window.CLASSROOM = (function () {
     const list = document.getElementById('topic-list');
     if (!list) return;
 
+    if (subj.topics.length === 0) {
+      list.innerHTML = `<div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:.84rem;line-height:1.6">
+        <div style="font-size:1.8rem;margin-bottom:10px">&#x1F4CB;</div>
+        <strong style="display:block;margin-bottom:6px;color:var(--text2)">${subj.label} coming soon</strong>
+        No lessons have been added for this subject yet.
+      </div>`;
+      return;
+    }
+
     list.innerHTML = subj.topics.map((topic, idx) => {
       const isLocked   = !topicUnlockedForUser(topic);
       const isActive   = topic.id === currentTopicId;
