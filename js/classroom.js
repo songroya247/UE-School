@@ -210,21 +210,20 @@ window.CLASSROOM = (function () {
      isPremiumUser   — cached from AUTH_GUARD.isPremium() at init time
      userId          — Supabase user UUID, used for topic_mastery upserts
   ───────────────────────────────────────────────────────────────────── */
-  let currentSubject = 'mathematics';
-  let currentTopicId = null;
-  let quizState      = { idx: 0, questions: [] };
-  let isPremiumUser  = false;
-  let userId         = null;
+  let currentSubject    = 'mathematics';
+  let currentTopicId    = null;
+  let quizState         = { idx: 0, questions: [] };
+  let isPremiumUser     = false;
+  let userId            = null;
+  let skeletonTimeoutId = null; // tracks the 8s skeleton-hide timer so it can be cancelled
 
   /* ─────────────────────────────────────────────────────────────────
      mergeSheetIntoCurriculum()  ★ CRITICAL PATH ★
      ─────────────────────────────────────────────────────────────────
      WHEN CALLED:
-       1. By CLASSROOM.init() after GSHEET_CURRICULUM.init() resolves.
-       2. By classroom.html DOMContentLoaded inline script (Step C) —
-          this second call is intentional redundancy to handle timing
-          edge cases where the HTML script runs after DOM load but
-          before CLASSROOM.init() is called.
+       Once — by classroom.html DOMContentLoaded after both AUTH_GUARD.init()
+       and GSHEET_CURRICULUM.init() have resolved (Promise.all).
+       CLASSROOM.init() does NOT call this — the HTML handles it first.
 
      WHAT IT DOES:
      ─────────────
@@ -351,48 +350,38 @@ window.CLASSROOM = (function () {
      classroom.html DOMContentLoaded inline script as Step E (after
      auth, sheet loading, and merging are complete).
 
+     PARAMETERS:
+     ───────────
+     authData — the result of AUTH_GUARD.init() already awaited in
+                classroom.html.  Passed in to avoid a second Supabase
+                round-trip.  Shape: { profile, session }.
+
      SEQUENCE OF OPERATIONS:
      ────────────────────────
-     1. AUTH_GUARD.init() — verify session + load user profile.
-        Redirects to login.html if unauthenticated.  Sets isPremiumUser
-        and userId for use throughout this module.
+     1. Read profile + session from authData.  Set isPremiumUser and userId.
 
      2. Defaulter banner — show/hide the "subscription expired" banner
         based on subscriptionStatus(profile) from auth-guard.js.
 
-     3. GSHEET_CURRICULUM.init() + mergeSheetIntoCurriculum() —
-        If the sheet loader is enabled (SUBJECT_SHEET_URLS configured),
-        fetch and parse CSV data NOW, then merge into CURRICULUM.
-        This must happen BEFORE renderSubjectTabs() so that any
-        sheet-introduced subjects appear in the tab bar.
-
-        NOTE: The classroom.html inline script also calls
-        GSHEET_CURRICULUM.init() and mergeSheetIntoCurriculum() before
-        calling CLASSROOM.init().  That means in most cases the sheet
-        data is already in CURRICULUM by the time we reach step 3 here.
-        The GSHEET_CURRICULUM.init() call is idempotent (_loaded guard),
-        and the mergeSheetIntoCurriculum() call is also safe to run
-        twice (replace-or-append logic is idempotent for same IDs).
-        So this double-call is intentional and harmless.
-
-     4. renderSubjectTabs() — build the horizontal tab bar from the
+     3. renderSubjectTabs() — build the horizontal tab bar from the
         user's registered exam_subjects (from Supabase profile), or all
         subjects if none are registered.
+        (Sheet data already merged into CURRICULUM by classroom.html
+        before this function is called — no repeat fetch needed.)
 
-     5. Deep-link handling — parse ?subject= and ?topic= from the URL
+     4. Deep-link handling — parse ?subject= and ?topic= from the URL
         to allow external links to jump directly to a specific lesson.
 
-     6. renderSidebar() — build the topic list for the initial subject
+     5. renderSidebar() — build the topic list for the initial subject
         and auto-select the first unlocked topic (or the URL-specified one).
-
-     ⚠️  Do not reorder steps 3 and 4.  renderSubjectTabs() reads
-         CURRICULUM which must be fully merged before tabs are built.
   ───────────────────────────────────────────────────────────────────── */
-  async function init() {
-    const result = await AUTH_GUARD.init();
-    if (!result) return; // unauthenticated — AUTH_GUARD redirected to login.html
+  // authData is passed in from classroom.html (already awaited there).
+  // CLASSROOM.init() must NOT call AUTH_GUARD.init() again — that would
+  // make a second Supabase round-trip for no reason.
+  async function init(authData) {
+    if (!authData) return; // unauthenticated — AUTH_GUARD already redirected
 
-    const { profile, session } = result;
+    const { profile, session } = authData;
     userId        = session?.user?.id;
     isPremiumUser = AUTH_GUARD.isPremium(profile);
 
@@ -403,23 +392,8 @@ window.CLASSROOM = (function () {
       banner.style.display = status === 'EXPIRED' ? 'block' : 'none';
     }
 
-    /* ── Load Google Sheet curriculum, then render ──────────────────
-       This is the SECOND call to GSHEET_CURRICULUM.init() in the page
-       lifecycle (the first is in the inline DOMContentLoaded script).
-       It is safe because init() is idempotent (_loaded guard).
-
-       This call exists here as a defensive measure: if the HTML inline
-       script order ever changes, the classroom still loads sheet data
-       correctly because CLASSROOM.init() also ensures the load happens.
-
-       ⚠️  Do NOT remove this block.  Without it, classroom.js would
-           silently fall back to hardcoded content if the inline script
-           failed or was removed, with no error visible to developers.
-    ───────────────────────────────────────────────────────────────── */
-    if (window.GSHEET_CURRICULUM && window.GSHEET_CURRICULUM.isEnabled()) {
-      await window.GSHEET_CURRICULUM.init();
-      mergeSheetIntoCurriculum();
-    }
+    // Sheet data is already loaded and merged by classroom.html before
+    // CLASSROOM.init() is called. No repeat fetch needed here.
 
     // Build subject tabs: use the user's registered subjects if available,
     // otherwise show all subjects in CURRICULUM (including sheet-sourced ones)
@@ -727,6 +701,8 @@ window.CLASSROOM = (function () {
              result in a blank video area (no iframe injected).
       ──────────────────────────────────────────────────────────────── */
       function injectIframe(src, isYouTube) {
+        // Cancel any pending skeleton-hide from a previous video load
+        if (skeletonTimeoutId) { clearTimeout(skeletonTimeoutId); skeletonTimeoutId = null; }
         showSkeleton();
 
         const iframe = document.createElement('iframe');
@@ -737,7 +713,19 @@ window.CLASSROOM = (function () {
         iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
 
         iframe.addEventListener('load', hideSkeleton);
-        setTimeout(hideSkeleton, 8000);
+        skeletonTimeoutId = setTimeout(() => { hideSkeleton(); skeletonTimeoutId = null; }, 8000);
+
+        // Stop and remove any existing iframe before injecting the new one.
+        // Setting src='' first cuts the network connection and stops audio
+        // immediately — without this, the old video keeps playing after removal.
+        videoArea.querySelectorAll('iframe').forEach(old => {
+          old.src = '';
+          old.remove();
+        });
+
+        // Remove arrow blocker and watermark overlays from the previous video
+        videoArea.querySelectorAll('#video-watermark, #video-arrow-blocker')
+          .forEach(el => el.remove());
 
         // Clear placeholder elements
         videoArea.querySelectorAll('.video-bg,.video-grid,.video-play-btn,.video-duration')
@@ -748,6 +736,7 @@ window.CLASSROOM = (function () {
         // Covers the top-right corner where Drive/YouTube puts the external link icon
         if (!isYouTube) {
           const cover = document.createElement('div');
+          cover.id = 'video-arrow-blocker';
           cover.style.cssText = [
             'position:absolute',
             'top:0','right:0',
@@ -885,41 +874,7 @@ window.CLASSROOM = (function () {
     toast('Video lesson coming soon! Practice with CBT questions in the meantime.');
   }
 
-  // ─── Locked state ─────────────────────────────────
-  function showLockedState(topic) {
-    currentTopicId = null;
 
-    setEl('topic-title', topic.title);
-    setEl('topic-tag', 'Premium');
-    { const d = (topic.duration || '').toString().replace(/\s*mins?\s*$/i, '').trim(); setEl('lesson-duration-badge', d ? d + ' mins' : '—'); }
-
-    const videoArea = document.getElementById('video-area');
-    if (videoArea) {
-      videoArea.innerHTML = `
-        <div class="video-bg"></div>
-        <div class="video-grid"></div>
-        <div class="video-locked">
-          <div style="font-size:2.5rem;margin-bottom:14px">&#x1F512;</div>
-          <h3 style="font-family:var(--font-head);font-size:1.8rem;margin-bottom:8px">Premium Content</h3>
-          <p style="color:rgba(15,28,63,.55);margin-bottom:22px">Upgrade your plan to unlock this lesson and all premium topics.</p>
-          <a href="pricing.html" class="btn btn-primary btn-lg">Unlock Premium \u2192</a>
-        </div>`;
-    }
-
-    const contentEl = document.getElementById('lesson-content');
-    if (contentEl) {
-      contentEl.innerHTML = `
-        <div style="text-align:center;padding:40px 20px;background:var(--surface2);border-radius:var(--radius-lg);border:1px solid var(--border2)">
-          <div style="font-size:2rem;margin-bottom:12px">&#x1F512;</div>
-          <div style="font-weight:700;margin-bottom:8px">This lesson requires a premium subscription</div>
-          <div style="font-size:.88rem;color:var(--muted);margin-bottom:20px">From ₦1,500/month — less than a data bundle</div>
-          <a href="pricing.html" class="btn btn-primary">View Plans</a>
-        </div>`;
-    }
-
-    const quizSection = document.getElementById('quiz-section');
-    if (quizSection) quizSection.style.display = 'none';
-  }
 
   // ─── Next / Prev lesson navigation ───────────────
   function nextLesson() {
