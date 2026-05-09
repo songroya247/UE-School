@@ -354,7 +354,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
        ↓
   gsheet-curriculum.js  → registers GSHEET_CURRICULUM; reads UE_CONFIG.
                            Must load BEFORE classroom.js because classroom.js
-                           calls GSHEET_CURRICULUM.init() inside its own init().
+                           does NOT call GSHEET_CURRICULUM.init() internally (classroom.html handles it).
        ↓
   gdrive-video.js       → registers GDRIVE_VIDEO.embedUrl().
                            Must load BEFORE classroom.js AND before
@@ -382,8 +382,8 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 
 <!--
   ⚠️  gsheet-curriculum.js MUST come before classroom.js.
-  classroom.js calls GSHEET_CURRICULUM.init() inside CLASSROOM.init().
-  If this order is reversed, GSHEET_CURRICULUM will be undefined at call time.
+  classroom.html calls GSHEET_CURRICULUM.init() before CLASSROOM.init().
+  gsheet-curriculum.js must still load before classroom.js so the global exists.
 -->
 <script src="js/gsheet-curriculum.js"></script>
 
@@ -443,7 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (authData.profile) window._ueProfile = authData.profile;
 
   /* Render — CURRICULUM is fully merged, profile is set. */
-  await CLASSROOM.init();
+  await CLASSROOM.init(authData); // authData already fetched above — no second auth round-trip
 
   // Step 5: Float video when scrolled out of view
   // Uses a stable sentinel div — NOT the placeholder — to avoid observer loop blinking
@@ -474,6 +474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       videoArea.style.width     = (window.innerWidth <= 720 ? '260' : '280') + 'px';
       videoArea.style.transition = '';
       if (placeholder) placeholder.classList.add('visible');
+      enableDrag(videoArea); // enable drag-to-reposition once floating
     }
 
     function deactivateFloat() {
