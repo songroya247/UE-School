@@ -9,7 +9,7 @@
 ──────────────────────────────────────────────────────────────────── -->
 <!-- Security: PIN gate is the primary access control for this page -->
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>UE School — The Administrator</title>
 <meta name="robots" content="noindex,nofollow">
 <script src="js/config.js"></script>
@@ -67,7 +67,7 @@ body {
 #pin-gate {
   position: fixed; inset: 0;
   background: var(--bg);
-  z-index: 9999;
+  z-index: 10000;
   display: flex; align-items: center; justify-content: center;
 }
 #pin-gate.unlocked {
@@ -113,6 +113,8 @@ body {
   font-family: var(--font-head); font-size: 1rem; font-weight: 700;
   color: var(--text); cursor: pointer;
   transition: all .1s; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .pin-key:hover { background: var(--surface3); border-color: var(--accent); color: var(--accent); }
 .pin-key:active { transform: scale(.93); }
@@ -135,6 +137,7 @@ body {
   position: fixed; top: 0; left: 0; bottom: 0;
   z-index: 100;
   transition: transform .28s cubic-bezier(.4,0,.2,1);
+  padding-left: env(safe-area-inset-left);
 }
 .sb-logo {
   padding: 20px 20px 16px;
@@ -163,6 +166,8 @@ body {
   border-left: 2px solid transparent;
   transition: all .13s; font-size: .84rem; font-weight: 500;
   position: relative;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  min-height: 40px;
 }
 .sb-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
 .sb-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(245,158,11,.07); }
@@ -195,7 +200,8 @@ body {
 .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
 .topbar {
   background: var(--surface); border-bottom: 1px solid var(--border);
-  padding: 0 24px; height: var(--topbar-h);
+  padding: env(safe-area-inset-top) 24px 0;
+  min-height: var(--topbar-h);
   display: flex; align-items: center; justify-content: space-between;
   position: sticky; top: 0; z-index: 50;
 }
@@ -205,12 +211,14 @@ body {
   letter-spacing: -.01em;
 }
 .topbar-crumb { font-size: .75rem; color: var(--muted2); }
-.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.topbar-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 .hamburger {
   display: none; background: transparent; border: 1px solid var(--border);
   border-radius: 7px; padding: 6px 9px; color: var(--text); font-size: 1rem;
   cursor: pointer; line-height: 1;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  min-width: 36px; min-height: 36px;
 }
 
 .content { padding: 22px 24px; flex: 1; }
@@ -228,6 +236,7 @@ body {
   background: var(--surface2); color: var(--text);
   font-family: var(--font-body); font-size: .8rem; font-weight: 600;
   cursor: pointer; transition: all .14s; white-space: nowrap;
+  min-height: 38px; -webkit-tap-highlight-color: transparent;
 }
 .btn:hover { background: var(--surface3); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
@@ -300,7 +309,7 @@ label { display: block; font-size: .72rem; font-weight: 700; color: var(--muted2
 /* ═══════════════════════════════════════
    TABLES
 ═══════════════════════════════════════ */
-.tbl-wrap { overflow-x: auto; }
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tbl-toolbar {
   padding: 12px 18px;
   border-bottom: 1px solid var(--border);
@@ -391,13 +400,16 @@ tr:hover td { background: rgba(255,255,255,.02); }
 .drawer-title { font-family: var(--font-head); font-size: .95rem; font-weight: 700; }
 .drawer-close {
   background: transparent; border: 1px solid var(--border); color: var(--muted2);
-  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 6px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  flex-shrink: 0;
 }
 .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; }
 .drawer-foot {
   padding: 12px 20px; border-top: 1px solid var(--border);
   display: flex; gap: 8px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
 }
 
 .info-row {
@@ -537,15 +549,100 @@ tr:hover td { background: rgba(255,255,255,.02); }
   :root { --sidebar-w: 0px; }
   .sidebar { transform: translateX(-100%); width: 240px; }
   .sidebar.open { transform: translateX(0); }
-  .main { margin-left: 0; padding-bottom: 0; }
+  .main { margin-left: 0; padding-bottom: max(80px, calc(60px + env(safe-area-inset-bottom))); }
   .hamburger { display: block; }
-  .content { padding: 14px; }
-  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .kpi-value { font-size: 1.6rem; }
-  .drawer { width: 100%; border-left: none; border-top: 1px solid var(--border); top: auto; height: 88vh; border-radius: 14px 14px 0 0; }
-  .tbl-toolbar { flex-direction: column; align-items: stretch; }
+  .content { padding: 12px; }
+
+  /* KPI grid — 2 columns, compact */
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .kpi { padding: 12px 12px 10px; }
+  .kpi-value { font-size: 1.4rem; }
+  .kpi-label { font-size: .6rem; margin-bottom: 5px; }
+  .kpi-sub { font-size: .65rem; }
+  .kpi-icon { display: none; } /* hide decorative icon — saves space */
+
+  /* Cards */
+  .card { border-radius: 10px; margin-bottom: 10px; }
+  .card-header { padding: 11px 14px; }
+  .card-body { padding: 12px 14px; }
+  .card-title { font-size: .83rem; }
+
+  /* Two-col stacks to one col */
+  .two-col { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Drawer — full-width bottom sheet */
+  .drawer { width: 100%; border-left: none; border-top: 1px solid var(--border); top: auto; height: 90vh; border-radius: 14px 14px 0 0; }
+  .drawer-head { padding: 14px 16px; }
+  .drawer-body { padding: 14px 16px; }
+  .drawer-foot { padding: 10px 16px max(10px, env(safe-area-inset-bottom, 10px)); gap: 8px; }
+  .drawer-foot .btn { font-size: .75rem; padding: 8px 10px; }
+
+  /* Tables — horizontal scroll, compact */
+  .tbl-toolbar { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 12px; }
   .tbl-search { min-width: unset; }
+  .tbl-filter { width: 100%; }
+  th { padding: 8px 10px; font-size: .6rem; }
+  td { padding: 8px 10px; font-size: .78rem; }
+
+  /* Action buttons in table — larger tap targets */
+  .act-btn { padding: 6px 10px; font-size: .72rem; }
+
+  /* System grid */
   .sys-grid { grid-template-columns: 1fr; }
+
+  /* Section headers */
+  .section-head { margin-bottom: 10px; }
+
+  /* Topbar */
+  .topbar { padding: env(safe-area-inset-top) 14px 0; }
+  .topbar-actions { gap: 5px; }
+  .topbar-actions .btn { padding: 6px 10px; font-size: .72rem; }
+
+  /* Modal — slides to top so keyboard doesn't cover it */
+  .modal-box { padding: 20px; margin-top: 20px; }
+  .modal-overlay { align-items: flex-start; padding-top: 20px; }
+
+  /* Alert items — better touch targets */
+  .alert-item { padding: 12px 0; gap: 10px; }
+  .alert-icon { width: 36px; height: 36px; font-size: 1rem; }
+
+  /* User table — hide less critical columns on small screens */
+  .col-hide-mobile { display: none; }
+
+  /* Pin gate — already responsive via max-width:92vw, good */
+  .pin-key { padding: 15px 0; font-size: 1.1rem; } /* bigger tap targets */
+
+  /* iOS zoom prevention — font-size must be >=16px on inputs */
+  input[type=text], input[type=email], input[type=number], select, textarea { font-size: 16px; }
+
+  /* Info rows in drawer */
+  .info-row { padding: 8px 0; }
+  .info-key { font-size: .68rem; }
+  .info-val { font-size: .8rem; }
+
+  /* KV grid in user actions */
+  .kv-grid { grid-template-columns: 100px 1fr; }
+
+  /* Action buttons in user actions */
+  .action-btns { gap: 6px; }
+  .action-btns .btn { font-size: .72rem; padding: 7px 10px; }
+
+  /* Notice bar */
+  .notice { padding: 10px 12px; font-size: .75rem; }
+
+  /* Pagination — larger tap targets on mobile */
+  .page-btn { width: 34px; height: 34px; font-size: .8rem; }
+  .pagination { gap: 4px; padding: 10px 12px; flex-wrap: wrap; }
+}
+
+/* Extra small phones */
+@media(max-width:380px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kpi-value { font-size: 1.2rem; }
+  .content { padding: 8px; }
+  .topbar { padding: env(safe-area-inset-top) 10px 0; }
+  .pin-wrap { padding: 24px 18px 20px; }
+  .pin-key { padding: 12px 0; font-size: 1rem; }
 }
 
 /* ── sidebar overlay (mobile) ── */
@@ -566,6 +663,8 @@ tr:hover td { background: rgba(255,255,255,.02); }
   background: transparent; border: 1px solid var(--border); color: var(--muted2);
   border-radius: 6px; padding: 4px 9px; font-size: .7rem; font-weight: 600;
   cursor: pointer; transition: all .13s; font-family: var(--font-body); margin-right: 3px;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  min-width: 32px; min-height: 32px;
 }
 .act-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 .act-btn.call:hover { border-color: var(--good); color: var(--good); }
@@ -675,7 +774,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <div class="sb-item" onclick="nav('config', this)">
         <span class="sb-icon">⚙️</span> Config & System
       </div>
-      <div class="sb-item" onclick="openSupabase()">
+      <div class="sb-item" id="sb-supabase-btn" onclick="openSupabase();this.classList.add('active');setTimeout(()=>this.classList.remove('active'),600)">
         <span class="sb-icon">🗄️</span> Supabase ↗
       </div>
     </nav>
@@ -845,8 +944,15 @@ tr:hover td { background: rgba(255,255,255,.02); }
             <table id="users-tbl">
               <thead>
                 <tr>
-                  <th>User</th><th>Phone</th><th>Exams</th><th>Plan</th>
-                  <th>Score</th><th>XP</th><th>Last Active</th><th>Status</th><th>Actions</th>
+                  <th>User</th>
+                  <th class="col-hide-mobile">Phone</th>
+                  <th>Exams</th>
+                  <th>Plan</th>
+                  <th class="col-hide-mobile">Score</th>
+                  <th class="col-hide-mobile">XP</th>
+                  <th class="col-hide-mobile">Last Active</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="users-tbody">
@@ -875,9 +981,9 @@ tr:hover td { background: rgba(255,255,255,.02); }
         <div class="card">
           <div class="card-header"><div class="card-title">Find a User</div></div>
           <div class="card-body">
-            <div style="display:flex;gap:10px;align-items:center">
-              <input type="email" id="ua-email" placeholder="user@example.com" style="flex:1" autocomplete="off">
-              <button class="btn btn-accent" id="ua-search-btn" onclick="lookupUser()">Look up</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap">
+              <input type="email" id="ua-email" placeholder="user@example.com" style="flex:1;min-width:0" autocomplete="off">
+              <button class="btn btn-accent" id="ua-search-btn" onclick="lookupUser()" style="flex-shrink:0">Look up</button>
             </div>
             <div style="font-size:.72rem;color:var(--muted2);margin-top:8px">Exact email match — case-insensitive.</div>
           </div>
@@ -969,11 +1075,11 @@ tr:hover td { background: rgba(255,255,255,.02); }
           <div class="card-body">
             <div class="form-row">
               <label>Supabase URL</label>
-              <input type="text" id="cfg-url-inline" placeholder="https://xxxx.supabase.co">
+              <input type="text" id="cfg-url-inline" placeholder="https://xxxx.supabase.co" oninput="document.getElementById('cfg-inline-err').style.display='none'">
             </div>
             <div class="form-row">
               <label>Anon Key</label>
-              <input type="text" id="cfg-key-inline" placeholder="eyJhbGciOiJIUzI1NiIs…">
+              <input type="text" id="cfg-key-inline" placeholder="eyJhbGciOiJIUzI1NiIs…" oninput="document.getElementById('cfg-inline-err').style.display='none'">
             </div>
             <div style="display:flex;gap:10px;margin-top:6px">
               <button class="btn btn-accent" onclick="connectInline()">Connect & Reload</button>
@@ -1070,11 +1176,11 @@ tr:hover td { background: rgba(255,255,255,.02); }
     <div class="modal-sub">Enter credentials to load live data.</div>
     <div class="form-row">
       <label>Supabase Project URL</label>
-      <input id="cfg-url" type="text" placeholder="https://xxxx.supabase.co">
+      <input id="cfg-url" type="text" placeholder="https://xxxx.supabase.co" oninput="document.getElementById('cfg-modal-err').style.display='none'">
     </div>
     <div class="form-row">
       <label>Anon Key</label>
-      <input id="cfg-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIs…">
+      <input id="cfg-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIs…" oninput="document.getElementById('cfg-modal-err').style.display='none'">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" style="flex:1" onclick="hideCfg()">Cancel</button>
@@ -1219,8 +1325,8 @@ function nav(id, el) {
   $('#page-sub').textContent = sub;
   $('#btn-export').style.display = (id==='users') ? 'inline-flex' : 'none';
   // lazy-load view-specific data
-  if (id==='payments') loadPaymentsView();
-  if (id==='audit') loadAudit();
+  if (id==='payments') { if(sb) loadPaymentsView(); }
+  if (id==='audit') { if(sb) loadAudit(); else document.getElementById('audit-tbody').innerHTML='<tr><td colspan="5" class="empty-state">Connect Supabase first — click ⚙ Config</td></tr>'; }
   if (id==='config') populateConfig();
   closeSidebar();
 }
@@ -1271,14 +1377,16 @@ async function bootApp() {
 async function connectSb(url, key, silent=false) {
   try {
     sb = supabase.createClient(url, key);
-    localStorage.setItem('ue_admin_url', url);
-    localStorage.setItem('ue_admin_key', key);
     hideCfg();
     await loadAllData();
+    // Only persist credentials after a successful data load
+    localStorage.setItem('ue_admin_url', url);
+    localStorage.setItem('ue_admin_key', key);
   } catch(e) {
     console.error('[admin] connectSb error:', e);
+    sb = null; // reset client so app knows we're disconnected
     if (!silent) toast('Connection failed: '+e.message, 'err');
-    else toast('Auto-connect failed — check Config', 'err');
+    else toast('Auto-connect failed — check ⚙ Config', 'err');
   }
 }
 async function connectFromModal() {
@@ -1314,9 +1422,9 @@ async function loadAllData() {
   try {
     // Fetch all three tables in parallel for speed
     const [profilesRes, scoresRes, paysRes] = await Promise.all([
-      sb.from('profiles').select('*').order('created_at',{ascending:false}),
-      sb.from('session_scores').select('user_id, score, total_questions, accuracy, exam_type, created_at').order('created_at',{ascending:false}),
-      sb.from('payments').select('user_id, amount, plan, status, paid_at, created_at, reference').order('created_at',{ascending:false})
+      sb.from('profiles').select('*').order('created_at',{ascending:false}).limit(5000),
+      sb.from('session_scores').select('user_id, score, total_questions, accuracy, exam_type, created_at').order('created_at',{ascending:false}).limit(20000),
+      sb.from('payments').select('user_id, amount, plan, status, paid_at, created_at, reference').order('created_at',{ascending:false}).limit(10000)
     ]);
     const { data: profiles, error: pe } = profilesRes;
     const { data: scores, error: se } = scoresRes;
@@ -1353,10 +1461,12 @@ async function loadAllData() {
     badge.textContent = atRisk;
     badge.style.display = atRisk>0 ? '' : 'none';
 
-    toast('Data loaded — '+allUsers.length+' users', 'ok');
+    if (allUsers.length>=5000) toast('⚠ Over 5000 users — some may be truncated. Contact dev to paginate.','info');
+    else toast('Data loaded — '+allUsers.length+' users', 'ok');
     populateConfig();
   } catch(e) {
-    showUsersError(e.message);
+    console.error('[admin] loadAllData error:', e);
+    showUsersError(e?.message || String(e) || 'Unknown error loading data');
   }
 }
 
@@ -1393,7 +1503,9 @@ function renderKPIs() {
   $('#kv-revenue').textContent = fmtMoney(totalRev);
   $('#kv-month-rev').textContent = fmtMoney(monthRev);
   $('#kv-expiring').textContent = expiring.toLocaleString();
-  $('#kv-pending').textContent = atRisk.toLocaleString();
+  // Pending = users with [FLAGGED] in cs_notes
+  const flagged = allUsers.filter(u=>(u.cs_notes||'').includes('[FLAGGED')).length;
+  $('#kv-pending').textContent = flagged.toLocaleString();
   $('#user-count-lbl').textContent = total.toLocaleString()+' users total';
 }
 
@@ -1498,7 +1610,7 @@ function renderAlertsView() {
         <div class="alert-name">${escH(u.full_name||'Unknown')}<span class="badge ${s==='inactive'?'b-danger':'b-warn'}" style="margin-left:6px">${s.toUpperCase()}</span></div>
         <div class="alert-desc">${reason}</div>
         <div style="margin-top:6px;display:flex;gap:6px">
-          <button class="btn btn-sm" onclick="event.stopPropagation();callUser('${u.id}')">📞 ${escH(u.phone||u.email||'—')}</button>
+          <button class="btn btn-sm" onclick="event.stopPropagation();callUser('${u.id}')">📞 ${escH((u.phone||u.email||'—').slice(0,20))}</button>
           <button class="btn btn-sm" onclick="event.stopPropagation();flagUser('${u.id}')">⚑ Flag</button>
         </div>
       </div>
@@ -1541,12 +1653,12 @@ function renderUsersTable() {
         <div><div style="font-weight:600">${escH(u.full_name||'Unknown')}</div>
         <div style="font-size:.72rem;color:var(--muted2)">${escH(u.email||'')}</div></div>
       </div></td>
-      <td style="color:var(--muted2);font-size:.8rem">${escH(u.phone||'—')}</td>
+      <td class="col-hide-mobile" style="color:var(--muted2);font-size:.8rem">${escH(u.phone||'—')}</td>
       <td>${examPills(u.exam_types)}</td>
       <td><span class="badge ${u.is_premium?'b-prem':'b-free'}">${u.is_premium?'Premium':'Free'}</span></td>
-      <td>${renderScore(u)}</td>
-      <td style="font-weight:600;font-size:.82rem">${(u.total_xp||0).toLocaleString()}</td>
-      <td style="color:var(--muted2);font-size:.74rem">${lastLog}</td>
+      <td class="col-hide-mobile">${renderScore(u)}</td>
+      <td class="col-hide-mobile" style="font-weight:600;font-size:.82rem">${(u.total_xp||0).toLocaleString()}</td>
+      <td class="col-hide-mobile" style="color:var(--muted2);font-size:.74rem">${lastLog}</td>
       <td>${statusDot(s)}</td>
       <td onclick="event.stopPropagation()">
         <button class="act-btn call" onclick="callUser('${u.id}')">📞</button>
@@ -1723,14 +1835,14 @@ async function lookupUser() {
     const {data,error}=await sb.from('profiles')
       .select('id,full_name,email,phone,is_premium,is_admin,subscription_expiry,status,created_at')
       .ilike('email',email).maybeSingle();
-    if (error){toast(error.message,'err');return;}
-    if (!data){toast('No user found','err');document.getElementById('ua-result').classList.remove('show');return;}
+    if (error){ toast(error.code==='PGRST116' ? 'Multiple users found with that email — check DB' : error.message, 'err'); return; }
+    if (!data){toast('No user found with that email','err');document.getElementById('ua-result').classList.remove('show');return;}
     uaTarget=data; renderUaTarget(data); loadUaPayments(data.id);
   } finally { btn.disabled=false; btn.textContent='Look up'; }
 }
 function renderUaTarget(u) {
   document.getElementById('ua-result-name').textContent = u.full_name||u.email||'User';
-  document.getElementById('ua-result-id').textContent = u.id;
+  document.getElementById('ua-result-id').textContent = u.id ? u.id.slice(0,8)+'…' : '';
   document.getElementById('ua-kv').innerHTML=`
     <div class="kv-key">Name</div><div class="kv-val">${escH(u.full_name||'—')}</div>
     <div class="kv-key">Email</div><div class="kv-val">${escH(u.email||'—')}</div>
@@ -1798,7 +1910,7 @@ async function callAdminFn(payload) {
     res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':window.UE_CONFIG?.SUPABASE_ANON||localStorage.getItem('ue_admin_key')},body:JSON.stringify(payload)});
     json=await res.json().catch(()=>({}));
   } catch(e){toast('Network error: '+e.message,'err');return;}
-  if (!res.ok||json.error){toast(json.error||`Failed (HTTP ${res.status})`,'err');return;}
+  if (!res.ok||json.error){ const msg = typeof json.error==='string'?json.error:(json.message||json.msg||JSON.stringify(json.error)||`Failed (HTTP ${res.status})`); toast(msg,'err'); return; }
   toast('✅ Done.','ok');
 }
 
@@ -1862,8 +1974,12 @@ function exportPaymentsCSV(){
   const rows=[['Reference','User','Plan','Amount (₦)','Status','Date']];
   filteredPayments.forEach(p=>rows.push([p.reference||'',p._email||'',p.plan||'',(Number(p.amount||0)/100).toFixed(2),p.status,p.paid_at||p.created_at]));
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='ue-payments-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download='ue-payments-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast('Payments CSV exported','ok');
 }
 
@@ -1907,8 +2023,12 @@ function exportCSV() {
   const rows=[['Name','Email','Phone','Exams','Plan','Avg Accuracy','XP','Status','Joined']];
   filteredUsers.forEach(u=>rows.push([u.full_name||'',u.email||'',u.phone||'',(u.exam_types||[]).join('|'),u.is_premium?'Premium':'Free',u._avgAcc!==null?u._avgAcc+'%':'—',u.total_xp||0,classify(u),fmtDateShort(u.created_at)]));
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='ue-users-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download='ue-users-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast('Users CSV exported','ok');
 }
 
