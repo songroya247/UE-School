@@ -87,30 +87,16 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .topic-item.locked{opacity:.5;cursor:not-allowed}
 .topic-text{flex:1}
 
-.classroom-main{overflow-y:auto;padding:0 0 28px;background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
+.classroom-main{overflow-y:auto;padding:28px 32px;background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
 .classroom-main::-webkit-scrollbar{width:5px}
 .classroom-main::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
-.content-inner{max-width:760px;margin:0 auto;animation:fadeUp .5s ease both;padding:28px 32px 0}
-.video-outer{width:100%;animation:fadeUp .5s ease both;position:sticky;top:0;z-index:40;background:var(--bg)}
+.content-inner{max-width:760px;margin:0 auto;animation:fadeUp .5s ease both}
+.video-outer{width:100%;animation:fadeUp .5s ease both;position:relative}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:0;border:none;border-bottom:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.5);transition:all .35s cubic-bezier(.4,0,.2,1)}
+.video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:var(--radius-lg);border:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,255,.1);transition:all .35s cubic-bezier(.4,0,.2,1)}
 .video-area:hover{box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(79,142,255,.15)}
-.video-area.floating{
-  position:fixed !important;
-  bottom:20px !important;
-  right:16px !important;
-  top:auto !important;
-  left:auto !important;
-  width:280px !important;
-  aspect-ratio:16/9 !important;
-  z-index:9999 !important;
-  border-radius:12px !important;
-  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(79,142,255,.3) !important;
-  cursor:default !important;
-  transition:none !important;
-  will-change:transform !important;
-}
+.video-area.floating{position:fixed;bottom:20px;right:16px;width:260px;aspect-ratio:16/9;z-index:999;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 1px rgba(79,142,255,.3);cursor:move;transition:none}
 .video-float-bar{display:none;position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,rgba(10,15,30,.95),transparent);z-index:12;align-items:center;justify-content:space-between;padding:0 8px;border-radius:12px 12px 0 0}
 .video-area.floating .video-float-bar{display:flex}
 .video-float-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:.85rem;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1}
@@ -118,13 +104,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .video-float-label{font-size:.6rem;color:rgba(255,255,255,.4);letter-spacing:.06em;text-transform:uppercase}
 .video-placeholder-box{width:100%;aspect-ratio:16/9;background:rgba(79,142,255,.04);border:2px dashed rgba(79,142,255,.15);border-radius:var(--radius-lg);display:none;align-items:center;justify-content:center;color:rgba(79,142,255,.4);font-size:.8rem;letter-spacing:.06em}
 .video-placeholder-box.visible{display:flex}
-@media(max-width:720px){
-  .video-area.floating{
-    width:260px !important;
-    bottom:72px !important;
-    right:10px !important;
-  }
-}
+@media(max-width:720px){.video-area.floating{width:200px;bottom:70px;right:10px}}
 /* Drive "open in new tab" blocker */
 .video-drive-cover{position:absolute;top:0;right:0;width:72px;height:56px;z-index:10;background:transparent;pointer-events:all}
 /* Loading skeleton shimmer */
@@ -204,9 +184,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 @media(max-width:720px){
   body{height:auto!important;overflow:visible!important;overflow-x:hidden}
   .classroom-layout{grid-template-columns:1fr;overflow:visible!important;min-height:0}
-  .classroom-main{overflow-y:visible!important;overflow-x:hidden!important;padding:0 0 60px}
-  .video-outer{max-width:100vw;overflow:hidden}
-  .content-inner{padding:16px 16px 0}
+  .classroom-main{overflow-y:visible!important;padding:18px 16px 60px}
   .classroom-sidebar{position:fixed;top:0;left:0;bottom:0;width:280px;z-index:110;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 32px rgba(37,99,235,.12)}
   .classroom-sidebar.drawer-open{transform:translateX(0)}
   .sidebar-overlay{display:block;pointer-events:none}
@@ -328,80 +306,24 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 
 <link rel="stylesheet" href="css/skill_chamber.css">
 
-<!--
-  ═══════════════════════════════════════════════════════════════════════
-  ⚠️  CRITICAL PATH — SCRIPT LOADING ORDER FOR GSHEETS → VIDEO PIPELINE
-  ═══════════════════════════════════════════════════════════════════════
-
-  The scripts below MUST load in exactly this order.  Each script
-  depends on globals or functions registered by earlier scripts.
-
-  DO NOT reorder, remove, combine, or defer any of these tags.
-  DO NOT add async or defer attributes — the load order is synchronous
-  by design to guarantee globals exist when later scripts execute.
-
-  DEPENDENCY GRAPH:
-  ─────────────────
-  supabase.min.js   → registers window.supabase (client library)
-       ↓
-  auth.js           → creates window.sb = supabase.createClient(...)
-       ↓
-  auth-guard.js     → registers AUTH_GUARD; reads window.sb + UE_CONFIG
-       ↓
-  ┌── storage.js           ┐
-  ├── skill_questions.js   ├── Skill Chamber dependency chain:
-  ├── curriculum.js        │   each reads the previous module's globals.
-  └── intervention_modal.js┘   Load order within this group also matters.
-       ↓
-  gsheet-curriculum.js  → registers GSHEET_CURRICULUM; reads UE_CONFIG.
-                           Must load BEFORE classroom.js because classroom.js
-                           does NOT call GSHEET_CURRICULUM.init() internally (classroom.html handles it).
-       ↓
-  gdrive-video.js       → registers GDRIVE_VIDEO.embedUrl().
-                           Must load BEFORE classroom.js AND before
-                           gsheet-curriculum.js runs at runtime
-                           (gsheet-curriculum uses it during normaliseVideoUrl).
-       ↓
-  classroom.js          → registers CLASSROOM; reads AUTH_GUARD, GSHEET_CURRICULUM,
-                           GDRIVE_VIDEO, window.sb, CURRICULUM, TOPIC_BLUEPRINT.
-                           This is the FINAL CONSUMER of the pipeline.
-       ↓
-  skill_chamber.js      → monkey-patches CLASSROOM.loadTopic.
-                           Must load AFTER classroom.js so CLASSROOM exists.
-
-  ═══════════════════════════════════════════════════════════════════════
--->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/auth-guard.js?v=3"></script>
 
-<!-- Skill Chamber dependencies — load order within this group matters -->
+<!-- Skill Chamber dependencies (load order matters) -->
 <script src="js/storage.js"></script>
 <script src="js/skill_questions.js"></script>
 <script src="js/curriculum.js"></script>
 <script src="js/intervention_modal.js"></script>
 
-<!--
-  ⚠️  gsheet-curriculum.js MUST come before classroom.js.
-  classroom.html calls GSHEET_CURRICULUM.init() before CLASSROOM.init().
-  gsheet-curriculum.js must still load before classroom.js so the global exists.
--->
+<!-- Google Sheets curriculum loader (must load BEFORE classroom.js) -->
 <script src="js/gsheet-curriculum.js"></script>
 
-<!--
-  ⚠️  gdrive-video.js MUST come before classroom.js.
-  classroom.js calls GDRIVE_VIDEO.embedUrl() inside renderLesson().
-  gsheet-curriculum.js also calls it at runtime (inside normaliseVideoUrl).
-  Both require GDRIVE_VIDEO to be registered before they execute.
--->
+<!-- Main classroom engine (must come after skill chamber deps) -->
 <script src="js/gdrive-video.js"></script>
 <script src="js/classroom.js"></script>
 
-<!--
-  ⚠️  skill_chamber.js MUST come after classroom.js.
-  It wraps (monkey-patches) CLASSROOM.loadTopic.
-  If loaded before classroom.js, CLASSROOM is undefined and the patch fails.
--->
+<!-- Skill Chamber router &mdash; monkey-patches CLASSROOM.loadTopic -->
 <script src="js/skill_chamber.js"></script>
 
 <script>
@@ -412,39 +334,63 @@ function toast(msg, dur = 2800) {
   setTimeout(() => t.classList.remove('show'), dur);
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   CLASSROOM — INIT SEQUENCE
-   ─────────────────────────────────────────────────────────────────
-   Auth + sheet fetch run in parallel (Promise.all) to minimise
-   the time between page load and first sidebar render.
-
-   After both resolve:
-     1. mergeSheetIntoCurriculum() — sheet topics → CURRICULUM
-     2. window._ueProfile           — set for video watermark
-     3. CLASSROOM.init()            — render sidebar + first video
-═══════════════════════════════════════════════════════════════════ */
-
 document.addEventListener('DOMContentLoaded', async () => {
-  /* Fire auth + sheet fetch in parallel — both are independent network
-     requests. This shaves ~300-400ms off the time to first sidebar render
-     compared to the previous sequential approach. */
-  const [authData] = await Promise.all([
-    AUTH_GUARD.init(),
-    GSHEET_CURRICULUM.init(),   // runs concurrently with auth
-  ]);
-
-  /* Auth failed — AUTH_GUARD already redirected to login.html. */
+  const authData = await AUTH_GUARD.init();
   if (!authData) return;
 
-  /* Both auth and sheet data are ready. Merge sheet topics into
-     CURRICULUM before CLASSROOM.init() renders the sidebar. */
-  CLASSROOM.mergeSheetIntoCurriculum();
+  // Step 1: Load Google Sheet curriculum into TOPIC_BLUEPRINT
+  await GSHEET_CURRICULUM.init();
 
-  /* Store profile globally for video watermark (injectIframe reads it). */
+  // Step 2: Merge sheet topics into CLASSROOM.CURRICULUM so the
+  // video player and sidebar can find them. Sheet wins over hardcoded.
+  (function mergeSheetIntoCurriculum() {
+    const blueprint = window.TOPIC_BLUEPRINT || {};
+    const CURRICULUM = window.CLASSROOM && window.CLASSROOM.CURRICULUM;
+    if (!CURRICULUM) { console.warn('[MERGE] CLASSROOM.CURRICULUM not found'); return; }
+    let merged = 0;
+    for (const topic of Object.values(blueprint)) {
+      if (topic._source !== 'gsheet') continue;
+      const subj = topic.subject;
+      if (!subj) continue;
+      if (!CURRICULUM[subj]) {
+        CURRICULUM[subj] = {
+          label:  subj.charAt(0).toUpperCase() + subj.slice(1),
+          icon:   '&#x1F4D6;',
+          color:  '#6366f1',
+          topics: [],
+        };
+      }
+      const classroomTopic = {
+        id:       topic.id,
+        title:    topic.title,
+        duration: topic.duration || '14 mins',
+        premium:  false,
+        videos:   topic.videos || null,
+        content: {
+          intro:    topic.blurb || topic.title + ' — loaded from Google Sheets.',
+          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
+          formulas: Array.isArray(topic.formulas)
+            ? topic.formulas.map(f => ({ label: '', formula: f }))
+            : [],
+        },
+        quiz: [],
+      };
+      const idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      if (idx >= 0) {
+        CURRICULUM[subj].topics[idx] = classroomTopic;
+      } else {
+        CURRICULUM[subj].topics.push(classroomTopic);
+      }
+      merged++;
+    }
+    console.info('[CLASSROOM] Sheet merge: ' + merged + ' topics injected.');
+  })();
+
+  // Step 3: Store profile globally so watermark can read student name
   if (authData.profile) window._ueProfile = authData.profile;
 
-  /* Render — CURRICULUM is fully merged, profile is set. */
-  await CLASSROOM.init(authData); // authData already fetched above — no second auth round-trip
+  // Step 4: Render classroom with full merged data
+  await CLASSROOM.init();
 
   // Step 5: Float video when scrolled out of view
   // Uses a stable sentinel div — NOT the placeholder — to avoid observer loop blinking
@@ -454,86 +400,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (videoArea && sentinel && 'IntersectionObserver' in window) {
     let isFloating = false;
-    const videoOuter = document.getElementById('video-outer');
-
-    function activateFloat() {
-      if (isFloating) return;
-      isFloating = true;
-      // Lock container height so page doesn't collapse/fold
-      if (videoOuter) {
-        videoOuter.style.minHeight = videoOuter.getBoundingClientRect().height + 'px';
-      }
-      // Suppress any CSS transition so the video doesn't animate/slide
-      videoArea.style.cssText = 'transition:none';
-      videoArea.classList.add('floating');
-      // Reinforce position via inline styles — overrides any cascade or leftover drag styles
-      videoArea.style.position  = 'fixed';
-      videoArea.style.bottom    = (window.innerWidth <= 720 ? '72' : '20') + 'px';
-      videoArea.style.right     = (window.innerWidth <= 720 ? '10' : '16') + 'px';
-      videoArea.style.top       = 'auto';
-      videoArea.style.left      = 'auto';
-      videoArea.style.width     = (window.innerWidth <= 720 ? '260' : '280') + 'px';
-      videoArea.style.transition = '';
-      if (placeholder) placeholder.classList.add('visible');
-      enableDrag(videoArea); // enable drag-to-reposition once floating
-    }
-
-    function deactivateFloat() {
-      if (!isFloating) return;
-      isFloating = false;
-      // Wipe ALL inline styles so the element returns to its natural in-flow styling
-      videoArea.removeAttribute('style');
-      videoArea.classList.remove('floating');
-      if (placeholder) placeholder.classList.remove('visible');
-      if (videoOuter) videoOuter.style.minHeight = '';
-    }
 
     const obs = new IntersectionObserver((entries) => {
       const visible = entries[0].isIntersecting;
-      if (!videoArea.querySelector('iframe')) return;
-      if (!visible) activateFloat();
-      else deactivateFloat();
-    }, { threshold: 0.15, rootMargin: '0px' });
+      const hasVideo = videoArea.querySelector('iframe');
+      if (!hasVideo) return;
+
+      if (!visible && !isFloating) {
+        // Scrolled away — go float
+        isFloating = true;
+        videoArea.classList.add('floating');
+        if (placeholder) placeholder.classList.add('visible');
+        enableDrag(videoArea);
+      } else if (visible && isFloating) {
+        // Back in view — dock
+        isFloating = false;
+        videoArea.classList.remove('floating');
+        if (placeholder) placeholder.classList.remove('visible');
+        videoArea.style.cssText = '';
+      }
+    }, { threshold: 0.2, rootMargin: '0px' });
 
     obs.observe(sentinel);
   }
 });
 
 function enableDrag(el) {
-  // Drag is desktop-only — on touch devices, pointer events from
-  // scrolling would accidentally move the floating video.
   if (el._dragEnabled) return;
   el._dragEnabled = true;
-  let sX, sY, oX, oY, dragging = false;
-
+  let sX, sY, oX, oY;
   el.addEventListener('pointerdown', e => {
-    // Skip: touch input (would fight with scroll), iframes, close button
-    if (e.pointerType === 'touch') return;
     if (e.target.closest('iframe') || e.target.closest('.video-float-close')) return;
     sX = e.clientX; sY = e.clientY;
     const r = el.getBoundingClientRect();
     oX = r.left; oY = r.top;
-    dragging = false;
     el.setPointerCapture(e.pointerId);
+    el.style.transition = 'none';
   });
-
   el.addEventListener('pointermove', e => {
     if (!el.hasPointerCapture(e.pointerId)) return;
-    const dx = e.clientX - sX, dy = e.clientY - sY;
-    // Only start drag after a small threshold to avoid accidental moves
-    if (!dragging && Math.hypot(dx, dy) < 6) return;
-    dragging = true;
-    el.style.transition = 'none';
-    el.style.left   = Math.max(0, oX + dx) + 'px';
-    el.style.top    = Math.max(0, oY + dy) + 'px';
+    el.style.left   = (oX + e.clientX - sX) + 'px';
+    el.style.top    = (oY + e.clientY - sY) + 'px';
     el.style.right  = 'auto';
     el.style.bottom = 'auto';
   });
-
-  el.addEventListener('pointerup', () => {
-    dragging = false;
-    el.style.transition = '';
-  });
+  el.addEventListener('pointerup', () => { el.style.transition = ''; });
 }
 </script>
 </body>
