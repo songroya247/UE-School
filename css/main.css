@@ -408,7 +408,7 @@ select, input, textarea { font-family: inherit; }
 /* ── CLASSROOM BAND ── */
 .classroom-band       { background: #0d1117; color: #fff; padding: 72px 0; }
 .classroom-band-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
-.classroom-video-mock { background: #1a1d23; border: 1.5px solid rgba(255,255,255,.1); border-radius: 14px; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.classroom-video-mock { background: #1a1d23; border: 1.5px solid rgba(255,255,255,.1); border-radius: 14px; width: 100%; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
 .topic-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .topic-pill  { background: rgba(26,86,255,.15); color: #a5b4fc; font-size: .78rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
 
