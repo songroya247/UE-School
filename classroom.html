@@ -91,7 +91,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .classroom-main::-webkit-scrollbar{width:5px}
 .classroom-main::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
 .content-inner{max-width:760px;margin:0 auto;animation:fadeUp .5s ease both}
-.video-outer{width:100%;max-width:760px;margin:0 auto;animation:fadeUp .5s ease both;position:relative}
+.video-outer{width:100%;animation:fadeUp .5s ease both;position:relative}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
 .video-area{width:100%;aspect-ratio:16/9;background:#0a0f1e;border-radius:var(--radius-lg);border:1px solid rgba(79,142,255,.18);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 8px 48px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,255,.1);transition:all .35s cubic-bezier(.4,0,.2,1)}
@@ -353,7 +353,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
        ↓
   gsheet-curriculum.js  → registers GSHEET_CURRICULUM; reads UE_CONFIG.
                            Must load BEFORE classroom.js because classroom.js
-                           does NOT call GSHEET_CURRICULUM.init() internally (classroom.html handles it).
+                           calls GSHEET_CURRICULUM.init() inside its own init().
        ↓
   gdrive-video.js       → registers GDRIVE_VIDEO.embedUrl().
                            Must load BEFORE classroom.js AND before
@@ -381,8 +381,8 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 
 <!--
   ⚠️  gsheet-curriculum.js MUST come before classroom.js.
-  classroom.html calls GSHEET_CURRICULUM.init() before CLASSROOM.init().
-  gsheet-curriculum.js must still load before classroom.js so the global exists.
+  classroom.js calls GSHEET_CURRICULUM.init() inside CLASSROOM.init().
+  If this order is reversed, GSHEET_CURRICULUM will be undefined at call time.
 -->
 <script src="js/gsheet-curriculum.js"></script>
 
@@ -410,39 +410,137 @@ function toast(msg, dur = 2800) {
   setTimeout(() => t.classList.remove('show'), dur);
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   CLASSROOM — INIT SEQUENCE
-   ─────────────────────────────────────────────────────────────────
-   Auth + sheet fetch run in parallel (Promise.all) to minimise
-   the time between page load and first sidebar render.
+/*
+  ═══════════════════════════════════════════════════════════════════════
+  ⚠️  CRITICAL PATH — DOMContentLoaded INIT SEQUENCE
+  ═══════════════════════════════════════════════════════════════════════
 
-   After both resolve:
-     1. mergeSheetIntoCurriculum() — sheet topics → CURRICULUM
-     2. window._ueProfile           — set for video watermark
-     3. CLASSROOM.init()            — render sidebar + first video
-═══════════════════════════════════════════════════════════════════ */
+  This is the ORCHESTRATOR for the entire GSHEETS → VIDEO pipeline.
+  The 5 steps below MUST run in order.  Each step is async-awaited
+  where necessary to guarantee the next step has the data it needs.
+
+  DO NOT reorder these steps.
+  DO NOT remove or combine any step.
+  DO NOT add extra awaits or side-effects between steps without
+  carefully reviewing what each step produces and what the next consumes.
+
+  STEP-BY-STEP DATA FLOW:
+  ────────────────────────
+  Step 1: AUTH_GUARD.init()
+          → Returns { profile, session } if authenticated.
+          → Redirects to login.html and returns null if not.
+          → Sets authData used by all subsequent steps.
+
+  Step 2: GSHEET_CURRICULUM.init()
+          → Fetches published CSV files from Google Sheets (config.js SUBJECT_SHEET_URLS).
+          → Parses each CSV into structured topic objects.
+          → Writes results to window.TOPIC_BLUEPRINT = { topicId: topicObj, ... }.
+          → MUST complete before Step 3 reads TOPIC_BLUEPRINT.
+          → Idempotent (_loaded guard): safe if CLASSROOM.init() calls it again.
+
+  Step 3: mergeSheetIntoCurriculum() [inline IIFE]
+          → Reads window.TOPIC_BLUEPRINT (written in Step 2).
+          → Reads window.CLASSROOM.CURRICULUM (registered by classroom.js).
+          → Injects sheet topics into CURRICULUM[subject].topics.
+          → Sheet topics overwrite hardcoded topics with the same ID.
+          → MUST run before Step 5 (CLASSROOM.init) which renders the sidebar
+            from CURRICULUM — topics not yet merged would be invisible.
+          ★ This inline merge is a DEFENSIVE DUPLICATE of the same merge
+            inside CLASSROOM.init().  Both are intentional.  The inline
+            version runs first to guarantee CURRICULUM is populated before
+            CLASSROOM.init() tries to render the sidebar.
+
+  Step 4: window._ueProfile = authData.profile
+          → Stores the user profile globally for watermark access.
+          → injectIframe() in classroom.js reads _ueProfile.full_name
+            to personalise the video watermark with the student's name.
+          → MUST be set before CLASSROOM.init() renders any lesson,
+            because renderLesson() → injectIframe() reads it immediately.
+
+  Step 5: CLASSROOM.init()
+          → Verifies auth again (idempotent), reads isPremiumUser + userId.
+          → Calls GSHEET_CURRICULUM.init() again (idempotent, no-op).
+          → Calls mergeSheetIntoCurriculum() again (idempotent).
+          → Renders the subject tab bar from CURRICULUM (now fully merged).
+          → Renders the topic sidebar for the first/URL-specified subject.
+          → Auto-selects the first unlocked topic → renderLesson() → injectIframe().
+          → injectIframe() constructs the <iframe> with the Drive/YouTube URL
+            that came from TOPIC_BLUEPRINT → CURRICULUM via Steps 2–3.
+
+  ═══════════════════════════════════════════════════════════════════════
+*/
 
 document.addEventListener('DOMContentLoaded', async () => {
-  /* Fire auth + sheet fetch in parallel — both are independent network
-     requests. This shaves ~300-400ms off the time to first sidebar render
-     compared to the previous sequential approach. */
-  const [authData] = await Promise.all([
-    AUTH_GUARD.init(),
-    GSHEET_CURRICULUM.init(),   // runs concurrently with auth
-  ]);
-
-  /* Auth failed — AUTH_GUARD already redirected to login.html. */
+  /* Step 1 — Auth: verify session, load profile.
+     Returns null (and redirects) if user is not logged in. */
+  const authData = await AUTH_GUARD.init();
   if (!authData) return;
 
-  /* Both auth and sheet data are ready. Merge sheet topics into
-     CURRICULUM before CLASSROOM.init() renders the sidebar. */
-  CLASSROOM.mergeSheetIntoCurriculum();
+  /* Step 2 — Google Sheets: fetch + parse all subject CSV sheets.
+     Writes to window.TOPIC_BLUEPRINT.
+     ⚠️  MUST complete (await) before Step 3 reads TOPIC_BLUEPRINT. */
+  await GSHEET_CURRICULUM.init();
 
-  /* Store profile globally for video watermark (injectIframe reads it). */
+  /* Step 3 — Merge: inject sheet topics into CLASSROOM.CURRICULUM.
+     ★ CRITICAL PATH: this inline IIFE runs BEFORE CLASSROOM.init()
+       so the sidebar has fully merged data when it renders.
+     ⚠️  DO NOT remove or move this block.  Without it, sheet topics
+         would not appear in the tab bar or sidebar until after a race
+         condition resolves inside CLASSROOM.init().
+     ⚠️  The logic here MUST stay in sync with mergeSheetIntoCurriculum()
+         inside classroom.js.  If the TOPIC_BLUEPRINT shape changes in
+         gsheet-curriculum.js, update BOTH merge functions. */
+  (function mergeSheetIntoCurriculum() {
+    const blueprint = window.TOPIC_BLUEPRINT || {};
+    const CURRICULUM = window.CLASSROOM && window.CLASSROOM.CURRICULUM;
+    if (!CURRICULUM) { console.warn('[MERGE] CLASSROOM.CURRICULUM not found'); return; }
+    let merged = 0;
+    for (const topic of Object.values(blueprint)) {
+      if (topic._source !== 'gsheet') continue; // only process sheet-sourced entries
+      const subj = topic.subject;
+      if (!subj) continue;
+      if (!CURRICULUM[subj]) {
+        CURRICULUM[subj] = {
+          label:  subj.charAt(0).toUpperCase() + subj.slice(1),
+          icon:   '&#x1F4D6;',
+          color:  '#6366f1',
+          topics: [],
+        };
+      }
+      const classroomTopic = {
+        id:       topic.id,
+        title:    topic.title,
+        duration: topic.duration || '14 mins',
+        premium:  false,
+        videos:   topic.videos || null, // ← THE VIDEO URLs from gsheet-curriculum.js
+        content: {
+          intro:    topic.blurb || topic.title + ' — loaded from Google Sheets.',
+          points:   Array.isArray(topic.objectives) ? topic.objectives : [],
+          formulas: Array.isArray(topic.formulas)
+            ? topic.formulas.map(f => ({ label: '', formula: f }))
+            : [],
+        },
+        quiz: [],
+      };
+      const idx = CURRICULUM[subj].topics.findIndex(t => t.id === topic.id);
+      if (idx >= 0) {
+        CURRICULUM[subj].topics[idx] = classroomTopic; // sheet wins over hardcoded
+      } else {
+        CURRICULUM[subj].topics.push(classroomTopic);
+      }
+      merged++;
+    }
+    console.info('[CLASSROOM] Sheet merge: ' + merged + ' topics injected.');
+  })();
+
+  /* Step 4 — Profile: store globally for watermark access.
+     ⚠️  MUST happen before CLASSROOM.init() renders any lesson.
+     classroom.js injectIframe() reads window._ueProfile.full_name. */
   if (authData.profile) window._ueProfile = authData.profile;
 
-  /* Render — CURRICULUM is fully merged, profile is set. */
-  await CLASSROOM.init(authData); // authData already fetched above — no second auth round-trip
+  /* Step 5 — Render: now that CURRICULUM is fully merged and profile
+     is available, render the classroom UI and start the first video. */
+  await CLASSROOM.init();
 
   // Step 5: Float video when scrolled out of view
   // Uses a stable sentinel div — NOT the placeholder — to avoid observer loop blinking
@@ -473,7 +571,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       videoArea.style.width     = (window.innerWidth <= 720 ? '260' : '280') + 'px';
       videoArea.style.transition = '';
       if (placeholder) placeholder.classList.add('visible');
-      enableDrag(videoArea); // enable drag-to-reposition once floating
     }
 
     function deactivateFloat() {
