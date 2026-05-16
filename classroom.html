@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         videoOuter.style.minHeight = videoOuter.getBoundingClientRect().height + 'px';
       }
       // Suppress any CSS transition so the video doesn't animate/slide
-      videoArea.style.cssText = 'transition:none';
+      videoArea.style.transition = 'none';
       videoArea.classList.add('floating');
       // Reinforce position via inline styles — overrides any cascade or leftover drag styles
       videoArea.style.position  = 'fixed';
