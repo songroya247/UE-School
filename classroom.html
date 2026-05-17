@@ -36,18 +36,18 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f0f4ff;--surface:#fff;--surface2:#e8f0fe;--surface3:#d6e4fd;
   --border:rgba(79,142,255,.12);--border2:rgba(79,142,255,.22);
   --accent:#2563eb;--accent2:#0ea5e9;--accent3:#f97316;
   --muted:#6b7280;--muted2:#4b5563;--text:#0f1c3f;--text2:#1e3a6e;
-  --font-head:'Syne',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",sans-serif;--font-body:'DM Sans',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",sans-serif;
+  --font-head:'Plus Jakarta Sans','Inter','SF Pro Display','Segoe UI Variable Display',-apple-system,BlinkMacSystemFont,sans-serif;--font-body:'Inter','SF Pro Text','Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;--font-mono:'JetBrains Mono','SF Mono','Fira Code','Consolas','Liberation Mono',monospace;
   --radius:12px;--radius-lg:18px;--glow:0 0 40px rgba(37,99,235,.12);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;-webkit-font-smoothing:antialiased}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:400;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:'kern' 1,'liga' 1}
 body{display:flex;flex-direction:column;height:100vh;overflow:hidden;
   background-image:radial-gradient(ellipse 80% 50% at 20% -10%,rgba(37,99,235,.08) 0%,transparent 60%),
   radial-gradient(ellipse 60% 40% at 80% 110%,rgba(14,165,233,.06) 0%,transparent 60%)}
@@ -63,7 +63,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .nav-left{display:flex;align-items:center;gap:14px}
 .btn-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-size:1.3rem;line-height:1;text-decoration:none;transition:background .2s,border-color .2s,transform .15s;cursor:pointer}
 .btn-icon:hover{background:var(--surface3);border-color:rgba(79,142,255,.3);transform:translateX(-2px)}
-.nav-logo{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",sans-serif;font-size:.95rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--text);background:linear-gradient(135deg,#0f1c3f 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-logo{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:.95rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--text);background:linear-gradient(135deg,#0f1c3f 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
 .subject-tabs{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px}
 .subject-tab{font-family:var(--font-body);font-size:.78rem;font-weight:500;color:var(--muted2);background:transparent;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;transition:all .2s;white-space:nowrap;letter-spacing:.01em}
@@ -176,7 +176,7 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 .formula-box-label{text-transform:uppercase;font-size:.68rem;font-weight:700;color:var(--accent);letter-spacing:.1em;margin-bottom:16px;display:flex;align-items:center;gap:8px}
 .formula-box-label::before{content:'fx';background:rgba(79,142,255,.15);border:1px solid rgba(79,142,255,.25);color:var(--accent);font-family:var(--font-head);font-size:.7rem;padding:2px 7px;border-radius:5px}
 .formula-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.formula-item{background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:9px;padding:12px 16px;font-size:.95rem;color:var(--text);font-family:'DM Mono','Courier New',monospace;letter-spacing:.02em;transition:background .2s,border-color .2s}
+.formula-item{background:rgba(255,255,255,.7);border:1px solid var(--border);border-radius:9px;padding:12px 16px;font-size:.95rem;color:var(--text);font-family:var(--font-mono);letter-spacing:.02em;transition:background .2s,border-color .2s}
 .formula-item:hover{background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.25)}
 
 #quiz-section{padding-top:32px;border-top:1px solid var(--border)}
@@ -227,84 +227,6 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
   .subject-tab{padding:5px 8px;font-size:.68rem}
   .topic-title{font-size:1.3rem}
 }
-
-/* ── Video Like Bar ───────────────────────────────────────────── */
-.video-like-bar{
-  display:flex;align-items:center;gap:14px;
-  padding:10px 20px;
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-  max-width:100%;
-}
-.like-btn{
-  display:inline-flex;align-items:center;gap:7px;
-  font-family:var(--font-body);font-size:.82rem;font-weight:600;
-  color:var(--muted2);
-  background:var(--surface2);
-  border:1.5px solid var(--border2);
-  border-radius:20px;
-  padding:6px 14px 6px 10px;
-  cursor:pointer;
-  transition:color .2s,background .2s,border-color .2s,transform .15s;
-  user-select:none;
-  -webkit-tap-highlight-color:transparent;
-  flex-shrink:0;
-}
-.like-btn:hover{
-  background:var(--surface3);
-  border-color:rgba(239,68,68,.35);
-  color:var(--text);
-  transform:scale(1.04);
-}
-.like-btn.liked{
-  background:rgba(239,68,68,.08);
-  border-color:rgba(239,68,68,.45);
-  color:#dc2626;
-}
-.like-btn.liked .like-heart{
-  animation:heartPop .35s cubic-bezier(.36,.07,.19,.97) both;
-}
-.like-heart{
-  font-size:1.05rem;
-  line-height:1;
-  display:inline-block;
-  transition:transform .2s;
-}
-@keyframes heartPop{
-  0%{transform:scale(1)}
-  40%{transform:scale(1.45)}
-  70%{transform:scale(.88)}
-  100%{transform:scale(1)}
-}
-.like-count-wrap{
-  display:flex;align-items:baseline;gap:5px;
-  color:var(--muted);
-  font-size:.78rem;
-  white-space:nowrap;
-}
-.like-count{
-  font-family:var(--font-head);
-  font-size:.95rem;
-  font-weight:700;
-  color:var(--text2);
-  transition:transform .25s,opacity .25s;
-}
-.like-count.bump{
-  animation:countBump .3s ease both;
-}
-@keyframes countBump{
-  0%{transform:translateY(0);opacity:1}
-  40%{transform:translateY(-6px);opacity:0}
-  41%{transform:translateY(6px);opacity:0}
-  100%{transform:translateY(0);opacity:1}
-}
-.like-count-label{color:var(--muted);font-size:.75rem}
-@media(max-width:720px){
-  .video-like-bar{padding:8px 14px;gap:10px}
-  .like-count-label{display:none}
-  .like-btn{font-size:.78rem;padding:5px 12px 5px 9px}
-}
-/* ── /Video Like Bar ──────────────────────────────────────────── */
 </style>
 </head>
 <body style="visibility:hidden">
@@ -364,20 +286,6 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
         <div class="video-tier-badge tier-standard" id="video-tier-badge" style="display:none"></div>
       </div>
     </div>
-
-    <!-- ── Video Like Bar ──────────────────────────────────────── -->
-    <div class="video-like-bar" id="video-like-bar" style="display:none">
-      <button class="like-btn" id="like-btn" onclick="VIDEO_LIKES.toggle()" title="This lesson helped me">
-        <span class="like-heart" id="like-heart">&#9825;</span>
-        <span class="like-label">Helpful</span>
-      </button>
-      <span class="like-count-wrap">
-        <span class="like-count" id="like-count">0</span>
-        <span class="like-count-label">students found this helpful</span>
-      </span>
-    </div>
-    <!-- ── /Video Like Bar ─────────────────────────────────────── -->
-
     <div class="content-inner">
 
       <div>
@@ -627,156 +535,5 @@ function enableDrag(el) {
   });
 }
 </script>
-
-<!-- ── VIDEO_LIKES module ───────────────────────────────────────
-     Reads/writes to Supabase table: video_likes
-     Schema (create once in Supabase SQL editor):
-       create table video_likes (
-         user_id  uuid references auth.users(id) on delete cascade,
-         topic_id text not null,
-         liked    boolean default true,
-         liked_at timestamptz default now(),
-         primary key (user_id, topic_id)
-       );
-       alter table video_likes enable row level security;
-       create policy "Users manage own likes" on video_likes
-         for all using (auth.uid() = user_id);
-─────────────────────────────────────────────────────────────── -->
-<script>
-const VIDEO_LIKES = (() => {
-  let _topicId  = null;   // current topic
-  let _userId   = null;   // current user uuid
-  let _liked    = false;  // optimistic local state
-  let _count    = 0;      // total likes for topic
-  let _saving   = false;  // debounce guard
-
-  const bar    = () => document.getElementById('video-like-bar');
-  const btn    = () => document.getElementById('like-btn');
-  const heart  = () => document.getElementById('like-heart');
-  const countEl= () => document.getElementById('like-count');
-
-  // ── Called by CLASSROOM when a topic loads ──────────────────
-  async function load(topicId, userId) {
-    _topicId = topicId;
-    _userId  = userId || (window._ueProfile && window._ueProfile.id) || null;
-    _liked   = false;
-    _count   = 0;
-
-    // Show bar only when a topic is actually loaded
-    if (bar()) bar().style.display = topicId ? 'flex' : 'none';
-    _render();
-    if (!topicId) return;
-
-    try {
-      // 1. Get total likes for this topic
-      const { count } = await window.sb
-        .from('video_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('topic_id', topicId)
-        .eq('liked', true);
-      _count = count || 0;
-
-      // 2. Check if current user already liked it
-      if (_userId) {
-        const { data } = await window.sb
-          .from('video_likes')
-          .select('liked')
-          .eq('topic_id', topicId)
-          .eq('user_id', _userId)
-          .maybeSingle();
-        _liked = !!(data && data.liked);
-      }
-    } catch(e) {
-      console.warn('[VIDEO_LIKES] load error:', e.message);
-    }
-    _render();
-  }
-
-  // ── Toggle called by button click ───────────────────────────
-  async function toggle() {
-    if (!_topicId || !_userId || _saving) return;
-    _saving = true;
-
-    // Optimistic update
-    const wasLiked = _liked;
-    _liked  = !wasLiked;
-    _count  = Math.max(0, _count + (_liked ? 1 : -1));
-    _render(true);
-
-    try {
-      if (_liked) {
-        // Upsert — insert or flip liked back to true
-        await window.sb.from('video_likes').upsert({
-          user_id : _userId,
-          topic_id: _topicId,
-          liked   : true,
-          liked_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,topic_id' });
-      } else {
-        // Soft-delete: set liked = false (preserves row for analytics)
-        await window.sb.from('video_likes')
-          .update({ liked: false })
-          .eq('user_id',  _userId)
-          .eq('topic_id', _topicId);
-      }
-    } catch(e) {
-      // Rollback optimistic update on error
-      console.warn('[VIDEO_LIKES] toggle error:', e.message);
-      _liked = wasLiked;
-      _count = Math.max(0, _count + (_liked ? 1 : -1));
-      _render();
-      if (typeof toast === 'function') toast('Could not save — please try again.');
-    } finally {
-      _saving = false;
-    }
-  }
-
-  // ── Render state to DOM ─────────────────────────────────────
-  function _render(animate) {
-    const b = btn(), h = heart(), c = countEl();
-    if (!b || !h || !c) return;
-
-    // Heart glyph: filled ♥ when liked, outline ♡ when not
-    h.innerHTML = _liked ? '&#9829;' : '&#9825;';
-    b.classList.toggle('liked', _liked);
-
-    // Count bump animation
-    if (animate && c) {
-      c.classList.remove('bump');
-      void c.offsetWidth; // reflow to retrigger
-      c.classList.add('bump');
-      c.addEventListener('animationend', () => c.classList.remove('bump'), { once: true });
-    }
-    if (c) c.textContent = _count >= 1000
-      ? (_count / 1000).toFixed(1) + 'k'
-      : String(_count);
-  }
-
-  return { load, toggle };
-})();
-
-// ── Hook into CLASSROOM topic changes ──────────────────────────
-// Wraps CLASSROOM.loadTopic non-invasively (same pattern as skill_chamber.js)
-// Waits for DOMContentLoaded so CLASSROOM is guaranteed to exist.
-document.addEventListener('DOMContentLoaded', () => {
-  // Poll briefly for CLASSROOM in case script order ever shifts
-  const _hookLikes = () => {
-    if (typeof CLASSROOM === 'undefined') {
-      return setTimeout(_hookLikes, 80);
-    }
-    const _origLoad = CLASSROOM.loadTopic.bind(CLASSROOM);
-    CLASSROOM.loadTopic = function(topicId, ...args) {
-      const result = _origLoad(topicId, ...args);
-      // Load likes after topic render (async, non-blocking)
-      const uid = window._ueProfile && window._ueProfile.id;
-      VIDEO_LIKES.load(topicId, uid);
-      return result;
-    };
-  };
-  _hookLikes();
-});
-</script>
-<!-- ── /VIDEO_LIKES module ──────────────────────────────────── -->
-
 </body>
 </html>
