@@ -930,7 +930,7 @@ window.CLASSROOM = (function () {
     const idx    = subj.topics.findIndex(t => t.id === currentTopicId);
     const next   = subj.topics.slice(idx + 1).find(t => topicUnlockedForUser(t));
     if (next) selectTopic(next.id);
-    else toast('You\'ve completed all available lessons in this subject! &#x1F389;');
+    else toast('You\'ve completed all available lessons in this subject! 🎉');
   }
 
   function prevLesson() {
