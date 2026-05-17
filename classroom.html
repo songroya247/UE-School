@@ -665,13 +665,26 @@ const VIDEO_LIKES = (() => {
     c.textContent = _count >= 1000 ? (_count / 1000).toFixed(1) + 'k' : String(_count);
   }
 
-  // Hook CLASSROOM.loadTopic non-invasively after DOM ready
+  // Hook CLASSROOM.selectTopic (the real workhorse called on every sidebar click)
+  // and CLASSROOM.loadTopic (the public alias used by skill_chamber.js).
+  // Both must be patched — sidebar clicks hit selectTopic directly,
+  // skill_chamber.js calls loadTopic.
   document.addEventListener('DOMContentLoaded', () => {
     const _hook = () => {
       if (typeof CLASSROOM === 'undefined') return setTimeout(_hook, 80);
-      const _orig = CLASSROOM.loadTopic.bind(CLASSROOM);
+
+      // Patch selectTopic — fires on every topic click in the sidebar
+      const _origSelect = CLASSROOM.selectTopic.bind(CLASSROOM);
+      CLASSROOM.selectTopic = function(topicId, ...args) {
+        const r = _origSelect(topicId, ...args);
+        load(topicId);
+        return r;
+      };
+
+      // Patch loadTopic — fires when skill_chamber.js routes a topic
+      const _origLoad = CLASSROOM.loadTopic.bind(CLASSROOM);
       CLASSROOM.loadTopic = function(topicId, ...args) {
-        const r = _orig(topicId, ...args);
+        const r = _origLoad(topicId, ...args);
         load(topicId);
         return r;
       };
