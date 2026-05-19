@@ -88,6 +88,12 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 .q-card{background:#fff;border:1.5px solid rgba(37,99,235,.1);border-radius:14px;padding:28px;margin-bottom:20px;box-shadow:0 2px 16px rgba(26,86,255,.06)}
 .q-number-badge{display:inline-flex;align-items:center;justify-content:center;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:14px}
 #q-text{font-size:1.1rem;font-weight:600;color:#0f1c3f;line-height:1.65}
+/* ══ QUESTION DIAGRAM ══ */
+#q-diagram-wrap{display:none;margin:16px 0 4px;text-align:center}
+#q-diagram-wrap.show{display:block}
+#q-diagram{max-width:100%;max-height:300px;border-radius:10px;border:1.5px solid rgba(37,99,235,.12);background:#f8faff;object-fit:contain;box-shadow:0 2px 12px rgba(26,86,255,.07)}
+.diagram-loading{display:flex;align-items:center;justify-content:center;height:120px;background:#f8faff;border-radius:10px;border:1.5px solid rgba(37,99,235,.12);color:#9ca3af;font-size:.85rem;gap:8px}
+.diagram-loading .loading-spinner{border-color:rgba(37,99,235,.2);border-top-color:#2563eb}
 #q-options{display:flex;flex-direction:column;gap:10px;margin-top:20px}
 .drill-option{width:100%;display:flex;align-items:center;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:500;color:#1e3a8a;text-align:left;transition:all .18s;overflow:hidden}
 .drill-option:hover{border-color:#93c5fd;background:#f0f9ff}
@@ -239,13 +245,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <div class="form-group">
       <label class="form-label">Subject</label>
       <select class="form-select" id="sel-subject" onchange="onSubjectChange()">
-        <option value="mathematics">Mathematics</option>
-        <option value="english">English Language</option>
-        <option value="physics">Physics</option>
-        <option value="chemistry">Chemistry</option>
-        <option value="biology">Biology</option>
-        <option value="economics">Economics</option>
-        <option value="government">Government</option>
+        <option value="">Loading subjects…</option>
       </select>
     </div>
 
@@ -315,6 +315,12 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       <div class="q-card">
         <div class="q-number-badge" id="q-number-badge">Question 1</div>
         <div id="q-text"></div>
+        <div id="q-diagram-wrap">
+          <div class="diagram-loading" id="q-diagram-loading">
+            <span class="loading-spinner"></span> Loading diagram…
+          </div>
+          <img id="q-diagram" src="" alt="Question diagram" style="display:none">
+        </div>
         <div id="q-options"></div>
         <div class="explanation-box" id="explanation-box"></div>
       </div>
@@ -385,7 +391,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/auth-guard.js?v=3"></script>
-<script src="js/gdrive-video.js"></script>
 <script src="js/gsheet-questions.js"></script>
 <script src="js/questions.js"></script>
 <script src="js/grading.js"></script>
@@ -402,45 +407,99 @@ const URL_PARAMS=new URLSearchParams(window.location.search);
 // window.sb is initialised by auth-guard.js using UE_CONFIG \u2014 no credentials here.
 
 document.addEventListener('DOMContentLoaded', async ()=>{
-  // AUTH_GUARD.init() boots window.sb from UE_CONFIG, validates session,
-  // checks premium gate (cbt.html is in PREMIUM_PAGES), renders nav + defaulter banner.
   const result=await AUTH_GUARD.init();
-  if(!result) return; // redirect in progress
+  if(!result) return;
 
-  // Pre-fill from URL
+  // ── Populate subject dropdown dynamically from Sheet ─────────────
+  await populateSubjects();
+
+  // ── Restore URL params after subjects are loaded ──────────────────
   const urlSubj=URL_PARAMS.get('subject');
   const urlTopic=URL_PARAMS.get('topic');
   if(urlSubj){
     const s=document.getElementById('sel-subject');
     for(const o of s.options) if(o.value===urlSubj){s.value=urlSubj;break;}
   }
-  onSubjectChange();
+
+  // Populate topics for the selected subject (now async)
+  await onSubjectChange();
+
   if(urlTopic){
     const ts=document.getElementById('sel-topic');
     for(const o of ts.options) if(o.value===urlTopic||o.text===urlTopic){ts.value=o.value;break;}
     document.getElementById('sel-mode').value='topic';
   }
-  if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||'mathematics');
+  if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||document.getElementById('sel-subject').value||'mathematics');
   updateSessionBadges();
 });
 
 // ════════════ SETUP HELPERS ════════════
 function onModeChange(){ updateSessionBadges(); }
 
-function onSubjectChange(){
+// Friendly display labels for subject keys from the Sheet
+const SUBJECT_LABELS = {
+  mathematics: 'Mathematics',
+  english:     'English Language',
+  physics:     'Physics',
+  chemistry:   'Chemistry',
+  biology:     'Biology',
+  economics:   'Economics',
+  government:  'Government',
+  literature:  'Literature in English',
+  commerce:    'Commerce',
+  accounting:  'Financial Accounting',
+  geography:   'Geography',
+  history:     'History',
+  civic:       'Civic Education',
+  yoruba:      'Yoruba',
+  igbo:        'Igbo',
+  hausa:       'Hausa',
+};
+
+// Populate the subject dropdown from the Sheet — runs once on page load.
+// New subjects appear automatically when their sheet URL is added to config.js.
+async function populateSubjects(){
+  const sel=document.getElementById('sel-subject');
+  sel.innerHTML='<option value="">Loading…</option>';
+  sel.disabled=true;
+  try{
+    const subjects=await QUESTION_BANK.getSubjects();
+    if(!subjects.length){
+      sel.innerHTML='<option value="">No subjects found — check config.js</option>';
+      return;
+    }
+    sel.innerHTML=subjects.map(s=>{
+      const label=SUBJECT_LABELS[s]||(s.charAt(0).toUpperCase()+s.slice(1));
+      return `<option value="${s}">${label}</option>`;
+    }).join('');
+  }catch(e){
+    sel.innerHTML='<option value="">Error loading subjects</option>';
+    console.error('[CBT] populateSubjects failed:',e);
+  }finally{
+    sel.disabled=false;
+  }
+}
+
+async function onSubjectChange(){
   const subj=document.getElementById('sel-subject').value;
   const ts=document.getElementById('sel-topic');
-  const topics=QUESTION_BANK.getTopics(subj);
-  ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
+  ts.innerHTML='<option value="">All Topics</option>';
+  if(subj){
+    try{
+      const topics=await QUESTION_BANK.getTopics(subj);
+      ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
+    }catch(e){console.warn('getTopics failed:',e);}
+  }
   updateSessionBadges();
 }
 
-function updateSessionBadges(){
+async function updateSessionBadges(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value;
   const cfg=getModeConfig(mode);
-  const avail=QUESTION_BANK.countFor(subj,topic||null);
+  let avail=0;
+  try{ avail=await QUESTION_BANK.countFor(subj,topic||null); }catch(_){}
   document.getElementById('q-count-badge').textContent=`${Math.min(cfg.count,avail)||cfg.count} Questions`;
   document.getElementById('time-badge').textContent=`⏱ ${Math.round(cfg.seconds/60)} min`;
   document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
@@ -477,17 +536,18 @@ function onExamTypeChange(){
   }
 }
 
-function startExam(){
+async function startExam(){
   // ── Free-tier sample gate ─────────────────────────────────────
-  // Non-premium users get UE_CONFIG.FREE_SAMPLE.CBT_PER_ACCOUNT
-  // session(s) total. Once spent, the next click on "Start Session"
-  // bounces them to the pricing page instead of starting the exam.
   if (window.AUTH_GUARD && !AUTH_GUARD.canSampleFeature('cbt')) {
     AUTH_GUARD.bouncePremium(
       'You\'ve used your free CBT session. Upgrade to UE Premium to take unlimited mock exams.'
     );
     return;
   }
+
+  const btn=document.getElementById('btn-start');
+  btn.disabled=true;
+  btn.innerHTML='<span class="loading-spinner"></span> Loading questions…';
 
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
@@ -497,11 +557,22 @@ function startExam(){
   const university=(examType==='Post-UTME' && universityEl) ? (universityEl.value||null) : null;
   const cfg=getModeConfig(mode);
 
-  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,university,count:cfg.count});
-  if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
+  try {
+    QUESTIONS = await QUESTION_BANK.getQuestions({subject:subj,topic,examType,university,gradeLevel:currentGradeLevel,count:cfg.count});
+  } catch(e) {
+    console.error('[CBT] getQuestions failed:',e);
+    QUESTIONS = [];
+  }
 
-  // Spend the sample credit *only* after we've confirmed the session
-  // can actually start — never punish a free user for a config error.
+  btn.disabled=false;
+  btn.innerHTML='&#x25B6; Start Session';
+
+  if(!QUESTIONS||!QUESTIONS.length){
+    toast('No questions available for this selection. Try another topic or exam type.');
+    return;
+  }
+
+  // Spend the sample credit only after confirming session can start
   if (window.AUTH_GUARD) AUTH_GUARD.recordSampleUse('cbt');
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
@@ -552,6 +623,25 @@ function renderQ(){
   document.getElementById('q-counter').textContent=`Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
   document.getElementById('q-text').textContent=q.text;
+
+  // ── Diagram rendering ────────────────────────────────────────────
+  const wrap=document.getElementById('q-diagram-wrap');
+  const img=document.getElementById('q-diagram');
+  const loader=document.getElementById('q-diagram-loading');
+  if(q.image){
+    wrap.classList.add('show');
+    img.style.display='none';
+    loader.style.display='flex';
+    img.onload=()=>{loader.style.display='none';img.style.display='';};
+    img.onerror=()=>{loader.innerHTML='<span style="color:#ef4444">⚠ Diagram unavailable</span>';};
+    img.src=q.image;
+    img.alt=q.diagram_type?`${q.diagram_type} diagram`:'Question diagram';
+  } else {
+    wrap.classList.remove('show');
+    img.src=''; img.style.display='none';
+    loader.style.display='none';
+  }
+  // ── End diagram rendering ───────────────────────────────────────
 
   const fb=document.getElementById('flag-btn');
   fb.classList.toggle('flagged',flags.has(currentQ));
@@ -713,6 +803,23 @@ function renderReviewQ(){
   document.getElementById('q-counter').textContent=`Review \u2014 Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
   document.getElementById('q-text').textContent=q.text;
+
+  // ── Diagram rendering (review mode) ─────────────────────────────
+  const wrap=document.getElementById('q-diagram-wrap');
+  const img=document.getElementById('q-diagram');
+  const loader=document.getElementById('q-diagram-loading');
+  if(q.image){
+    wrap.classList.add('show');
+    img.style.display='none';
+    loader.style.display='flex';
+    img.onload=()=>{loader.style.display='none';img.style.display='';};
+    img.onerror=()=>{loader.innerHTML='<span style="color:#ef4444">⚠ Diagram unavailable</span>';};
+    img.src=q.image;
+  } else {
+    wrap.classList.remove('show');
+    img.src=''; img.style.display='none'; loader.style.display='none';
+  }
+  // ── End diagram rendering ───────────────────────────────────────
 
   const oc=document.getElementById('q-options'); oc.innerHTML='';
   q.opts.forEach((opt,i)=>{
