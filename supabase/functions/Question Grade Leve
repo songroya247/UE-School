@@ -1,0 +1,140 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Migration 009 — questions: grade_level, image_url, diagram_type
+                 — fetch_questions RPC: add p_grade_level filter
+
+   Run this in the Supabase SQL Editor (once).
+   Safe to re-run — all statements use IF NOT EXISTS / OR REPLACE.
+═══════════════════════════════════════════════════════════════════ */
+
+-- ── 1. Add new columns to the questions table ──────────────────────
+--
+--   grade_level  : 1 = Advanced, 2 = Intermediate, 3 = Foundation
+--                  NULL-safe default 3 so existing rows stay visible.
+--
+--   image_url    : Google Drive File ID or full public https URL.
+--                  The CBT player (gsheet-questions.js normaliseImage)
+--                  converts a bare Drive File ID to the display URL.
+--                  Leave NULL for text-only questions.
+--
+--   diagram_type : Optional rendering hint — geometry | graph |
+--                  table | photo. Not used in filtering; reserved for
+--                  future UI enhancements.
+
+ALTER TABLE public.questions
+  ADD COLUMN IF NOT EXISTS grade_level  SMALLINT NOT NULL DEFAULT 3
+    CHECK (grade_level BETWEEN 1 AND 3),
+  ADD COLUMN IF NOT EXISTS image_url    TEXT,
+  ADD COLUMN IF NOT EXISTS diagram_type TEXT;
+
+COMMENT ON COLUMN public.questions.grade_level IS
+  '1 = Advanced, 2 = Intermediate, 3 = Foundation (default). '
+  'The CBT engine only serves questions at or above the student''s '
+  'current grade level so the question pool is always appropriate.';
+
+COMMENT ON COLUMN public.questions.image_url IS
+  'Optional. Google Drive File ID or public https URL for a diagram '
+  'image rendered above the question text in the CBT player.';
+
+COMMENT ON COLUMN public.questions.diagram_type IS
+  'Optional rendering hint: geometry | graph | table | photo.';
+
+-- ── 2. Index for fast grade_level + subject filtering ──────────────
+CREATE INDEX IF NOT EXISTS questions_grade_subject_idx
+  ON public.questions (grade_level, subject, exam_type);
+
+-- ── 3. Drop old fetch_questions signatures ─────────────────────────
+--  Migration 007 already dropped the 4-arg version; these DROPs
+--  are safe no-ops if the old signatures are already gone.
+DROP FUNCTION IF EXISTS public.fetch_questions(TEXT, TEXT, TEXT, INT);
+DROP FUNCTION IF EXISTS public.fetch_questions(TEXT, TEXT, TEXT, TEXT, INT);
+
+-- ── 4. New fetch_questions with p_grade_level ──────────────────────
+--
+--  Key behaviours:
+--    • Requires auth.uid() — unauthenticated calls raise an exception.
+--    • Does NOT return the `ans` column (answer is never sent to browser).
+--    • grade_level filter: serves questions AT OR EASIER THAN the
+--      student's level (grade 3 = Foundation = easiest, so a student
+--      at grade 2 sees grades 2 AND 3; grade 1 sees everything).
+--    • Hard cap of 60 rows per call to prevent bulk scraping.
+
+CREATE OR REPLACE FUNCTION public.fetch_questions(
+  p_subject     TEXT    DEFAULT NULL,
+  p_topic       TEXT    DEFAULT NULL,
+  p_exam_type   TEXT    DEFAULT NULL,
+  p_university  TEXT    DEFAULT NULL,
+  p_grade_level SMALLINT DEFAULT NULL,   -- ← NEW
+  p_count       INT     DEFAULT 10
+)
+RETURNS TABLE (
+  id            TEXT,
+  subject       TEXT,
+  topic         TEXT,
+  "examType"    TEXT,
+  year          INT,
+  grade_level   SMALLINT,
+  text          TEXT,
+  opts          JSONB,
+  explanation   TEXT,
+  image_url     TEXT,
+  diagram_type  TEXT,
+  university    TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Reject unauthenticated callers
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    q.id,
+    q.subject,
+    q.topic,
+    q.exam_type   AS "examType",
+    q.year,
+    q.grade_level,
+    q.text,
+    q.opts,
+    q.explanation,
+    q.image_url,
+    q.diagram_type,
+    q.university
+  FROM public.questions q
+  WHERE
+    (p_subject     IS NULL OR q.subject    = lower(p_subject))
+    AND (p_topic   IS NULL OR q.topic      = p_topic)
+    AND (p_exam_type IS NULL OR q.exam_type = p_exam_type)
+    AND (
+      p_university IS NULL
+      OR q.university IS NULL
+      OR lower(q.university) = lower(p_university)
+    )
+    -- Grade level: serve questions AT or EASIER than the student's level.
+    -- grade 3 is easiest; grade 1 is hardest.
+    -- e.g. p_grade_level = 2 → q.grade_level IN (2, 3)
+    AND (
+      p_grade_level IS NULL
+      OR q.grade_level >= p_grade_level
+    )
+  ORDER BY random()
+  LIMIT LEAST(GREATEST(1, COALESCE(p_count, 10)), 60);
+END;
+$$;
+
+-- Grant to both roles so the free-sample path (anon key) still works
+GRANT EXECUTE ON FUNCTION public.fetch_questions(TEXT,TEXT,TEXT,TEXT,SMALLINT,INT)
+  TO authenticated, anon;
+
+-- ── 5. Backfill existing rows ──────────────────────────────────────
+--  Any row inserted before this migration has grade_level = 3 by
+--  the column DEFAULT, so no action needed.
+--  If you want to bulk-promote existing questions, run e.g.:
+--    UPDATE questions SET grade_level = 1 WHERE topic IN ('Circle Theorems','Vectors');
+--  That can be done any time after this migration.
+
+-- Done.
