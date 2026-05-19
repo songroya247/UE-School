@@ -69,21 +69,51 @@
     GOOGLE_DRIVE_VIDEO_FOLDER_ID: '',  // e.g. '1AbCdEfGhIjKlMnOpQrStUvWxYz'
 
     // ── Google Sheets — questions bank ────────────────────────────
-    // 1. Build a Google Sheet with these columns (header row required):
-    //      id | subject | topic | exam_type | year | text | opt_a | opt_b | opt_c | opt_d | ans | explanation | image_url
-    //    `ans` is 0..3 (index of the correct option). `image_url`
-    //    is OPTIONAL — paste a public Drive image URL or any https
-    //    image; the CBT player will render it above the question.
-    // 2. File → Share → "Anyone with the link" → Viewer.
-    // 3. File → Publish to web → Sheet1 → CSV → copy the URL.
-    // 4. Paste that CSV URL below.
+    // Required columns (header row):
+    //   id | subject | topic | exam_type | year | grade_level |
+    //   text | opt_a | opt_b | opt_c | opt_d | ans | explanation | image_url
     //
-    // Leaving this blank disables the Sheets path; questions.js then
-    // falls back to the Supabase RPC + local bank as before.
+    //   grade_level : 1 = Advanced, 2 = Intermediate, 3 = Foundation
+    //                 The CBT engine filters questions to the student's
+    //                 current mastery level automatically.
+    //   ans         : A / B / C / D  (letter) — or 0..3 (index)
+    //   image_url   : OPTIONAL — paste a Google Drive File ID or any
+    //                 public https image URL. The CBT renders it above
+    //                 the question text. Leave blank for text-only Qs.
+    //   diagram_type: OPTIONAL — geometry | graph | table | photo
+    //
+    // Use QUESTION_SUBJECT_URLS below for per-subject sheets (recommended).
+    // This fallback URL is only used if a subject has no entry there.
+    // Leave blank unless you have one single sheet covering all subjects.
     GOOGLE_SHEET_QUESTIONS_CSV_URL: '',
 
-    // Cache the parsed sheet in memory for this many minutes
+    // Cache parsed sheets in memory for this many minutes
     GS_QUESTIONS_CACHE_MIN: 30,
+
+    // ── Per-subject question sheets ───────────────────────────────
+    // Add one entry per subject. Each key must be lowercase and match
+    // the `subject` column in your sheet exactly.
+    //
+    // HOW TO ADD A NEW SUBJECT:
+    //   1. Create a Google Sheet with the 14 required headers
+    //   2. File → Share → "Anyone with the link" → Viewer
+    //   3. File → Publish to web → CSV → copy URL
+    //   4. Add a line below:  subjectkey: 'https://...csv',
+    //   5. Save config.js — the CBT subject dropdown updates automatically.
+    //      No other file needs to change.
+    QUESTION_SUBJECT_URLS: {
+      mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
+      // english:    'https://docs.google.com/...csv',
+      // physics:    'https://docs.google.com/...csv',
+      // chemistry:  'https://docs.google.com/...csv',
+      // biology:    'https://docs.google.com/...csv',
+      // economics:  'https://docs.google.com/...csv',
+      // government: 'https://docs.google.com/...csv',
+      // literature: 'https://docs.google.com/...csv',
+      // commerce:   'https://docs.google.com/...csv',
+      // accounting: 'https://docs.google.com/...csv',
+      // geography:  'https://docs.google.com/...csv',
+    },
 
     // ── Google Sheets — curriculum / syllabus (multi-subject) ─────
     // Add one entry per subject. Each value is the published CSV URL
