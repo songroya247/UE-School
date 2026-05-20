@@ -279,6 +279,44 @@ const DASHBOARD = (function () {
       const fillW  = pct !== null ? pct : 0;
       const masteryColor = pct !== null ? '' : 'color:var(--muted)';
 
+      // Check if this subject has classroom content
+      // CURRICULUM is defined in classroom.js — not available here, so we
+      // use a simple config-level check: subjects with dedicated sheet URLs
+      // are considered "active"; others show coming soon.
+      const cfg           = window.UE_CONFIG || {};
+      const subjectURLs   = cfg.QUESTION_SUBJECT_URLS || {};
+      const subjectSheets = cfg.SUBJECT_SHEET_URLS    || {};
+      const hasContent    = !!(subjectURLs[subj] || subjectSheets[subj]);
+
+      const studyBtn = hasContent
+        ? `<a href="classroom.html?subject=${subj}" class="btn btn-primary" style="font-size:.78rem">&#x25B6; Study</a>`
+        : `<button class="btn btn-primary" style="font-size:.78rem;opacity:.7;cursor:default"
+             title="${meta.label} lessons coming soon"
+             onclick="event.preventDefault();dashToast('${meta.label} lessons are coming soon! Practice with CBT in the meantime.')">
+             &#x1F4CB; Coming Soon
+           </button>`;
+
+      return `
+        <div class="dash-subj-slide" style="flex:0 0 280px">
+          <div class="dash-subj-card">
+            <div class="dash-subj-head">
+              <div class="dash-subj-icon">${meta.icon}</div>
+              <div class="dash-subj-name" style="color:${meta.color}">${meta.label}</div>
+            </div>
+            <div class="dash-subj-mastery-row">
+              <span>Mastery</span>
+              <span style="font-family:var(--font-mono);font-weight:700;${masteryColor}">${pctStr}</span>
+            </div>
+            <div class="subj-progress-track">
+              <div class="subj-progress-fill ${fill}" style="width:${fillW}%"></div>
+            </div>
+            <div class="dash-subj-btns">
+              ${studyBtn}
+              <a href="cbt.html?subject=${subj}" class="btn btn-outline" style="font-size:.78rem">Practice</a>
+            </div>
+          </div>
+        </div>`;
+
       return `
         <div class="dash-subj-slide" style="flex:0 0 280px">
           <div class="dash-subj-card">
@@ -696,3 +734,13 @@ const DASHBOARD = (function () {
   return { init };
 
 })();
+
+// Global toast for dashboard inline onclick handlers
+function dashToast(msg, duration) {
+  var el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(window._dashToastTimer);
+  window._dashToastTimer = setTimeout(function () { el.classList.remove('show'); }, duration || 3500);
+}
