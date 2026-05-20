@@ -285,7 +285,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     </div>
 
     <button class="btn-start" id="btn-start" onclick="startExam()">&#x25B6; Start Session</button>
-    <a href="dashboard.html" class="setup-back">&larr; Back to Dashboard</a>
+    <a href="dashboard.html" class="setup-back" onclick="try{sessionStorage.setItem('ue_from_cbt','1')}catch(e){}">&larr; Back to Dashboard</a>
   </div>
 </div>
 
@@ -382,7 +382,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <div class="results-actions">
       <button class="btn-results-outline" onclick="retryExam()">🔁 Retry Session</button>
       <button class="btn-results-outline" onclick="reviewAnswers()">&#x1F4CB; Review Answers</button>
-      <a href="dashboard.html" class="btn-results-primary">Dashboard &rarr;</a>
+      <a href="dashboard.html" class="btn-results-primary" onclick="try{sessionStorage.setItem('ue_from_cbt','1')}catch(e){}">Dashboard &rarr;</a>
     </div>
   </div>
 </div>
