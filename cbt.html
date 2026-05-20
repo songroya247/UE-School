@@ -179,7 +179,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 #saving-overlay.show{display:flex}
 
 /* ══ TOAST ══ */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(15,28,63,.92);color:#fff;padding:11px 22px;border-radius:30px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(37,99,235,.2);opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(15,28,63,.92);color:#fff;padding:12px 20px;border-radius:16px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(37,99,235,.2);opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;white-space:normal;max-width:calc(100vw - 32px);width:max-content;text-align:center;line-height:1.5}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ══ DEFAULTER ══ */
@@ -261,10 +261,11 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <div class="form-group">
       <label class="form-label">Exam Type</label>
       <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
-        <option value="JAMB">JAMB / UTME</option>
+        <option value="">All Exam Types</option>
         <option value="WAEC">WAEC / GCE</option>
+        <option value="JAMB">JAMB / UTME</option>
         <option value="NECO">NECO</option>
-        <option value="Post-UTME">Post-UTME (university-specific)</option>
+        <option value="Post-UTME">Post-UTME</option>
       </select>
     </div>
 
