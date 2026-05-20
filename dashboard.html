@@ -312,41 +312,111 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
   .quote-ribbon-text { font-size: .88rem; }
 }
 
-/* READINESS BANNER */
-.readiness-banner{
-  display:flex;align-items:center;gap:16px;
-  background:linear-gradient(135deg,#1a56ff 0%,#6366f1 100%);
-  border-radius:var(--radius-lg);padding:20px 24px;
-  color:#fff;position:relative;overflow:hidden;
-  box-shadow:0 8px 32px rgba(26,86,255,.25);
-  cursor:pointer;transition:transform .2s,box-shadow .2s;
+/* READINESS POPUP MODAL */
+.readiness-overlay{
+  position:fixed;inset:0;z-index:6000;
+  background:rgba(10,20,60,.55);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease;
 }
-.readiness-banner:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(26,86,255,.35);}
-.readiness-banner::before{
-  content:'';position:absolute;top:-40px;right:-40px;
-  width:180px;height:180px;
+.readiness-overlay.open{opacity:1;pointer-events:all;}
+.readiness-modal{
+  background:var(--surface);
+  border-radius:var(--radius-xl);
+  max-width:460px;width:100%;
+  overflow:hidden;
+  box-shadow:0 32px 80px rgba(10,20,60,.28),0 0 0 1px rgba(26,86,255,.08);
+  transform:translateY(28px) scale(.96);
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  position:relative;
+}
+.readiness-overlay.open .readiness-modal{transform:translateY(0) scale(1);}
+.readiness-hero{
+  background:linear-gradient(135deg,#1a56ff 0%,#6366f1 60%,#0ea5e9 100%);
+  padding:36px 32px 30px;text-align:center;
+  position:relative;overflow:hidden;
+}
+.readiness-hero::before{
+  content:'';position:absolute;top:-50px;right:-50px;
+  width:220px;height:220px;
   background:rgba(255,255,255,.07);border-radius:50%;
 }
-.readiness-banner-icon{font-size:2rem;flex-shrink:0;position:relative;z-index:1;}
-.readiness-banner-body{flex:1;min-width:0;position:relative;z-index:1;}
-.readiness-banner-title{font-family:var(--font-head);font-size:1.05rem;font-weight:800;margin-bottom:4px;}
-.readiness-banner-sub{font-size:.83rem;opacity:.82;line-height:1.4;}
-.readiness-banner-cta{
-  background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);
-  color:#fff;font-weight:700;font-size:.8rem;padding:9px 18px;
-  border-radius:var(--radius-sm);white-space:nowrap;flex-shrink:0;
-  position:relative;z-index:1;transition:background .2s;
+.readiness-hero::after{
+  content:'';position:absolute;bottom:-60px;left:-30px;
+  width:180px;height:180px;
+  background:rgba(255,255,255,.05);border-radius:50%;
 }
-.readiness-banner-cta:hover{background:rgba(255,255,255,.28);}
-.readiness-banner-dismiss{
-  position:absolute;top:10px;right:12px;z-index:2;
-  background:none;border:none;color:rgba(255,255,255,.6);
-  font-size:1rem;cursor:pointer;line-height:1;padding:4px;
+.readiness-hero-emoji{
+  font-size:3rem;margin-bottom:12px;display:block;
+  position:relative;z-index:1;
+  animation:heroBounce 2.2s ease-in-out infinite;
 }
-.readiness-banner-dismiss:hover{color:#fff;}
-@media(max-width:600px){
-  .readiness-banner{flex-wrap:wrap;gap:12px;padding:16px;}
-  .readiness-banner-cta{width:100%;text-align:center;}
+@keyframes heroBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+.readiness-hero-title{
+  font-family:var(--font-head);font-size:1.45rem;font-weight:800;
+  color:#fff;margin-bottom:6px;letter-spacing:-.02em;
+  position:relative;z-index:1;
+}
+.readiness-hero-sub{
+  font-size:.88rem;color:rgba(255,255,255,.78);
+  line-height:1.5;position:relative;z-index:1;
+}
+.readiness-body{padding:26px 28px;}
+.readiness-steps{display:flex;flex-direction:column;gap:12px;margin-bottom:22px;}
+.readiness-step{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:13px 15px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--radius);
+}
+.readiness-step-num{
+  width:26px;height:26px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#6366f1);
+  color:#fff;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:800;
+}
+.readiness-step-title{font-weight:700;font-size:.86rem;color:var(--text);margin-bottom:2px;}
+.readiness-step-desc{font-size:.76rem;color:var(--text-3);line-height:1.45;}
+.readiness-btns{display:flex;gap:10px;}
+.readiness-btn-primary{
+  flex:1;padding:13px 20px;
+  background:linear-gradient(135deg,var(--accent),#6366f1);
+  color:#fff;border:none;border-radius:var(--radius-sm);
+  font-family:var(--font-body);font-size:.9rem;font-weight:700;
+  cursor:pointer;letter-spacing:.02em;
+  box-shadow:0 4px 18px rgba(26,86,255,.3);
+  transition:transform .15s,box-shadow .15s;
+  text-decoration:none;display:flex;align-items:center;
+  justify-content:center;gap:7px;
+}
+.readiness-btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(26,86,255,.4);}
+.readiness-btn-skip{
+  padding:13px 18px;background:transparent;color:var(--text-3);
+  border:1px solid var(--border-2);border-radius:var(--radius-sm);
+  font-family:var(--font-body);font-size:.85rem;font-weight:600;
+  cursor:pointer;transition:color .15s,border-color .15s;white-space:nowrap;
+}
+.readiness-btn-skip:hover{color:var(--text);border-color:var(--text-3);}
+.readiness-close{
+  position:absolute;top:12px;right:14px;z-index:10;
+  background:rgba(255,255,255,.15);border:none;
+  width:30px;height:30px;border-radius:50%;
+  color:#fff;font-size:1rem;line-height:1;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.readiness-close:hover{background:rgba(255,255,255,.28);}
+@media(max-width:520px){
+  .readiness-hero{padding:26px 18px 20px;}
+  .readiness-hero-title{font-size:1.2rem;}
+  .readiness-hero-emoji{font-size:2.4rem;}
+  .readiness-body{padding:18px 16px;}
+  .readiness-btns{flex-direction:column;}
+  .readiness-btn-skip{text-align:center;}
 }
 .weekly-email-row {
   margin-top: 20px;
@@ -638,18 +708,56 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
 
 <main>
 
-  <!-- ─── Readiness Check Banner (shown on first visit or after 7 days) ─── -->
-  <div id="readiness-banner" class="readiness-banner fade-up" style="display:none" role="alert">
-    <div class="readiness-banner-icon">🎯</div>
-    <div class="readiness-banner-body">
-      <div class="readiness-banner-title">Check Your Exam Readiness</div>
-      <div class="readiness-banner-sub">Take a quick diagnostic — find out exactly where you stand and what to focus on before your exam.</div>
+  <!-- ─── Readiness Check Popup Modal ──────────────────────────────── -->
+  <div id="readiness-overlay" class="readiness-overlay" role="dialog" aria-modal="true" aria-labelledby="readiness-title">
+    <div class="readiness-modal">
+      <!-- Close X -->
+      <button class="readiness-close" onclick="closeReadinessModal()" aria-label="Close">&times;</button>
+
+      <!-- Hero -->
+      <div class="readiness-hero">
+        <span class="readiness-hero-emoji">🎯</span>
+        <div class="readiness-hero-title" id="readiness-title">Check Your Exam Readiness</div>
+        <div class="readiness-hero-sub">Find out exactly where you stand — and what to focus on — before your exam day.</div>
+      </div>
+
+      <!-- Body -->
+      <div class="readiness-body">
+        <div class="readiness-steps">
+          <div class="readiness-step">
+            <div class="readiness-step-num">1</div>
+            <div>
+              <div class="readiness-step-title">Answer 10 quick questions</div>
+              <div class="readiness-step-desc">A short diagnostic across your core subjects — takes about 5 minutes.</div>
+            </div>
+          </div>
+          <div class="readiness-step">
+            <div class="readiness-step-num">2</div>
+            <div>
+              <div class="readiness-step-title">Get your readiness score</div>
+              <div class="readiness-step-desc">See your JAMB score prediction and which topics need the most attention.</div>
+            </div>
+          </div>
+          <div class="readiness-step">
+            <div class="readiness-step-num">3</div>
+            <div>
+              <div class="readiness-step-title">SmartPath™ personalises your plan</div>
+              <div class="readiness-step-desc">Your results power the recommendations on this dashboard automatically.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="readiness-btns">
+          <a href="cbt.html" class="readiness-btn-primary" onclick="closeReadinessModal()">
+            &#x25B6; Start Diagnostic
+          </a>
+          <button class="readiness-btn-skip" onclick="closeReadinessModal()">Maybe Later</button>
+        </div>
+      </div>
     </div>
-    <a href="cbt.html" class="readiness-banner-cta">Start Diagnostic &rarr;</a>
-    <button class="readiness-banner-dismiss" onclick="dismissReadinessBanner()" aria-label="Dismiss">&times;</button>
   </div>
 
-  <!-- ─── Motivational quote (auto-rotates every 12s · click to advance) ─── -->
+  <!-- ─── Motivational quote ──────────────────────────────────────── -->
   <div id="ue-quote-ribbon" class="quote-ribbon fade-up" role="region" aria-label="Daily motivation">
     <div class="quote-ribbon-body">
       <span class="quote-ribbon-text" data-ue-quote-text>Loading&hellip;</span>
@@ -1498,45 +1606,52 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
 })();
 </script>
 <script>
-/* ── Readiness banner — show on first visit or after 7 days ─────── */
+/* ── Readiness popup — show on first visit or after 7 days ──────── */
 (function () {
   var BANNER_KEY    = 'ue_readiness_dismissed';
   var INTERVAL_DAYS = 7;
 
-  function shouldShowBanner() {
+  function shouldShow() {
     try {
       var raw = localStorage.getItem(BANNER_KEY);
-      if (!raw) return true; // never dismissed
-      var ts = parseInt(raw, 10);
-      var daysSince = (Date.now() - ts) / 86400000;
-      return daysSince >= INTERVAL_DAYS;
+      if (!raw) return true;
+      return (Date.now() - parseInt(raw, 10)) / 86400000 >= INTERVAL_DAYS;
     } catch (e) { return true; }
   }
 
-  function showBanner() {
-    var el = document.getElementById('readiness-banner');
-    if (el) el.style.display = 'flex';
-  }
-
-  window.dismissReadinessBanner = function () {
-    var el = document.getElementById('readiness-banner');
-    if (el) {
-      el.style.transition = 'opacity .3s, max-height .4s';
-      el.style.opacity = '0';
-      el.style.maxHeight = '0';
-      el.style.padding = '0';
-      el.style.margin = '0';
-      el.style.overflow = 'hidden';
-      setTimeout(function () { el.style.display = 'none'; }, 400);
-    }
+  window.closeReadinessModal = function () {
+    var overlay = document.getElementById('readiness-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('open');
     try { localStorage.setItem(BANNER_KEY, String(Date.now())); } catch (e) {}
   };
 
-  // Wait for auth to be ready so we know it's a real logged-in user
+  function openReadinessModal() {
+    var overlay = document.getElementById('readiness-overlay');
+    if (!overlay) return;
+    // Use rAF so the transition fires after display:flex kicks in
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { overlay.classList.add('open'); });
+    });
+  }
+
+  // Close on backdrop click
   document.addEventListener('DOMContentLoaded', function () {
-    if (shouldShowBanner()) {
-      // Small delay so the page renders first
-      setTimeout(showBanner, 800);
+    var overlay = document.getElementById('readiness-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeReadinessModal();
+      });
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeReadinessModal();
+    });
+
+    if (shouldShow()) {
+      // Wait for auth + dashboard to finish loading before showing
+      setTimeout(openReadinessModal, 1200);
     }
   });
 })();
