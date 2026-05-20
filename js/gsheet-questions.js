@@ -207,19 +207,22 @@ window.GSHEET_QUESTIONS = (function () {
     // Fetch from the subject-specific sheet if available, else fallback sheet
     let bank = await fetchAll(subject);
 
-    if (subject)    bank = bank.filter(q => q.subject  === String(subject).toLowerCase());
-    if (topic)      bank = bank.filter(q => q.topic    === topic);
-    if (examType)   bank = bank.filter(q => q.examType === String(examType).toUpperCase());
+    if (subject)              bank = bank.filter(q => q.subject  === String(subject).toLowerCase());
+    if (topic)                bank = bank.filter(q => q.topic    === topic);
+    if (examType && examType !== '') bank = bank.filter(q => q.examType === String(examType).toUpperCase());
     if (university) {
       const u = String(university).toLowerCase();
       bank = bank.filter(q => !q.university || String(q.university).toLowerCase() === u);
     }
 
-    // Grade level: serve questions AT or BELOW student's grade.
-    // grade 3 (Foundation) ≤ grade 2 (Intermediate) ≤ grade 1 (Advanced)
-    // So grade 2 student sees grade 2 + grade 3 questions (wider pool).
+    // Grade level: serve questions AT or HARDER than the student's level.
+    // grade 1 = Advanced (hardest), grade 3 = Foundation (easiest).
+    // A Foundation (grade 3) student sees ALL questions (1, 2, 3).
+    // An Intermediate (grade 2) student sees grades 1 and 2.
+    // An Advanced (grade 1) student sees grade 1 only.
+    // So: serve q where q.grade_level <= gradeLevel (student's level).
     if (gradeLevel) {
-      bank = bank.filter(q => q.grade_level >= gradeLevel);
+      bank = bank.filter(q => q.grade_level <= gradeLevel);
     }
 
     // Shuffle and cap
