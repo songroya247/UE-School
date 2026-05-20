@@ -125,12 +125,38 @@ window.GSHEET_QUESTIONS = (function () {
   function normaliseImage(raw) {
     const v = norm(raw);
     if (!v) return '';
-    // Already a full URL — pass through unchanged
+
+    // ── Extract Drive File ID from any Drive URL format ─────────────
+    // Handles:
+    //   https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    //   https://drive.google.com/open?id=FILE_ID
+    //   https://drive.google.com/uc?id=FILE_ID
+    //   https://drive.google.com/uc?export=view&id=FILE_ID  (already correct)
+    //   FILE_ID (bare ID — ~28–33 alphanumeric chars)
+    const driveFileMatch = v.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const driveOpenMatch = v.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+    if (driveFileMatch) {
+      return `https://drive.google.com/uc?export=view&id=${driveFileMatch[1]}`;
+    }
+    if (driveOpenMatch) {
+      return `https://drive.google.com/uc?export=view&id=${driveOpenMatch[1]}`;
+    }
+
+    // Already a correctly-formed Drive uc URL — pass through
+    if (/drive\.google\.com\/uc/.test(v)) return v;
+
+    // Any other full https URL (Imgur, Cloudinary, etc.) — pass through
     if (/^https?:\/\//i.test(v)) return v;
-    // Bare Drive File ID — convert to direct image display URL inline.
-    // We do NOT use GDRIVE_VIDEO here so gsheet-questions.js has zero
-    // dependency on gdrive-video.js, which belongs to the classroom pipeline.
-    return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(v)}`;
+
+    // Bare Drive File ID — typically 28-44 alphanumeric/dash/underscore chars
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(v)) {
+      return `https://drive.google.com/uc?export=view&id=${v}`;
+    }
+
+    // Unrecognised format — log and return empty so we don't show a broken img
+    console.warn('[GSHEET_QUESTIONS] Unrecognised image_url format:', v);
+    return '';
   }
 
   function rowToQuestion(row, idx, lineNo) {
@@ -156,7 +182,7 @@ window.GSHEET_QUESTIONS = (function () {
       opts,
       ans,
       explanation:  norm(row[idx.explanation]),
-      image:        idx.image >= 0 ? normaliseImage(row[idx.image]) : '',
+      image:        normaliseImage(idx.image >= 0 ? row[idx.image] : ''),
       diagram_type: idx.diagram_type >= 0 ? norm(row[idx.diagram_type]).toLowerCase() : '',
       _source:      'gsheet',
     };
