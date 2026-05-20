@@ -633,10 +633,13 @@ function renderQ(){
     wrap.classList.add('show');
     img.style.display='none';
     loader.style.display='flex';
+    loader.innerHTML='<span class="loading-spinner"></span> Loading diagram…';
+    img.crossOrigin='anonymous';
     img.onload=()=>{loader.style.display='none';img.style.display='';};
-    img.onerror=()=>{loader.innerHTML='<span style="color:#ef4444">⚠ Diagram unavailable</span>';};
+    img.onerror=()=>{
+      loader.innerHTML='<span style="color:#ef4444;font-size:.8rem">⚠ Diagram unavailable — check Drive sharing is set to <strong>Anyone with the link</strong></span>';
+    };
     img.src=q.image;
-    img.alt=q.diagram_type?`${q.diagram_type} diagram`:'Question diagram';
   } else {
     wrap.classList.remove('show');
     img.src=''; img.style.display='none';
@@ -813,8 +816,12 @@ function renderReviewQ(){
     wrap.classList.add('show');
     img.style.display='none';
     loader.style.display='flex';
+    loader.innerHTML='<span class="loading-spinner"></span> Loading diagram…';
+    img.crossOrigin='anonymous';
     img.onload=()=>{loader.style.display='none';img.style.display='';};
-    img.onerror=()=>{loader.innerHTML='<span style="color:#ef4444">⚠ Diagram unavailable</span>';};
+    img.onerror=()=>{
+      loader.innerHTML='<span style="color:#ef4444;font-size:.8rem">⚠ Diagram unavailable — check Drive sharing is set to <strong>Anyone with the link</strong></span>';
+    };
     img.src=q.image;
   } else {
     wrap.classList.remove('show');
