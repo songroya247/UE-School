@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confirm Your Email &mdash; UE School</title>
-<link rel="stylesheet" href="css/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/main.css">
 <style>
 body { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); padding:24px; }
 .confirm-card {
@@ -35,7 +38,7 @@ body { min-height:100vh; display:flex; align-items:center; justify-content:cente
 
 <div class="confirm-card">
   <div id="state-waiting">
-    <div class="confirm-icon">📧</div>
+    <div class="confirm-icon">ðŸ“§</div>
     <div class="confirm-title">Check Your Email</div>
 
     <div id="email-badge-wrap">
@@ -51,7 +54,7 @@ body { min-height:100vh; display:flex; align-items:center; justify-content:cente
 
     <div class="status-checking">
       <div class="dot-pulse"><span></span><span></span><span></span></div>
-      Waiting for confirmation…
+      Waiting for confirmationâ€¦
     </div>
 
     <div class="resend-link">
@@ -65,11 +68,11 @@ body { min-height:100vh; display:flex; align-items:center; justify-content:cente
     <div class="confirm-icon" style="animation:none">&#x2705;</div>
     <div class="confirm-title">Email Confirmed!</div>
     <div class="confirm-desc">
-      Your account is now active. Setting up your profile…
+      Your account is now active. Setting up your profileâ€¦
     </div>
     <div class="status-checking">
       <div class="dot-pulse"><span></span><span></span><span></span></div>
-      Redirecting to your dashboard…
+      Redirecting to your dashboardâ€¦
     </div>
   </div>
 </div>
@@ -83,24 +86,24 @@ body { min-height:100vh; display:flex; align-items:center; justify-content:cente
 <script src="js/auth.js"></script>
 
 <script>
-// window.sb is set by js/supabase.js — credentials live only in js/config.js
+// window.sb is set by js/supabase.js â€” credentials live only in js/config.js
 
-// ── Display the email they signed up with ──
+// â”€â”€ Display the email they signed up with â”€â”€
 const params = new URLSearchParams(window.location.search);
 const emailParam = params.get('email');
 if (emailParam) {
   document.getElementById('email-display').textContent = decodeURIComponent(emailParam);
 }
 
-// ── CRITICAL: Handle the Supabase email confirmation token ───────────
+// â”€â”€ CRITICAL: Handle the Supabase email confirmation token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Supabase redirects with one of two formats:
 //   PKCE  : confirm.html?code=XXXX
 //   Hash  : confirm.html#access_token=XXX&type=signup
 // The Supabase SDK detects and exchanges both automatically. We just
 // need to wait briefly and then call getSession(), or react to the
-// onAuthStateChange event — whichever fires first.
+// onAuthStateChange event â€” whichever fires first.
 
-// IMPORTANT — set the guard flag BEFORE the await. Both the SDK event
+// IMPORTANT â€” set the guard flag BEFORE the await. Both the SDK event
 // and the timed IIFE can race, and `await` releases the event loop, so
 // we must claim the lock synchronously.
 let _confirmHandled = false;
@@ -139,7 +142,7 @@ function showConfirmed() {
   if (confirmed) confirmed.style.display = 'block';
 }
 
-// ── Resend confirmation ──
+// â”€â”€ Resend confirmation â”€â”€
 let resendCooldown = 0;
 
 async function resendConfirmation() {
