@@ -730,11 +730,16 @@ async function submitExam(){
   document.getElementById('saving-overlay').classList.add('show');
   let gradingResult=null;
   try{
+    console.log('[CBT] submitExam — questions:', QUESTIONS.length, 'user:', window.UE_USER_ID);
     gradingResult=await GRADING.processSession({
       questions:QUESTIONS,answers,timings,
       meta:{userId:window.UE_USER_ID,subject:sessionConfig.subject,topic:sessionConfig.topic,examType:sessionConfig.examType,gradeLevel:sessionConfig.gradeLevel}
     });
-  } catch(err){console.error('Grading error:',err);}
+    console.log('[CBT] gradingResult:', gradingResult);
+  } catch(err){
+    console.error('[CBT] Grading error:', err);
+    toast('Grading error: ' + err.message);
+  }
   document.getElementById('saving-overlay').classList.remove('show');
   showResults(gradingResult);
 }
