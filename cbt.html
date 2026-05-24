@@ -634,7 +634,7 @@ function renderQ(){
     img.style.display='none';
     loader.style.display='flex';
     loader.innerHTML='<span class="loading-spinner"></span> Loading diagram…';
-    img.crossOrigin='anonymous';
+
     img.onload=()=>{loader.style.display='none';img.style.display='';};
     img.onerror=()=>{
       loader.innerHTML='<span style="color:#ef4444;font-size:.8rem">⚠ Diagram unavailable — check Drive sharing is set to <strong>Anyone with the link</strong></span>';
@@ -817,7 +817,7 @@ function renderReviewQ(){
     img.style.display='none';
     loader.style.display='flex';
     loader.innerHTML='<span class="loading-spinner"></span> Loading diagram…';
-    img.crossOrigin='anonymous';
+
     img.onload=()=>{loader.style.display='none';img.style.display='';};
     img.onerror=()=>{
       loader.innerHTML='<span style="color:#ef4444;font-size:.8rem">⚠ Diagram unavailable — check Drive sharing is set to <strong>Anyone with the link</strong></span>';
