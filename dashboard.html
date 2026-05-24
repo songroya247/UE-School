@@ -1588,23 +1588,28 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
 
     function attemptBuild() {
       const profile = window.UE_PROFILE || {};
-      /* Try to pull exam history from DASHBOARD's last render data, or fetch directly */
+      // Use data already loaded by DASHBOARD.init() if available
       if (window._ueExamHistory !== undefined) {
         buildChart(profile, window._ueExamHistory || []);
         return;
       }
-      /* Fallback: if supabase is ready, fetch directly */
+      // Fetch from session_scores (the real table — exam_attempts doesn't exist)
       if (window.sb && window.UE_USER_ID) {
-        window.sb.from('exam_attempts')
-          .select('score_pct, created_at, subject')
+        window.sb.from('session_scores')
+          .select('accuracy, score, total_questions, exam_type, subject, created_at')
           .eq('user_id', window.UE_USER_ID)
           .order('created_at', { ascending: true })
           .limit(30)
           .then(({ data }) => {
-            buildChart(profile, data || []);
+            // Normalise to the shape buildChart expects: { score_pct, created_at, subject }
+            const normalised = (data || []).map(r => ({
+              score_pct:  +(( r.accuracy || (r.score / (r.total_questions || 1)) ) * 100).toFixed(1),
+              created_at: r.created_at,
+              subject:    r.subject || r.exam_type || 'mathematics',
+            }));
+            buildChart(profile, normalised);
           });
       } else {
-        /* Show empty chart with placeholder */
         buildChart(profile, []);
       }
     }
