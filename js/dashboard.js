@@ -688,6 +688,18 @@ const DASHBOARD = (function () {
     const rows           = masteryRows || [];
     const masteryBySubj  = groupMasteryBySubject(rows);
 
+    // ── Fetch session history for the readiness chart ──
+    const recentSessions = await loadRecentSessions(userId);
+    // Normalise to { score_pct, created_at, subject } for buildChart
+    window._ueExamHistory = recentSessions
+      .slice()
+      .reverse() // chart needs ascending order
+      .map(r => ({
+        score_pct:  +(( r.accuracy || (r.score / (r.total_questions || 1)) ) * 100).toFixed(1),
+        created_at: r.created_at,
+        subject:    r.subject || r.exam_type || 'mathematics',
+      }));
+
     // ── Render all sections ──
     renderWelcome(profile, rows);
     renderScoreCard(profile, rows);
