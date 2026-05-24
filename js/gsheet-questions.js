@@ -122,40 +122,38 @@ window.GSHEET_QUESTIONS = (function () {
     return i >= 0 ? i : -1;
   }
 
+  function driveImgUrl(fileId) {
+    // thumbnail endpoint works publicly without Google login
+    // sz=w800 gives up to 800px wide — sufficient for exam diagrams
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+  }
+
   function normaliseImage(raw) {
     const v = norm(raw);
     if (!v) return '';
 
-    // ── Extract Drive File ID from any Drive URL format ─────────────
-    // Handles:
-    //   https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-    //   https://drive.google.com/open?id=FILE_ID
-    //   https://drive.google.com/uc?id=FILE_ID
-    //   https://drive.google.com/uc?export=view&id=FILE_ID  (already correct)
-    //   FILE_ID (bare ID — ~28–33 alphanumeric chars)
-    const driveFileMatch = v.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    const driveOpenMatch = v.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-
-    if (driveFileMatch) {
-      return `https://drive.google.com/uc?export=view&id=${driveFileMatch[1]}`;
-    }
-    if (driveOpenMatch) {
-      return `https://drive.google.com/uc?export=view&id=${driveOpenMatch[1]}`;
+    // Reject Drive folder URLs — they are never images
+    if (/\/drive\/folders\//i.test(v)) {
+      console.warn('[GSHEET_QUESTIONS] image_url is a Drive folder URL, not a file:', v);
+      return '';
     }
 
-    // Already a correctly-formed Drive uc URL — pass through
-    if (/drive\.google\.com\/uc/.test(v)) return v;
+    // Extract File ID from any Drive file URL format
+    const fileMatch = v.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+    if (fileMatch) return driveImgUrl(fileMatch[1]);
 
-    // Any other full https URL (Imgur, Cloudinary, etc.) — pass through
-    if (/^https?:\/\//i.test(v)) return v;
+    // Drive open?id= or uc?id= or thumbnail?id= formats
+    const idMatch = v.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+    if (idMatch) return driveImgUrl(idMatch[1]);
 
-    // Bare Drive File ID — typically 28-44 alphanumeric/dash/underscore chars
-    if (/^[a-zA-Z0-9_-]{20,}$/.test(v)) {
-      return `https://drive.google.com/uc?export=view&id=${v}`;
-    }
+    // Direct image URL (Imgur, Cloudinary, S3, etc.)
+    if (/^https?:\/\/.+\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(v)) return v;
 
-    // Unrecognised format — log and return empty so we don't show a broken img
-    console.warn('[GSHEET_QUESTIONS] Unrecognised image_url format:', v);
+    // Bare Drive File ID — 25–44 alphanumeric/dash/underscore chars
+    if (/^[a-zA-Z0-9_-]{25,44}$/.test(v)) return driveImgUrl(v);
+
+    // Anything else — unrecognised, skip
+    console.warn('[GSHEET_QUESTIONS] Unrecognised or invalid image_url (ignored):', v);
     return '';
   }
 
