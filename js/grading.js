@@ -133,7 +133,7 @@ const GRADING = (function () {
   //  The RPC re-derives user_id from auth.uid() on the server —
   //  there is nothing in the payload that a cheater can spoof.
   async function saveSessionViaRPC({ examType, score, total, accuracy, avgTime, gradeLevel, questionIds }) {
-    const { data, error } = await window.sb.rpc('record_session_score', {
+    const payload = {
       p_exam_type:       examType,
       p_score:           score,
       p_total_questions: total,
@@ -141,14 +141,19 @@ const GRADING = (function () {
       p_avg_time_per_q:  Math.round(avgTime * 10) / 10,
       p_grade_level:     gradeLevel,
       p_question_ids:    questionIds || [],
-    });
+    };
+
+    const { data, error } = await window.sb.rpc('record_session_score', payload);
 
     if (error) {
-      console.error('[GRADING] RPC error saving session score:', error.message);
+      console.error('[GRADING] RPC error:', error.message, error.details, error.hint);
+      // Show on screen so mobile users can read it without DevTools
+      if (window.toast) toast('Save error: ' + error.message);
       return null;
     }
 
-    return data; // returns the new session_scores UUID
+    console.log('[GRADING] Session saved, id:', data);
+    return data;
   }
 
   // ── Write response_logs ─────────────────────────────────────────
