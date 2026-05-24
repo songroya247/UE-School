@@ -776,8 +776,8 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
         </div>
 
         <div class="readiness-btns">
-          <a href="cbt.html" class="readiness-btn-primary" onclick="closeReadinessModal()">
-            &#x25B6; Start Diagnostic
+          <a href="cbt.html" class="readiness-btn-primary" onclick="onReadinessStart()">
+            &#x26A1; Check Now
           </a>
           <button class="readiness-btn-skip" onclick="closeReadinessModal()">Maybe Later</button>
         </div>
@@ -1634,36 +1634,76 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
 })();
 </script>
 <script>
-/* ── Readiness popup — show on first visit or after 7 days ──────── */
+/* ── Readiness popup logic ───────────────────────────────────────── *
+ *
+ *  Shows on EVERY dashboard visit like a coach checking in — except:
+ *    • Coming from CBT    (just practiced — let them see results)
+ *    • Coming from classroom (just studied — let them land)
+ *    • Within 2 hours of clicking "Check Now" (prevent same-session spam)
+ *
+ *  "Maybe Later" closes it but saves NO cooldown — shows next visit.
+ *  "Check Now" saves a 2hr cooldown so it doesn't immediately reappear
+ *  if the student comes straight back from CBT via another route.
+ * ───────────────────────────────────────────────────────────────── */
 (function () {
-  var BANNER_KEY    = 'ue_readiness_dismissed';
-  var INTERVAL_DAYS = 7;
+  var STORAGE_KEY  = 'ue_readiness_acted';
+  var COOLDOWN_HRS = 2;
+  var CBT_FLAG     = 'ue_from_cbt';
+  var CLASS_FLAG   = 'ue_from_classroom';
 
-  function shouldShow() {
+  function comingFrom(flag) {
     try {
-      var raw = localStorage.getItem(BANNER_KEY);
-      if (!raw) return true;
-      return (Date.now() - parseInt(raw, 10)) / 86400000 >= INTERVAL_DAYS;
-    } catch (e) { return true; }
+      if (sessionStorage.getItem(flag) === '1') {
+        sessionStorage.removeItem(flag);
+        return true;
+      }
+    } catch (e) {}
+    return false;
   }
 
+  function checkReferrer(keyword) {
+    try { return document.referrer && document.referrer.indexOf(keyword) !== -1; }
+    catch (e) { return false; }
+  }
+
+  function withinCooldown() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      return (Date.now() - parseInt(raw, 10)) / 3600000 < COOLDOWN_HRS;
+    } catch (e) { return false; }
+  }
+
+  function shouldShow() {
+    if (comingFrom(CBT_FLAG))   return false;
+    if (comingFrom(CLASS_FLAG)) return false;
+    if (checkReferrer('cbt'))       return false;
+    if (checkReferrer('classroom')) return false;
+    if (withinCooldown())       return false;
+    return true;
+  }
+
+  // Called by "Check Now" — saves 2hr cooldown
+  window.onReadinessStart = function () {
+    try { localStorage.setItem(STORAGE_KEY, String(Date.now())); } catch (e) {}
+    closeReadinessModal();
+  };
+
+  // Called by ×, backdrop, "Maybe Later" — closes only, no cooldown
   window.closeReadinessModal = function () {
     var overlay = document.getElementById('readiness-overlay');
     if (!overlay) return;
     overlay.classList.remove('open');
-    try { localStorage.setItem(BANNER_KEY, String(Date.now())); } catch (e) {}
   };
 
   function openReadinessModal() {
     var overlay = document.getElementById('readiness-overlay');
     if (!overlay) return;
-    // Use rAF so the transition fires after display:flex kicks in
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { overlay.classList.add('open'); });
     });
   }
 
-  // Close on backdrop click
   document.addEventListener('DOMContentLoaded', function () {
     var overlay = document.getElementById('readiness-overlay');
     if (overlay) {
@@ -1671,14 +1711,10 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
         if (e.target === overlay) closeReadinessModal();
       });
     }
-
-    // Close on Escape key
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeReadinessModal();
     });
-
     if (shouldShow()) {
-      // Wait for auth + dashboard to finish loading before showing
       setTimeout(openReadinessModal, 1200);
     }
   });
