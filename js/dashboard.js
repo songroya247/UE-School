@@ -100,7 +100,7 @@ const DASHBOARD = (function () {
       (window.UE_USER && window.UE_USER.email
         ? window.UE_USER.email.split('@')[0]
         : 'Student');
-    const firstName  = (profile.full_name || fallbackName).split(' ')[0];
+    const firstName  = (profile.full_name || fallbackName).split(' ')[0].replace(/[,;.!]+$/, '');
     const examDays   = daysUntil(profile.exam_date);
     const streak     = calcStreak(profile.usage_logs);
 
