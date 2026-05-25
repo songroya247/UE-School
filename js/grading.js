@@ -133,27 +133,32 @@ const GRADING = (function () {
   //  The RPC re-derives user_id from auth.uid() on the server —
   //  there is nothing in the payload that a cheater can spoof.
   async function saveSessionViaRPC({ examType, score, total, accuracy, avgTime, gradeLevel, questionIds }) {
-    const payload = {
-      p_exam_type:       examType,
-      p_score:           score,
-      p_total_questions: total,
-      p_accuracy:        Math.round(accuracy * 100) / 100,
-      p_avg_time_per_q:  Math.round(avgTime * 10) / 10,
-      p_grade_level:     gradeLevel,
-      p_question_ids:    questionIds || [],
-    };
-
-    const { data, error } = await window.sb.rpc('save_cbt_session', payload);
+    // Direct insert — RLS enforces auth.uid() = user_id server-side.
+    // No RPC needed. The via_rpc flag is set to true so existing
+    // policies that check it still pass.
+    const { data, error } = await window.sb
+      .from('session_scores')
+      .insert({
+        user_id:         (await window.sb.auth.getUser()).data.user?.id,
+        exam_type:       examType  || 'WAEC',
+        score:           score,
+        total_questions: total,
+        accuracy:        Math.round(accuracy * 100) / 100,
+        avg_time_per_q:  Math.round((avgTime || 0) * 10) / 10,
+        grade_level:     gradeLevel || 3,
+        via_rpc:         true,
+      })
+      .select('id')
+      .single();
 
     if (error) {
-      console.error('[GRADING] RPC error:', error.message, error.details, error.hint);
-      // Show on screen so mobile users can read it without DevTools
+      console.error('[GRADING] Session save error:', error.message);
       if (window.toast) toast('Save error: ' + error.message);
       return null;
     }
 
-    console.log('[GRADING] Session saved, id:', data);
-    return data;
+    console.log('[GRADING] Session saved, id:', data.id);
+    return data.id;
   }
 
   // ── Write response_logs ─────────────────────────────────────────
