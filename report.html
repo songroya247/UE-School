@@ -280,6 +280,12 @@ function renderReport(profile,masteryRows,sessions){
 }
 
 async function downloadReportPDF(){
+  // Premium gate — free users cannot export PDF
+  const tier = (window._ueProfile && window._ueProfile.subscription_tier) || 'free';
+  if (tier === 'free') {
+    toast('PDF export is available on Standard and Premium plans. Upgrade to unlock.');
+    return;
+  }
   const btn=document.getElementById('download-pdf-btn');
   const node=document.querySelector('.report-card');
   if(!node){toast('Nothing to export yet — wait for the report to load.');return;}
@@ -333,6 +339,16 @@ function copyShareLink(){
 }
 
 (async()=>{
+  // Resolve SB lazily — guarantees it's available even if CDN scripts loaded slowly
+  const SB = window.sb || (window.supabase && window.UE_CONFIG
+    ? window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL, window.UE_CONFIG.SUPABASE_ANON)
+    : null);
+  if (!SB) {
+    document.getElementById('loading-state').style.display='none';
+    document.getElementById('error-state').style.display='block';
+    document.getElementById('error-state').querySelector('p').textContent='Connection error — please refresh the page.';
+    return;
+  }
   const params=new URLSearchParams(window.location.search);
   const token=params.get('token');
   let profile=null,userId=null;
