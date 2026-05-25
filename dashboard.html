@@ -81,7 +81,7 @@
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -334,6 +334,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
   transform:translateY(20px) scale(.97);
   transition:transform .38s cubic-bezier(.34,1.4,.64,1);
   position:relative;
+  margin:auto;
 }
 .readiness-overlay.open .readiness-modal{transform:translateY(0) scale(1);}
 
@@ -380,8 +381,8 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
   display:flex;align-items:center;justify-content:center;
   font-size:.6rem;font-weight:800;
 }
-.readiness-step-title{font-weight:700;font-size:.8rem;color:var(--text);margin-bottom:1px;}
-.readiness-step-desc{font-size:.7rem;color:var(--text-3);line-height:1.38;}
+.readiness-step-title{font-weight:700;font-size:.85rem;color:var(--text);margin-bottom:1px;}
+.readiness-step-desc{font-size:.76rem;color:var(--text-3);line-height:1.42;}
 .readiness-btns{display:flex;gap:8px;}
 .readiness-btn-primary{
   flex:1;padding:10px 14px;
@@ -468,7 +469,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
 }
 .weekly-email-row .we-text { flex: 1; min-width: 0; }
 .weekly-email-row .we-title { font-size: .88rem; font-weight: 700; color: var(--text); }
-.weekly-email-row .we-sub   { font-size: .76rem; color: var(--text-3); margin-top: 1px; }
+.weekly-email-row .we-sub   { font-size: .8rem; color: var(--text-3); margin-top: 1px; }
 .we-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
 .we-switch input { opacity: 0; width: 0; height: 0; }
 .we-switch .we-slider {
@@ -489,7 +490,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
 .we-switch input:disabled + .we-slider { opacity: .55; cursor: wait; }
 
 /* SECTION HEADERS */
-.section-title { font-family: var(--font-head); font-size: 1.2rem; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+.section-title { font-family: var(--font-head); font-size: 1.3rem; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
 .section-title span { color: var(--accent); }
 
 /* CARDS */
