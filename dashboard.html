@@ -334,7 +334,6 @@ main { max-width: 1140px; margin: 0 auto; padding: 36px 24px 60px; display: flex
   transform:translateY(20px) scale(.97);
   transition:transform .38s cubic-bezier(.34,1.4,.64,1);
   position:relative;
-  margin:auto;
 }
 .readiness-overlay.open .readiness-modal{transform:translateY(0) scale(1);}
 
@@ -1584,16 +1583,14 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
 
   /* ─ wire up after DASHBOARD.init() ─ */
   document.addEventListener('DOMContentLoaded', function () {
-    const originalInit = typeof DASHBOARD !== 'undefined' ? DASHBOARD.init : null;
 
-    function attemptBuild() {
+    function buildFromHistory() {
       const profile = window.UE_PROFILE || {};
-      // Use data already loaded by DASHBOARD.init() if available
-      if (window._ueExamHistory !== undefined) {
-        buildChart(profile, window._ueExamHistory || []);
+      if (window._ueExamHistory && window._ueExamHistory.length > 0) {
+        buildChart(profile, window._ueExamHistory);
         return;
       }
-      // Fetch from session_scores (the real table — exam_attempts doesn't exist)
+      // _ueExamHistory not ready yet — fetch directly from session_scores
       if (window.sb && window.UE_USER_ID) {
         window.sb.from('session_scores')
           .select('accuracy, score, total_questions, exam_type, subject, created_at')
@@ -1601,12 +1598,14 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
           .order('created_at', { ascending: true })
           .limit(30)
           .then(({ data }) => {
-            // Normalise to the shape buildChart expects: { score_pct, created_at, subject }
-            const normalised = (data || []).map(r => ({
+            if (!data || !data.length) { buildChart(profile, []); return; }
+            const normalised = data.map(r => ({
               score_pct:  +(( r.accuracy || (r.score / (r.total_questions || 1)) ) * 100).toFixed(1),
               created_at: r.created_at,
               subject:    r.subject || r.exam_type || 'mathematics',
             }));
+            // Cache so resize doesn't re-fetch
+            window._ueExamHistory = normalised;
             buildChart(profile, normalised);
           });
       } else {
@@ -1614,25 +1613,28 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
       }
     }
 
-    /* Give DASHBOARD.init() ~1.5s to run first */
-    setTimeout(attemptBuild, 1500);
+    // Poll until DASHBOARD.init() has finished and set _ueExamHistory
+    function waitAndBuild(retries) {
+      if (window._ueExamHistory !== undefined) {
+        buildFromHistory();
+        return;
+      }
+      if (retries <= 0) {
+        buildFromHistory(); // fallback to direct fetch
+        return;
+      }
+      setTimeout(function () { waitAndBuild(retries - 1); }, 400);
+    }
 
-    /* Also re-draw on resize */
+    // Start polling after a short delay to let DASHBOARD.init() begin
+    setTimeout(function () { waitAndBuild(10); }, 800);
+
+    // Resize — use cached _ueExamHistory, never re-fetch
     let resizeTimer;
     window.addEventListener('resize', function () {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(function () {
-        const profile = window.UE_PROFILE || {};
-        if (window.sb && window.UE_USER_ID) {
-          window.sb.from('exam_attempts')
-            .select('score_pct, created_at, subject')
-            .eq('user_id', window.UE_USER_ID)
-            .order('created_at', { ascending: true })
-            .limit(30)
-            .then(({ data }) => buildChart(profile, data || []));
-        } else {
-          buildChart(profile, []);
-        }
+        buildFromHistory();
       }, 200);
     });
   });
