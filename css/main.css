@@ -68,7 +68,7 @@
        4. "Noto Color Emoji"     — Android / Linux
        5. Generic fallback
   ─────────────────────────────────────────────────────────────────── */
-  --font-head: 'Bebas Neue', 'Bebas Neue Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-head: 'DM Sans', 'DM Sans Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   --font-body: 'DM Sans', 'DM Sans Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   --font-mono: 'DM Mono', 'DM Mono Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace;
 }
@@ -90,7 +90,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1,h2 { font-family: var(--font-head); line-height: 1.1; letter-spacing: .04em; font-weight: 400; text-transform: uppercase; }
+h1,h2 { font-family: var(--font-head); line-height: 1.1; letter-spacing: -.03em; font-weight: 800; }
 h3,h4,h5 { font-family: var(--font-body); line-height: 1.25; letter-spacing: -.01em; font-weight: 700; }
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; font-family: inherit; border: none; background: none; }
@@ -379,7 +379,7 @@ select, input, textarea { font-family: inherit; }
 .stats-grid  { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; text-align: center; }
 .stat-item   { padding: 8px 0; border-right: 1px solid rgba(255,255,255,.2); }
 .stat-item:last-child { border-right: none; }
-.stat-value  { font-family: var(--font-head); font-size: 2rem; letter-spacing: .06em; font-weight: 400; }
+.stat-value  { font-family: var(--font-head); font-size: 2rem; letter-spacing: -.03em; font-weight: 800; }
 .stat-label  { font-size: .8rem; font-weight: 600; opacity: .8; margin-top: 2px; }
 
 /* ── PRICING ────────────────────────────────────────────────────────
@@ -389,7 +389,7 @@ select, input, textarea { font-family: inherit; }
 .pricing-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; padding: 36px; position: relative; }
 .pricing-card.featured { border-color: var(--accent); box-shadow: var(--shadow-lg); }
 .pricing-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: .72rem; font-weight: 700; padding: 4px 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-.pricing-price { font-family: var(--font-head); font-size: 2.5rem; }
+.pricing-price { font-family: var(--font-head); font-size: 2.5rem; font-weight: 800; letter-spacing: -.03em; }
 .pricing-save  { color: var(--accent2); font-size: .85rem; font-weight: 700; margin: 4px 0 20px; }
 .pricing-features { list-style: none; margin-bottom: 28px; }
 .pricing-features li { display: flex; align-items: flex-start; gap: 10px; font-size: .9rem; padding: 6px 0; line-height: 1.45; }
@@ -438,7 +438,7 @@ select, input, textarea { font-family: inherit; }
 .exam-cards    { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .exam-card     { background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 28px; }
 .exam-card-icon  { font-size: 2rem; margin-bottom: 14px; }
-.exam-card-title { font-family: var(--font-head); font-size: 1.6rem; margin-bottom: 10px; }
+.exam-card-title { font-family: var(--font-head); font-size: 1.4rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 10px; }
 .exam-card-desc  { font-size: .88rem; color: var(--muted); line-height: 1.6; }
 
 /* ── CLASSROOM BAND ── */
