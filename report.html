@@ -339,36 +339,47 @@ function copyShareLink(){
 }
 
 (async()=>{
-  // Resolve SB lazily — guarantees it's available even if CDN scripts loaded slowly
-  const SB = window.sb || (window.supabase && window.UE_CONFIG
-    ? window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL, window.UE_CONFIG.SUPABASE_ANON)
-    : null);
-  if (!SB) {
+  function showError(msg){
     document.getElementById('loading-state').style.display='none';
-    document.getElementById('error-state').style.display='block';
-    document.getElementById('error-state').querySelector('p').textContent='Connection error — please refresh the page.';
-    return;
+    const el=document.getElementById('error-state');
+    el.style.display='block';
+    const p=el.querySelector('p');
+    if(p) p.textContent=msg||'Something went wrong. Please refresh the page.';
   }
-  const params=new URLSearchParams(window.location.search);
-  const token=params.get('token');
-  let profile=null,userId=null;
-  if(token){
-    const{data}=await SB.from('profiles').select('*').eq('report_share_token',token).single();
-    if(!data){document.getElementById('loading-state').style.display='none';document.getElementById('error-state').style.display='block';return;}
-    profile=data;userId=data.id;
-    document.querySelector('.no-print').innerHTML='<div style="text-align:center;width:100%"><a href="index.html" class="btn btn-outline">\u2190 UE School</a></div>';
-  } else {
-    const{data:{session}}=await SB.auth.getSession();
-    if(!session){window.location.href='login.html?next=report.html';return;}
-    userId=session.user.id;
-    const{data}=await SB.from('profiles').select('*').eq('id',userId).single();
-    if(!data){document.getElementById('loading-state').style.display='none';document.getElementById('error-state').style.display='block';return;}
-    profile=data;
+  try{
+    // Resolve SB lazily — guarantees it's available even if CDN scripts loaded slowly
+    const SB = window.sb || (window.supabase && window.UE_CONFIG
+      ? window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL, window.UE_CONFIG.SUPABASE_ANON)
+      : null);
+    if (!SB){ showError('Connection error — please refresh the page.'); return; }
+
+    const params=new URLSearchParams(window.location.search);
+    const token=params.get('token');
+    let profile=null,userId=null;
+
+    if(token){
+      const{data,error}=await SB.from('profiles').select('*').eq('report_share_token',token).single();
+      if(error||!data){ showError('Report not found or link has expired.'); return; }
+      profile=data; userId=data.id;
+      document.querySelector('.no-print').innerHTML='<div style="text-align:center;width:100%"><a href="index.html" class="btn btn-outline">\u2190 UE School</a></div>';
+    } else {
+      const{data:{session},error:sErr}=await SB.auth.getSession();
+      if(sErr||!session){ window.location.href='login.html?next=report.html'; return; }
+      userId=session.user.id;
+      const{data,error}=await SB.from('profiles').select('*').eq('id',userId).single();
+      if(error||!data){ showError('Could not load your profile. Please try again.'); return; }
+      profile=data;
+    }
+
+    const{data:masteryRows}=await SB.from('topic_mastery').select('*').eq('user_id',userId).order('mastery_level',{ascending:true});
+    const{data:sessions}=await SB.from('session_scores').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(10);
+    window._ueProfile = profile; // expose for PDF gate
+    renderReport(profile, masteryRows||[], sessions||[]);
+
+  } catch(err){
+    console.error('[report] Fatal error:', err);
+    showError('Unexpected error loading report. Please refresh the page.');
   }
-  const{data:masteryRows}=await SB.from('topic_mastery').select('*').eq('user_id',userId).order('mastery_level',{ascending:true});
-  const{data:sessions}=await SB.from('session_scores').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(10);
-  window._ueProfile = profile; // expose for PDF gate
-  renderReport(profile,masteryRows||[],sessions||[]);
 })();
 
 function toast(msg,dur=2800){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
