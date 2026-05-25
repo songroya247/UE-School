@@ -139,7 +139,7 @@ select, input, textarea { font-family: inherit; }
   display: flex; align-items: center;
 }
 .ue-nav .container { display: flex; align-items: center; justify-content: space-between; height: 100%; }
-.nav-logo { font-family: var(--font-head); font-size: 1.6rem; color: var(--accent); letter-spacing: .06em; font-weight: 400; text-transform: uppercase; }
+.nav-logo { font-family: var(--font-body); font-size: 1.4rem; color: var(--accent); letter-spacing: -.03em; font-weight: 800; text-transform: none; }
 .nav-links { display: flex; gap: 28px; }
 .nav-links a { font-size: .9rem; font-weight: 600; color: var(--muted); transition: color .15s; }
 .nav-links a:hover, .nav-links a.active { color: var(--accent); }
@@ -363,7 +363,7 @@ select, input, textarea { font-family: inherit; }
 /* ── HERO ── */
 .hero-section   { padding: 64px 0 48px; }
 .hero-grid      { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
-.hero-headline  { font-family: var(--font-head); font-size: 3rem; line-height: 1.05; letter-spacing: .04em; font-weight: 400; text-transform: uppercase; margin-bottom: 20px; }
+.hero-headline  { font-family: var(--font-body); font-size: 2.8rem; line-height: 1.08; letter-spacing: -.03em; font-weight: 800; text-transform: none; margin-bottom: 20px; }
 .hero-sub       { font-size: 1.1rem; color: var(--muted); max-width: 440px; margin-bottom: 32px; line-height: 1.6; }
 .hero-ctas      { display: flex; flex-wrap: wrap; gap: 14px; }
 .hero-cbt-card  { background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 28px; }
@@ -419,7 +419,7 @@ select, input, textarea { font-family: inherit; }
 /* ── FOOTER ── */
 .site-footer { background: #0d1117; color: rgba(255,255,255,.75); padding: 56px 0 32px; margin-top: 80px; }
 .footer-grid    { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
-.footer-logo    { font-family: var(--font-head); font-size: 1.6rem; color: var(--accent); letter-spacing: .07em; margin-bottom: 16px; }
+.footer-logo    { font-family: var(--font-body); font-size: 1.4rem; color: var(--accent); letter-spacing: -.03em; font-weight: 800; margin-bottom: 16px; }
 .footer-tagline { font-size: .88rem; color: rgba(255,255,255,.45); line-height: 1.6; max-width: 320px; }
 .footer-heading { font-weight: 700; color: #fff; margin-bottom: 16px; font-size: .92rem; text-transform: uppercase; letter-spacing: .07em; }
 .footer-links   { list-style: none; }
