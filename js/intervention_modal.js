@@ -299,9 +299,9 @@
           <line x1="110" y1="100" x2="210" y2="180" stroke="#3b82f6" stroke-width="1.4" opacity=".5"/>
           <line x1="110" y1="100" x2="10"  y2="180" stroke="#3b82f6" stroke-width="1.4" opacity=".5"/>
           <line x1="10"  y1="180" x2="210" y2="180" stroke="#3b82f6" stroke-width="1.4" opacity=".5"/>
-          <text x="110" y="70"  text-anchor="middle" font-family="Syne,sans-serif" font-size="34" font-weight="800" fill="#1d4ed8">${top}</text>
-          <text x="55"  y="155" text-anchor="middle" font-family="Syne,sans-serif" font-size="28" font-weight="700" fill="#0f1c3f">${left}</text>
-          <text x="165" y="155" text-anchor="middle" font-family="Syne,sans-serif" font-size="28" font-weight="700" fill="#0f1c3f">${right}</text>
+          <text x="110" y="70"  text-anchor="middle" font-family="DM Sans,Segoe UI,sans-serif" font-size="34" font-weight="800" fill="#1d4ed8">${top}</text>
+          <text x="55"  y="155" text-anchor="middle" font-family="DM Sans,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#0f1c3f">${left}</text>
+          <text x="165" y="155" text-anchor="middle" font-family="DM Sans,Segoe UI,sans-serif" font-size="28" font-weight="700" fill="#0f1c3f">${right}</text>
         </svg>
       </div>
       <div class="pu-card"><div class="pu-formula">${top} = ${left} × ${right}      ${left} = ${top} ÷ ${right}      ${right} = ${top} ÷ ${left}</div>
