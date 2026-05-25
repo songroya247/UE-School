@@ -100,7 +100,7 @@ const DASHBOARD = (function () {
       (window.UE_USER && window.UE_USER.email
         ? window.UE_USER.email.split('@')[0]
         : 'Student');
-    const firstName  = (profile.full_name || fallbackName).split(' ')[0].replace(/[,;.!]+$/, '');
+    const firstName  = (profile.full_name || fallbackName).split(' ')[0];
     const examDays   = daysUntil(profile.exam_date);
     const streak     = calcStreak(profile.usage_logs);
 
@@ -690,10 +690,10 @@ const DASHBOARD = (function () {
 
     // ── Fetch session history for the readiness chart ──
     const recentSessions = await loadRecentSessions(userId);
-    // Normalise to { score_pct, created_at, subject } for buildChart
+    // Normalise and expose for the chart — only set after data is ready
     window._ueExamHistory = recentSessions
       .slice()
-      .reverse() // chart needs ascending order
+      .reverse()
       .map(r => ({
         score_pct:  +(( r.accuracy || (r.score / (r.total_questions || 1)) ) * 100).toFixed(1),
         created_at: r.created_at,
