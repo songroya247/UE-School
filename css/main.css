@@ -1,9 +1,39 @@
-/* ── FONT IMPORT ────────────────────────────────────────────────────
-   IMPORTANT: Remove this @import and use <link> tags in HTML <head>
-   instead (see font-links.snippet.html). This fallback import is kept
-   only for legacy safety but the <link> tags load much faster.
-   ─────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── METRIC-MATCHED FALLBACK FONTS ────────────────────────────────
+   These @font-face rules create adjusted versions of system fonts
+   whose metrics (size, ascent, descent, line-gap) are tuned to match
+   Bebas Neue and DM Sans as closely as possible.
+   Result: zero visible layout shift when the real font swaps in.
+   Works in Chrome 90+, Edge 90+, Firefox 89+, Safari 17+.
+─────────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Bebas Neue Fallback';
+  src: local('Arial Black'), local('Arial Bold'), local('Arial');
+  size-adjust: 73%;
+  ascent-override: 130%;
+  descent-override: 35%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Segoe UI'), local('Helvetica Neue'), local('Arial');
+  size-adjust: 100%;
+  ascent-override: 95%;
+  descent-override: 25%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'DM Mono Fallback';
+  src: local('Consolas'), local('Courier New'), local('monospace');
+  size-adjust: 95%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
 
 :root {
   --accent: #1a56ff;
@@ -28,19 +58,19 @@
      fonts BEFORE the generic fallback. This guarantees emoji characters
      resolve correctly regardless of which CSS rule sets font-family,
      because the emoji fonts are always in the declared stack — not
-     just inherited from body. Without this, Syne and DM Mono
+     just inherited from body. Without this, Bebas Neue and DM Mono
      take precedence and the browser finds no glyph → blank box.
 
      Stack order:
-       1. Named typeface (Syne / Plus Jakarta Sans / DM Mono)
+       1. Named typeface (Bebas Neue / DM Sans / DM Mono)
        2. "Apple Color Emoji"    — macOS / iOS
        3. "Segoe UI Emoji"       — Windows 10/11
        4. "Noto Color Emoji"     — Android / Linux
        5. Generic fallback
   ─────────────────────────────────────────────────────────────────── */
-  --font-head: 'Syne', 'Segoe UI', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-  --font-body: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-  --font-mono: 'DM Mono', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace;
+  --font-head: 'Bebas Neue', 'Bebas Neue Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-body: 'DM Sans', 'DM Sans Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-mono: 'DM Mono', 'DM Mono Fallback', "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace;
 }
 
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -60,7 +90,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1,h2,h3,h4,h5 { font-family: var(--font-head); line-height: 1.15; letter-spacing: -.01em; font-weight: 700; }
+h1,h2 { font-family: var(--font-head); line-height: 1.1; letter-spacing: .04em; font-weight: 400; text-transform: uppercase; }
+h3,h4,h5 { font-family: var(--font-body); line-height: 1.25; letter-spacing: -.01em; font-weight: 700; }
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; font-family: inherit; border: none; background: none; }
 img { max-width: 100%; display: block; }
@@ -108,7 +139,7 @@ select, input, textarea { font-family: inherit; }
   display: flex; align-items: center;
 }
 .ue-nav .container { display: flex; align-items: center; justify-content: space-between; height: 100%; }
-.nav-logo { font-family: var(--font-head); font-size: 1.5rem; color: var(--accent); letter-spacing: -.01em; font-weight: 800; }
+.nav-logo { font-family: var(--font-head); font-size: 1.6rem; color: var(--accent); letter-spacing: .06em; font-weight: 400; text-transform: uppercase; }
 .nav-links { display: flex; gap: 28px; }
 .nav-links a { font-size: .9rem; font-weight: 600; color: var(--muted); transition: color .15s; }
 .nav-links a:hover, .nav-links a.active { color: var(--accent); }
@@ -276,7 +307,7 @@ select, input, textarea { font-family: inherit; }
 }
 .subject-card:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); }
 .subject-icon { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; }
-.subject-name { font-family: var(--font-head); font-size: 1.3rem; }
+.subject-name { font-family: var(--font-body); font-size: 1.15rem; font-weight: 700; }
 
 /* ── CLASSROOM ── */
 .classroom-layout  { display: flex; height: calc(100vh - 56px); overflow: hidden; }
@@ -323,7 +354,7 @@ select, input, textarea { font-family: inherit; }
 .dash-subj-card { flex: 0 0 300px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; padding: 24px; }
 .dash-subj-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
 .dash-subj-icon { font-size: 1.8rem; }
-.dash-subj-name { font-family: var(--font-head); font-size: 1.7rem; }
+.dash-subj-name { font-family: var(--font-body); font-size: 1.3rem; font-weight: 700; }
 
 /* ── SMARTPATH CARDS ── */
 .smartpath-card { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 14px; padding: 22px; }
@@ -332,7 +363,7 @@ select, input, textarea { font-family: inherit; }
 /* ── HERO ── */
 .hero-section   { padding: 64px 0 48px; }
 .hero-grid      { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
-.hero-headline  { font-family: var(--font-head); font-size: 3.2rem; line-height: 1.05; letter-spacing: -.02em; font-weight: 800; margin-bottom: 20px; }
+.hero-headline  { font-family: var(--font-head); font-size: 3rem; line-height: 1.05; letter-spacing: .04em; font-weight: 400; text-transform: uppercase; margin-bottom: 20px; }
 .hero-sub       { font-size: 1.1rem; color: var(--muted); max-width: 440px; margin-bottom: 32px; line-height: 1.6; }
 .hero-ctas      { display: flex; flex-wrap: wrap; gap: 14px; }
 .hero-cbt-card  { background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 28px; }
@@ -348,7 +379,7 @@ select, input, textarea { font-family: inherit; }
 .stats-grid  { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; text-align: center; }
 .stat-item   { padding: 8px 0; border-right: 1px solid rgba(255,255,255,.2); }
 .stat-item:last-child { border-right: none; }
-.stat-value  { font-family: var(--font-head); font-size: 2rem; letter-spacing: .04em; }
+.stat-value  { font-family: var(--font-head); font-size: 2rem; letter-spacing: .06em; font-weight: 400; }
 .stat-label  { font-size: .8rem; font-weight: 600; opacity: .8; margin-top: 2px; }
 
 /* ── PRICING ────────────────────────────────────────────────────────
@@ -382,7 +413,7 @@ select, input, textarea { font-family: inherit; }
 
 /* ── SECTION HEADERS ── */
 .section-header { margin-bottom: 32px; }
-.section-title  { font-family: var(--font-head); font-size: 2.4rem; margin-bottom: 8px; }
+.section-title  { font-family: var(--font-body); font-size: 2rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: 8px; }
 .section-sub    { color: var(--muted); font-size: .95rem; }
 
 /* ── FOOTER ── */
@@ -441,7 +472,7 @@ select, input, textarea { font-family: inherit; }
   .hero-grid, .footer-grid, .pricing-grid, .exam-cards, .classroom-band-inner { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
   .stat-item:nth-child(3) { border-right: none; }
-  .hero-headline { font-size: 2.8rem; }
+  .hero-headline { font-size: 2.4rem; }
   /* nav-links are hidden at 768px with hamburger — not at 900px */
   .nav-links { gap: 12px; }
   .classroom-sidebar { display: none; }
@@ -462,7 +493,7 @@ select, input, textarea { font-family: inherit; }
 @media (max-width: 600px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-item:nth-child(2) { border-right: none; }
-  .hero-headline { font-size: 2.2rem; }
+  .hero-headline { font-size: 1.7rem; }
   .container { padding: 0 16px; }
   .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
 }
