@@ -143,7 +143,7 @@ const GRADING = (function () {
       p_question_ids:    questionIds || [],
     };
 
-    const { data, error } = await window.sb.rpc('record_session_score', payload);
+    const { data, error } = await window.sb.rpc('save_cbt_session', payload);
 
     if (error) {
       console.error('[GRADING] RPC error:', error.message, error.details, error.hint);
