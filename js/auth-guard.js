@@ -297,7 +297,7 @@ const AUTH_GUARD = (function () {
           : '');
 
     if (avatarEl) avatarEl.innerHTML = initials + proBadge;
-    if (nameEl)   nameEl.textContent = (profile.full_name || '').split(' ').slice(0, 2).join(' ');
+    if (nameEl)   nameEl.textContent = (profile.full_name || '').split(' ').slice(0, 2).join(' ').replace(/[,;.!]+$/, '');
     if (xpEl)     xpEl.textContent   = `${profile.total_xp ?? 0} XP`;
 
     if (!avatarEl && !nameEl) {
@@ -307,7 +307,7 @@ const AUTH_GUARD = (function () {
         <div class="nav-user-pill">
           <div class="nav-avatar" style="position:relative">${initials}${proBadge}</div>
           <span style="font-weight:700;font-size:.9rem">
-            ${(profile.full_name || '').split(' ')[0]}
+            ${(profile.full_name || '').split(' ')[0].replace(/[,;.!]+$/, '')}
           </span>
         </div>
         <button class="btn btn-outline btn-sm" onclick="AUTH_GUARD.logout()">Logout</button>
