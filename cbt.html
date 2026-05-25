@@ -34,9 +34,7 @@
 <script src="js/head-gatekeeper.js?v=3"></script>
 <!-- END SECURITY BLOCK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -514,7 +512,7 @@ function getModeConfig(mode){
 
 async function loadGradeLevel(userId,subject){
   const{data}=await window.sb.from('topic_mastery').select('grade_level').eq('user_id',userId).ilike('topic_id',subject+'.%').order('last_studied',{ascending:false}).limit(1);
-  if(data&&data.length>0) currentGradeLevel=data[0].grade_level;
+  currentGradeLevel=(data&&data.length>0&&data[0].grade_level)?data[0].grade_level:3;
   updateSessionBadges();
 }
 
