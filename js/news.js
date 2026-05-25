@@ -126,7 +126,9 @@
       +   '.ue-news-card{min-height:160px}'
       +   '.ue-news-ticker{font-size:.78rem;padding:7px 10px;gap:8px}'
       +   '.ue-news-ticker-label{font-size:.65rem}'
-      + '}';
+      + '}'
+      + '.ue-news-strip{scroll-behavior:smooth;}'
+      + '.ue-news-strip.is-scrolling{scroll-snap-type:none}';
     document.head.appendChild(s);
   }
 
@@ -138,6 +140,27 @@
       return;
     }
     mountEl.innerHTML = items.map(cardHTML).join('');
+    // Auto-scroll: advance one card width every 3.5s, pause on hover/touch
+    if (mountEl._newsTimer) clearInterval(mountEl._newsTimer);
+    var cardW = function() {
+      var c = mountEl.querySelector('.ue-news-card');
+      return c ? c.offsetWidth + 14 : 294;
+    };
+    var paused = false;
+    mountEl.addEventListener('mouseenter', function(){ paused = true; }, {passive:true});
+    mountEl.addEventListener('mouseleave', function(){ paused = false; }, {passive:true});
+    mountEl.addEventListener('touchstart', function(){ paused = true; }, {passive:true});
+    mountEl.addEventListener('touchend', function(){ setTimeout(function(){ paused = false; }, 2000); }, {passive:true});
+    mountEl._newsTimer = setInterval(function() {
+      if (paused) return;
+      var maxScroll = mountEl.scrollWidth - mountEl.clientWidth;
+      if (maxScroll <= 0) return;
+      var next = mountEl.scrollLeft + cardW();
+      if (next >= maxScroll - 10) { next = 0; } // loop back
+      mountEl.classList.add('is-scrolling');
+      mountEl.scrollTo({ left: next, behavior: 'smooth' });
+      setTimeout(function(){ mountEl.classList.remove('is-scrolling'); }, 600);
+    }, 3500);
   }
 
   // Render a slim, single-line marquee (used at the top of feature
