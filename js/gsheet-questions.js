@@ -41,10 +41,11 @@ window.GSHEET_QUESTIONS = (function () {
   const FALLBACK_URL   = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
   const SUBJECT_URLS   = cfg.QUESTION_SUBJECT_URLS || {};
   const CACHE_MS       = (cfg.GS_QUESTIONS_CACHE_MIN || 30) * 60 * 1000;
+  const CACHE_VERSION  = 'v4'; // bump this whenever normaliseImage logic changes
 
-  // Per-URL cache so subject sheets are cached independently
-  const _caches   = {};   // { [url]: { rows, at } }
-  const _inflight = {};   // { [url]: Promise }
+  // Per-URL cache keyed by version so stale entries are auto-discarded
+  const _caches   = {};
+  const _inflight = {};
 
   function isEnabled() {
     return !!FALLBACK_URL || Object.keys(SUBJECT_URLS).length > 0;
@@ -188,11 +189,12 @@ window.GSHEET_QUESTIONS = (function () {
 
   async function _fetchUrl(url, force = false) {
     if (!url) return [];
+    const cacheKey = `${CACHE_VERSION}:${url}`;
     const now = Date.now();
-    if (!force && _caches[url] && (now - _caches[url].at) < CACHE_MS) return _caches[url].rows;
-    if (_inflight[url]) return _inflight[url];
+    if (!force && _caches[cacheKey] && (now - _caches[cacheKey].at) < CACHE_MS) return _caches[cacheKey].rows;
+    if (_inflight[cacheKey]) return _inflight[cacheKey];
 
-    _inflight[url] = (async () => {
+    _inflight[cacheKey] = (async () => {
       try {
         const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -205,18 +207,18 @@ window.GSHEET_QUESTIONS = (function () {
           const q = rowToQuestion(rows[i], idx, i);
           if (q) out.push(q);
         }
-        _caches[url] = { rows: out, at: now };
+        _caches[cacheKey] = { rows: out, at: now };
         console.log(`[GSHEET_QUESTIONS] Loaded ${out.length} questions from sheet.`);
         return out;
       } catch (e) {
         console.warn('[GSHEET_QUESTIONS] fetch failed:', url, e.message);
-        return _caches[url] ? _caches[url].rows : [];
+        return _caches[cacheKey] ? _caches[cacheKey].rows : [];
       } finally {
-        delete _inflight[url];
+        delete _inflight[cacheKey];
       }
     })();
 
-    return _inflight[url];
+    return _inflight[cacheKey];
   }
 
   // fetchAll: loads the correct sheet for a subject, or the fallback sheet
@@ -239,14 +241,15 @@ window.GSHEET_QUESTIONS = (function () {
       bank = bank.filter(q => !q.university || String(q.university).toLowerCase() === u);
     }
 
-    // Grade level: serve questions AT or HARDER than the student's level.
-    // grade 1 = Advanced (hardest), grade 3 = Foundation (easiest).
-    // A Foundation (grade 3) student sees ALL questions (1, 2, 3).
-    // An Intermediate (grade 2) student sees grades 1 and 2.
-    // An Advanced (grade 1) student sees grade 1 only.
-    // So: serve q where q.grade_level <= gradeLevel (student's level).
+    // Grade level filter:
+    // Students start at grade 3 (Foundation) and progress toward grade 1 (Advanced)
+    // as mastery improves. Serve questions AT or BELOW the student's current level.
+    // grade 3 student → sees grades 1, 2, 3 (all questions)
+    // grade 2 student → sees grades 1, 2
+    // grade 1 student → sees grade 1 only (hardest)
+    // Rule: q.grade_level <= gradeLevel
     if (gradeLevel) {
-      bank = bank.filter(q => q.grade_level <= gradeLevel);
+      bank = bank.filter(q => (q.grade_level || 3) <= gradeLevel);
     }
 
     // Shuffle and cap
@@ -273,7 +276,7 @@ window.GSHEET_QUESTIONS = (function () {
   function clearCache(subject) {
     if (subject) {
       const url = _urlFor(subject);
-      if (url) delete _caches[url];
+      if (url) delete _caches[`${CACHE_VERSION}:${url}`];
     } else {
       Object.keys(_caches).forEach(k => delete _caches[k]);
     }
