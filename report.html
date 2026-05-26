@@ -59,11 +59,7 @@
   }
 })();
 </script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/main.css">
 <style>
 body{background:var(--bg);padding:32px 0}
 .report-wrap{max-width:820px;margin:0 auto;padding:0 24px}
@@ -204,10 +200,11 @@ thead tr{background:var(--bg)}
 <script src="js/config.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/app.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/smartpath.js"></script>
 <script>
-// All credentials come from UE_CONFIG (loaded by config.js above).
-// window.sb is set by supabase.js shim — resolved inside async IIFE below.
+// window.sb is set by supabase.js — read at call time, not parse time
+function getSB(){return window.sb;}
 const SUBJ_LABELS={mathematics:'Mathematics',english:'English Language',physics:'Physics',chemistry:'Chemistry',biology:'Biology',economics:'Economics',government:'Government',literature:'Literature',geography:'Geography',commerce:'Commerce',accounts:'Accounts',crk:'CRK'};
 function setEl(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function fmtDate(ts){if(!ts)return'\u2014';return new Date(ts).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'});}
@@ -245,7 +242,7 @@ function renderReport(profile,masteryRows,sessions){
   setEl('report-token','RPT-'+(profile.report_share_token||'').toString().toUpperCase().slice(0,8));
 
   const rows=(masteryRows||[]).filter(r=>r.mastery_level!==null);
-  if(hasJAMB){
+  if(hasJAMB && window.SMARTPATH){
     const pred=SMARTPATH.predictJAMBScore(profile,rows);
     if(pred){setEl('pred-jamb',`${pred.low}\u2013${pred.high} / 400`);setEl('pred-jamb-sub',`Based on ${rows.length} topic${rows.length!==1?'s':''} practiced`);}
   }
@@ -266,26 +263,22 @@ function renderReport(profile,masteryRows,sessions){
       const parts=row.topic_id.split('.');const subj=parts[0],topic=parts.slice(1).join(' ');
       const pct=row.mastery_level!==null?Math.round(row.mastery_level*100):null;
       const bar=pct!==null?`<div style="display:flex;align-items:center;gap:8px"><div class="progress-track"><div class="progress-fill ${pColor(pct)}" style="width:${pct}%"></div></div><span style="font-family:var(--font-mono);font-size:.78rem">${pct}%</span></div>`:'<span class="status-nil">NIL</span>';
-      return`<tr><td>${topic||row.topic_id}</td><td>${SUBJ_LABELS[subj]||subj}</td><td>${bar}</td><td>${statusBadge(SMARTPATH.classifyTopic(row))}</td></tr>`;
+      const status=window.SMARTPATH?statusBadge(SMARTPATH.classifyTopic(row)):'—';
+      return`<tr><td>${topic||row.topic_id}</td><td>${SUBJ_LABELS[subj]||subj}</td><td>${bar}</td><td>${status}</td></tr>`;
     }).join('');
   }
 
   if(sessions&&sessions.length>0){
-    document.getElementById('sessions-table-body').innerHTML=sessions.map(s=>`<tr><td>${fmtDate(s.created_at)}</td><td>${s.exam_type}</td><td style="font-weight:700">${s.score}/${s.total_questions}</td><td>${Math.round(s.accuracy*100)}%</td><td>${s.avg_time_per_q?s.avg_time_per_q.toFixed(1)+'s':'\u2014'}</td></tr>`).join('');
+    document.getElementById('sessions-table-body').innerHTML=sessions.map(s=>`<tr><td>${fmtDate(s.created_at)}</td><td>${s.exam_type}</td><td style="font-weight:700">${s.score}/${s.total_questions}</td><td>${Math.round((s.accuracy||0)*100)}%</td><td>${s.avg_time_per_q?s.avg_time_per_q.toFixed(1)+'s':'\u2014'}</td></tr>`).join('');
   }
 
   window._shareToken=profile.report_share_token;
   document.getElementById('loading-state').style.display='none';
   document.getElementById('report-content').style.display='block';
+  document.body.style.visibility='visible';
 }
 
 async function downloadReportPDF(){
-  // Premium gate — free users cannot export PDF
-  const tier = (window._ueProfile && window._ueProfile.subscription_tier) || 'free';
-  if (tier === 'free') {
-    toast('PDF export is available on Standard and Premium plans. Upgrade to unlock.');
-    return;
-  }
   const btn=document.getElementById('download-pdf-btn');
   const node=document.querySelector('.report-card');
   if(!node){toast('Nothing to export yet — wait for the report to load.');return;}
@@ -341,44 +334,41 @@ function copyShareLink(){
 (async()=>{
   function showError(msg){
     document.getElementById('loading-state').style.display='none';
-    const el=document.getElementById('error-state');
-    el.style.display='block';
-    const p=el.querySelector('p');
-    if(p) p.textContent=msg||'Something went wrong. Please refresh the page.';
+    const e=document.getElementById('error-state');
+    if(msg&&e)e.querySelector('p').textContent=msg;
+    if(e)e.style.display='block';
+    document.body.style.visibility='visible';
   }
   try{
-    // Resolve SB lazily — guarantees it's available even if CDN scripts loaded slowly
-    const SB = window.sb || (window.supabase && window.UE_CONFIG
-      ? window.supabase.createClient(window.UE_CONFIG.SUPABASE_URL, window.UE_CONFIG.SUPABASE_ANON)
-      : null);
-    if (!SB){ showError('Connection error — please refresh the page.'); return; }
-
+    const SB=getSB();
+    if(!SB){showError('Could not connect to the server. Please refresh.');return;}
     const params=new URLSearchParams(window.location.search);
     const token=params.get('token');
     let profile=null,userId=null;
-
     if(token){
       const{data,error}=await SB.from('profiles').select('*').eq('report_share_token',token).single();
-      if(error||!data){ showError('Report not found or link has expired.'); return; }
-      profile=data; userId=data.id;
-      document.querySelector('.no-print').innerHTML='<div style="text-align:center;width:100%"><a href="index.html" class="btn btn-outline">\u2190 UE School</a></div>';
+      if(error||!data){showError('This report link may have expired or is invalid.');return;}
+      profile=data;userId=data.id;
+      const nav=document.querySelector('.no-print');
+      if(nav)nav.innerHTML='<div style="text-align:center;width:100%"><a href="index.html" class="btn btn-outline">\u2190 UE School</a></div>';
     } else {
-      const{data:{session},error:sErr}=await SB.auth.getSession();
-      if(sErr||!session){ window.location.href='login.html?next=report.html'; return; }
+      const{data:{session},error:sessErr}=await SB.auth.getSession();
+      if(sessErr||!session){window.location.href='login.html?next=report.html';return;}
       userId=session.user.id;
       const{data,error}=await SB.from('profiles').select('*').eq('id',userId).single();
-      if(error||!data){ showError('Could not load your profile. Please try again.'); return; }
+      if(error||!data){showError('Could not load your profile. Please try again.');return;}
       profile=data;
     }
-
-    const{data:masteryRows}=await SB.from('topic_mastery').select('*').eq('user_id',userId).order('mastery_level',{ascending:true});
-    const{data:sessions}=await SB.from('session_scores').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(10);
-    window._ueProfile = profile; // expose for PDF gate
-    renderReport(profile, masteryRows||[], sessions||[]);
-
-  } catch(err){
-    console.error('[report] Fatal error:', err);
-    showError('Unexpected error loading report. Please refresh the page.');
+    const[{data:masteryRows},{data:sessions}]=await Promise.all([
+      SB.from('topic_mastery').select('*').eq('user_id',userId).order('mastery_level',{ascending:true}),
+      SB.from('session_scores').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(10),
+    ]);
+    renderReport(profile,masteryRows||[],sessions||[]);
+  }catch(e){
+    console.error('[REPORT] Fatal error:',e);
+    document.getElementById('loading-state').style.display='none';
+    document.getElementById('error-state').style.display='block';
+    document.body.style.visibility='visible';
   }
 })();
 
