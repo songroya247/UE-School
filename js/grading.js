@@ -299,7 +299,7 @@ const GRADING = (function () {
     const userId   = window.UE_USER_ID; // auth-guard owns this — not caller-supplied
     const subject  = meta.subject;
     const topic    = meta.topic;
-    const examType = meta.examType || 'JAMB';
+    const examType = (meta.examType && meta.examType !== '') ? meta.examType : 'WAEC';
     const gradeLevel = meta.gradeLevel || 3;
 
     if (!userId || !questions.length) return null;
