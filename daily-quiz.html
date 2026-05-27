@@ -168,8 +168,11 @@ body { background: var(--bg); min-height: 100vh; }
 <div id="toast"></div>
 
 <script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js?v=3"></script>
 <script src="js/app.js"></script>
 <script src="js/gdrive-video.js"></script>
 <script src="js/gsheet-questions.js"></script>
@@ -459,6 +462,10 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; 
 
 // ── INIT ───────────────────────────────────────────────────────────
 (async () => {
+  // Auth guard — validate session and enforce login redirect
+  const authData = await AUTH_GUARD.init();
+  if (!authData) return; // redirect in progress
+
   // Update nav if user is logged in
   if (window.sb) {
     const { data: { session } } = await window.sb.auth.getSession();
