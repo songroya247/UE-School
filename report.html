@@ -69,9 +69,9 @@ body{background:var(--bg);padding:32px 0}
 .grade-B3{background:#e0e7ff;color:#3730a3}.grade-C4,.grade-C5,.grade-C6{background:#fef3c7;color:#b45309}
 .grade-D7{background:#fee2e2;color:#991b1b}.grade-F9{background:#fef2f2;color:#7f1d1d}
 .grade-nil{background:#f3f4f6;color:#6b7280}
-.report-card{background:#fff;border-radius:16px;padding:48px;box-shadow:0 4px 40px rgba(0,0,0,.08);border:1.5px solid var(--border)}
+.report-card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 40px rgba(0,0,0,.08);border:1.5px solid var(--border)}
 .stat-label{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
-.stat-value{font-weight:700;font-size:1.05rem}
+.stat-value{font-weight:700;font-size:1rem}
 .progress-track{height:8px;background:var(--border);border-radius:999px;overflow:hidden;width:80px;display:inline-block}
 .progress-fill{height:100%;border-radius:999px}
 .fill-green{background:var(--accent2)}.fill-orange{background:var(--warning)}.fill-blue{background:var(--accent)}.fill-grey{background:var(--border2)}
@@ -79,16 +79,35 @@ body{background:var(--bg);padding:32px 0}
 .status-warn{background:#fff7ed;color:#c2410c;font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
 .status-danger{background:#fee2e2;color:#991b1b;font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
 .status-nil{background:var(--border);color:var(--muted);font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
-table{width:100%;border-collapse:collapse;font-size:.88rem}
-th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);font-weight:700}
+
+/* ── TABLE — scrollable on mobile ── */
+.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:420px}
+th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);font-weight:700;white-space:nowrap}
 td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 thead tr{background:var(--bg)}
+
 .loading-wrap{text-align:center;padding:80px 24px;color:var(--muted)}
 .load-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.section-head{font-family:var(--font-head);font-size:1.4rem;margin-bottom:16px;color:var(--text)}
-@media(max-width:600px){.report-card{padding:24px 18px}.info-grid{grid-template-columns:1fr 1fr!important}.pred-grid{grid-template-columns:1fr!important}table{font-size:.78rem}th,td{padding:8px}.progress-track{width:50px}}
+.section-head{font-family:var(--font-head);font-size:1.2rem;font-weight:700;margin-bottom:14px;color:var(--text)}
+
+/* ── MOBILE ── */
+@media(max-width:640px){
+  body{padding:16px 0}
+  .report-wrap{padding:0 12px}
+  .report-card{padding:20px 16px;border-radius:12px}
+  .info-grid{grid-template-columns:1fr 1fr!important}
+  .pred-grid{grid-template-columns:1fr!important}
+  .section-head{font-size:1rem}
+  .no-print{flex-direction:column;gap:8px}
+  .no-print > div{flex-wrap:wrap;gap:6px}
+  .no-print .btn{font-size:.78rem;padding:8px 12px}
+  .progress-track{width:50px}
+  table{font-size:.76rem;min-width:360px}
+  th,td{padding:8px 10px}
+}
 </style>
 </head>
 <body style="visibility:hidden">
@@ -114,7 +133,7 @@ thead tr{background:var(--bg)}
 
   <div id="report-content" style="display:none">
 
-    <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <a href="dashboard.html" class="btn btn-outline">&larr; Back to Dashboard</a>
       <div style="display:flex;gap:10px;align-items:center">
         <button class="btn btn-outline" id="copy-share-btn" onclick="copyShareLink()" style="font-size:.82rem">🔗 Copy Share Link</button>
@@ -126,7 +145,7 @@ thead tr{background:var(--bg)}
     <div class="report-card">
 
       <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid var(--border);flex-wrap:wrap;gap:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap;gap:12px">
         <div>
           <div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent);letter-spacing:.06em;margin-bottom:4px">UE School</div>
           <div style="font-family:var(--font-head);font-size:2.2rem;margin-bottom:4px">Student Mastery Report</div>
@@ -139,7 +158,7 @@ thead tr{background:var(--bg)}
       </div>
 
       <!-- Student Info -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:36px" class="info-grid">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px" class="info-grid">
         <div><div class="stat-label">Student Name</div><div class="stat-value" id="info-name">&mdash;</div></div>
         <div><div class="stat-label">Exam Type</div><div class="stat-value" id="info-exams">&mdash;</div></div>
         <div><div class="stat-label">Exam Date</div><div class="stat-value" id="info-exam-date">&mdash;</div></div>
@@ -148,45 +167,49 @@ thead tr{background:var(--bg)}
         <div><div class="stat-label">Total XP</div><div class="stat-value" id="info-xp">&mdash;</div></div>
       </div>
 
-      <!-- Predictions (each column hidden if not relevant to user's exam mix) -->
-      <div style="background:var(--bg);border-radius:12px;padding:24px;margin-bottom:36px" id="predictions-block">
+      <!-- Predictions -->
+      <div style="background:var(--bg);border-radius:12px;padding:20px;margin-bottom:28px" id="predictions-block">
         <div class="section-head">Score Predictions</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px" class="pred-grid" id="predictions-grid">
-          <div id="pred-jamb-col">
-            <div style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:6px">Predicted JAMB Score</div>
-            <div style="font-family:var(--font-head);font-size:2rem;color:var(--accent)" id="pred-jamb">No data yet</div>
-            <div style="font-size:.82rem;color:var(--muted);margin-top:4px" id="pred-jamb-sub">Complete practice sessions to see your prediction</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="pred-grid" id="predictions-grid">
+          <div id="pred-jamb-col" style="background:#fff;border-radius:10px;padding:16px;border:1px solid var(--border)">
+            <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Predicted JAMB Score</div>
+            <div style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent);line-height:1.1" id="pred-jamb">No data yet</div>
+            <div style="font-size:.76rem;color:var(--muted);margin-top:5px" id="pred-jamb-sub">Complete practice sessions to see your prediction</div>
           </div>
-          <div id="pred-waec-col">
-            <div style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:8px">WAEC / NECO Grade Estimates</div>
-            <div id="grade-predictions"><div style="color:var(--muted);font-size:.88rem">No session data yet</div></div>
+          <div id="pred-waec-col" style="background:#fff;border-radius:10px;padding:16px;border:1px solid var(--border)">
+            <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">WAEC / NECO Estimates</div>
+            <div id="grade-predictions"><div style="color:var(--muted);font-size:.82rem">No session data yet</div></div>
           </div>
         </div>
       </div>
 
       <!-- Topic weakness table -->
-      <div style="margin-bottom:36px">
+      <div style="margin-bottom:28px">
         <div class="section-head">Topic-Level Analysis</div>
-        <table>
-          <thead><tr><th>Topic</th><th>Subject</th><th>Mastery</th><th>Status</th></tr></thead>
-          <tbody id="weakness-table-body">
-            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:32px">No topic data yet &mdash; complete CBT sessions to populate this.</td></tr>
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Topic</th><th>Subject</th><th>Mastery</th><th>Status</th></tr></thead>
+            <tbody id="weakness-table-body">
+              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:32px">No topic data yet &mdash; complete CBT sessions to populate this.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Recent sessions -->
-      <div style="margin-bottom:36px">
+      <div style="margin-bottom:28px">
         <div class="section-head">Recent Sessions</div>
-        <table>
-          <thead><tr><th>Date</th><th>Exam Type</th><th>Score</th><th>Accuracy</th><th>Avg Time/Q</th></tr></thead>
-          <tbody id="sessions-table-body">
-            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">No sessions recorded yet.</td></tr>
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date</th><th>Exam Type</th><th>Score</th><th>Accuracy</th><th>Avg Time/Q</th></tr></thead>
+            <tbody id="sessions-table-body">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">No sessions recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div style="font-size:.78rem;color:var(--muted);border-top:1px solid var(--border);padding-top:16px;text-align:center">
+      <div style="font-size:.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:16px;text-align:center">
         WAEC/NECO grade predictions are algorithmic estimates based on practice performance. &bull; UE School &copy; 2026
       </div>
     </div>
