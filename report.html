@@ -188,7 +188,7 @@ thead tr{background:var(--bg)}
         <div class="section-head">Topic-Level Analysis</div>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Topic</th><th>Subject</th><th>Mastery</th><th>Status</th></tr></thead>
+            <thead><tr><th>Topic</th><th>Subject</th><th style="min-width:100px">Mastery</th><th style="min-width:110px">Status</th></tr></thead>
             <tbody id="weakness-table-body">
               <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:32px">No topic data yet &mdash; complete CBT sessions to populate this.</td></tr>
             </tbody>
@@ -230,7 +230,7 @@ thead tr{background:var(--bg)}
 function getSB(){return window.sb;}
 const SUBJ_LABELS={mathematics:'Mathematics',english:'English Language',physics:'Physics',chemistry:'Chemistry',biology:'Biology',economics:'Economics',government:'Government',literature:'Literature',geography:'Geography',commerce:'Commerce',accounts:'Accounts',crk:'CRK'};
 function setEl(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-function fmtDate(ts){if(!ts)return'\u2014';return new Date(ts).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtDate(ts){if(!ts)return'\u2014';const d=new Date(ts);return d.getDate().toString().padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
 function masteryToGrade(m){if(m===null||m===undefined)return{label:'NIL',cls:'grade-nil'};const p=m*100;if(p>=75)return{label:'A1',cls:'grade-A1'};if(p>=65)return{label:'B2',cls:'grade-B2'};if(p>=60)return{label:'B3',cls:'grade-B3'};if(p>=55)return{label:'C4',cls:'grade-C4'};if(p>=50)return{label:'C5',cls:'grade-C5'};if(p>=45)return{label:'C6',cls:'grade-C6'};if(p>=40)return{label:'D7',cls:'grade-D7'};return{label:'F9',cls:'grade-F9'};}
 function pColor(p){if(!p)return'fill-grey';if(p>=70)return'fill-green';if(p>=40)return'fill-orange';return'fill-blue';}
 function statusBadge(c){const m={'On Track':'<span class="status-good">On Track</span>','Building Up':'<span class="status-warn">Building Up</span>','Needs Attention':'<span class="status-danger">Needs Attention</span>','Not Started':'<span class="status-nil">Not Started</span>'};return m[c]||'<span class="status-nil">\u2014</span>';}
@@ -241,7 +241,9 @@ function renderReport(profile,masteryRows,sessions){
   const hasJAMB = examTypes.length === 0 || examTypes.includes('JAMB') || examTypes.includes('Post-UTME');
   const hasGrade= examTypes.length === 0 || examTypes.includes('WAEC') || examTypes.includes('NECO');
 
-  setEl('info-name',profile.full_name||'\u2014');
+  const rawName = profile.full_name || '\u2014';
+  const fmtName = rawName === '\u2014' ? rawName : rawName.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').replace(/,\s*/g,', ');
+  setEl('info-name', fmtName);
   setEl('info-exams',examTypes.join(' / ')||'\u2014');
   setEl('info-exam-date',profile.exam_date?fmtDate(profile.exam_date+'-01'):'\u2014');
   // Target line: JAMB users see "/ 400", WAEC-only users see the grade letter
@@ -265,15 +267,19 @@ function renderReport(profile,masteryRows,sessions){
   setEl('report-generated-date','Generated: '+fmtDate(new Date().toISOString())+' · Shareable Report');
   setEl('report-token','RPT-'+(profile.report_share_token||'').toString().toUpperCase().slice(0,8));
 
-  const rows=(masteryRows||[]).filter(r=>r.mastery_level!==null);
-  if(hasJAMB && window.SMARTPATH){
+  const rows=(masteryRows||[]).filter(r=>r.mastery_level!==null&&r.mastery_level!==undefined);
+  if(window.SMARTPATH && rows.length > 0){
     const pred=SMARTPATH.predictJAMBScore(profile,rows);
     if(pred){setEl('pred-jamb',`${pred.low}\u2013${pred.high} / 400`);setEl('pred-jamb-sub',`Based on ${rows.length} topic${rows.length!==1?'s':''} practiced`);}
   }
 
   const subjMap={};
   for(const r of rows){const s=r.topic_id.split('.')[0];if(!subjMap[s])subjMap[s]=[];subjMap[s].push(r.mastery_level);}
-  const subjs=profile.exam_subjects||[];
+  // Derive exam_subjects from mastery data if profile field not set
+  const rawSubjs = profile.exam_subjects && profile.exam_subjects.length > 0
+    ? profile.exam_subjects
+    : [...new Set((masteryRows||[]).map(r=>r.topic_id.split('.')[0]))].filter(Boolean);
+  const subjs = rawSubjs;
   if(subjs.length>0&&rows.length>0){
     document.getElementById('grade-predictions').innerHTML=subjs.map(s=>{
       const arr=subjMap[s];const avg=arr?arr.reduce((a,b)=>a+b,0)/arr.length:null;const g=masteryToGrade(avg);
