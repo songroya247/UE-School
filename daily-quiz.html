@@ -132,6 +132,10 @@ body { background: var(--bg); min-height: 100vh; }
 .upsell-features { list-style: none; text-align: left; margin-bottom: 22px; display: flex; flex-direction: column; gap: 8px; }
 .upsell-features li { display: flex; align-items: center; gap: 10px; font-size: .88rem; }
 .upsell-check { color: #86efac; font-size: 1rem; flex-shrink: 0; }
+.q-image-wrap{display:none;margin:12px 0 8px;text-align:center}
+.q-image-wrap.show{display:block}
+.q-image-wrap img{max-width:100%;max-height:260px;border-radius:10px;border:1.5px solid rgba(37,99,235,.12);background:#f8faff;object-fit:contain;box-shadow:0 2px 12px rgba(26,86,255,.07)}
+.q-image-loading{display:flex;align-items:center;justify-content:center;height:100px;background:#f8faff;border-radius:10px;border:1.5px solid rgba(37,99,235,.12);color:#9ca3af;font-size:.85rem;gap:8px}
 </style>
 </head>
 <body>
@@ -295,6 +299,16 @@ function renderQuestion() {
         <div class="q-counter">Question ${currentQ + 1} of ${questions.length}</div>
       </div>
       <div class="q-subject-tag">${capitalize(q.subject)} \u2022 ${q.examType}</div>
+      ${q.image ? `
+      <div class="q-image-wrap show" id="q-image-wrap">
+        <div class="q-image-loading" id="q-image-loading">
+          <span>&#x23F3;</span> Loading image…
+        </div>
+        <img id="q-image" src="" alt="Question image" style="display:none"
+          onload="document.getElementById('q-image-loading').style.display='none';this.style.display='';"
+          onerror="document.getElementById('q-image-wrap').style.display='none';"
+        >
+      </div>` : ''}
       <div class="q-text">${q.text}</div>
       <div class="q-options" id="q-options">
         ${q.opts.map((opt, i) => `
@@ -312,6 +326,11 @@ function renderQuestion() {
       </div>
     </div>
   `;
+  // Set image src after DOM is written (avoids race condition)
+  if (q.image) {
+    const imgEl = document.getElementById('q-image');
+    if (imgEl) imgEl.src = q.image;
+  }
 }
 
 function selectAnswer(idx) {
