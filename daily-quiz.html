@@ -86,6 +86,13 @@ body { background: var(--bg); min-height: 100vh; }
 .q-nav { display: flex; justify-content: flex-end; margin-top: 18px; }
 .btn-next { padding: 11px 28px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-family: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; transition: all .15s; display: none; }
 .btn-next:hover { filter: brightness(1.08); transform: translateY(-1px); }
+/* ── Nav buttons ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 18px; border-radius: 9px; font-family: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; text-decoration: none; transition: all .15s; white-space: nowrap; }
+.btn-sm { padding: 6px 14px; font-size: .82rem; }
+.btn-outline { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+.btn-outline:hover { background: var(--accent); color: #fff; }
+.btn-primary { background: var(--accent); color: #fff; border: 1.5px solid var(--accent); }
+.btn-primary:hover { filter: brightness(1.1); }
 
 /* ── LOCKED OVERLAY ── */
 .quiz-locked {
@@ -485,13 +492,10 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; 
   const authData = await AUTH_GUARD.init();
   if (!authData) return; // redirect in progress
 
-  // Update nav if user is logged in
-  if (window.sb) {
-    const { data: { session } } = await window.sb.auth.getSession();
-    if (session) {
-      const loginBtn = document.getElementById('nav-login-btn');
-      if (loginBtn) { loginBtn.textContent = 'Dashboard'; loginBtn.href = 'dashboard.html'; }
-    }
+  // Update nav — authData already contains the session from AUTH_GUARD.init()
+  if (authData && authData.session) {
+    const loginBtn = document.getElementById('nav-login-btn');
+    if (loginBtn) { loginBtn.textContent = 'Dashboard'; loginBtn.href = 'dashboard.html'; }
   }
 
   // Update streak display
@@ -503,9 +507,14 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; 
     return;
   }
 
-  // Load 10 questions \u2014 mix of subjects from the question bank
-  const subjects = ['mathematics','english','physics','chemistry','biology','economics','government'];
-  const perSubj = Math.ceil(QUIZ_SIZE / subjects.length);
+  // Load 10 questions \u2014 only from subjects that have a sheet URL configured
+  const allSubjects = ['mathematics','english','physics','chemistry','biology',
+                       'economics','government','literature','commerce','accounting','geography'];
+  const configuredSubjects = allSubjects.filter(function(s) {
+    const urls = (window.UE_CONFIG && window.UE_CONFIG.QUESTION_SUBJECT_URLS) || {};
+    return urls[s] && urls[s].trim() !== '';
+  });
+  const subjects = configuredSubjects.length > 0 ? configuredSubjects : ['mathematics'];
   let pool = [];
   for (const s of subjects) {
     const qs = await QUESTION_BANK.getQuestions({ subject: s, count: 2 });
@@ -521,6 +530,16 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; 
   const seed  = today.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
   const seeded = [...pool].sort((a,b)=>((seed*a.id.length)%7)-((seed*b.id.length)%7));
   questions = seeded;
+
+  if (questions.length === 0) {
+    document.getElementById('quiz-wrap').innerHTML =
+      '<div style="text-align:center;padding:60px 20px;color:var(--muted)">' +
+      '<div style="font-size:2.5rem;margin-bottom:12px">&#x1F4CB;</div>' +
+      '<p style="font-weight:700;color:var(--text);margin-bottom:8px">No questions available yet</p>' +
+      '<p style="font-size:.9rem">The question bank is being set up. Check back soon!</p>' +
+      '</div>';
+    return;
+  }
 
   renderQuestion();
 })();
