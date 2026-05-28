@@ -192,6 +192,35 @@ body { background: var(--bg); min-height: 100vh; }
 <script>
 'use strict';
 
+// ── MATH FORMATTER ────────────────────────────────────────────────
+function formatMath(text) {
+  if (!text) return '';
+  var s = String(text);
+  s = s.replace(/\\pi/g, 'π');
+  s = s.replace(/\pi/g, 'π');
+  s = s.replace(/pi(?=\s*[=×·\*\/\(])/g, 'π');
+  s = s.replace(/\\theta/g, 'θ'); s = s.replace(/\theta/g, 'θ');
+  s = s.replace(/\\alpha/g, 'α'); s = s.replace(/\alpha/g, 'α');
+  s = s.replace(/\\beta/g, 'β');  s = s.replace(/\beta/g, 'β');
+  s = s.replace(/\\angle/g, '∠'); s = s.replace(/\angle/g, '∠');
+  s = s.replace(/\^\\circ/g, '°'); s = s.replace(/\^\circ/g, '°');
+  s = s.replace(/\^circ/g, '°');
+  s = s.replace(/\\circ/g, '°'); s = s.replace(/\circ/g, '°');
+  s = s.replace(/\|\|/g, '∥');
+  s = s.replace(/\\times/g, '×'); s = s.replace(/\times/g, '×');
+  s = s.replace(/\\leq/g, '≤'); s = s.replace(/\leq/g, '≤');
+  s = s.replace(/\\geq/g, '≥'); s = s.replace(/\geq/g, '≥');
+  s = s.replace(/([a-zA-Z0-9])\^([0-9])/g, function(_, base, exp) {
+    var m = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴',
+             '5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+    return base + (m[exp] || ('^'+exp));
+  });
+  s = s.replace(/(H)2(O)/g, 'H₂O');
+  s = s.replace(/(CO)2/g, 'CO₂');
+  s = s.replace(/(SO)2/g, 'SO₂');
+  return s;
+}
+
 // ── CONSTANTS ──────────────────────────────────────────────────────
 const QUIZ_SIZE      = 10;
 const REFRESH_HOURS  = 24;
@@ -316,12 +345,12 @@ function renderQuestion() {
           onerror="document.getElementById('q-image-wrap').style.display='none';"
         >
       </div>` : ''}
-      <div class="q-text">${q.text}</div>
+      <div class="q-text">${formatMath(q.text)}</div>
       <div class="q-options" id="q-options">
         ${q.opts.map((opt, i) => `
           <button class="q-option" data-idx="${i}" onclick="selectAnswer(${i})">
             <span class="opt-lbl">${String.fromCharCode(65+i)}</span>
-            <span class="opt-txt">${opt}</span>
+            <span class="opt-txt">${formatMath(opt)}</span>
           </button>
         `).join('')}
       </div>
@@ -357,7 +386,7 @@ function selectAnswer(idx) {
   // Show explanation
   if (q.explanation) {
     const eb = document.getElementById('explanation-box');
-    eb.innerHTML = '<strong>Explanation:</strong> ' + q.explanation;
+    eb.innerHTML = '<strong>Explanation:</strong> ' + formatMath(q.explanation);
     eb.classList.add('show');
   }
 
