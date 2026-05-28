@@ -3,412 +3,790 @@
 <head>
 <script>
 (function(){
-  var LOGIN = 'login.html';
-  var page  = window.location.pathname.split('/').pop() || '';
-  var h = window.location.hash || '', s = window.location.search || '';
-  if (h.indexOf('access_token=') !== -1 || h.indexOf('type=') !== -1 ||
-      /[?&](code|token_hash|token)=/.test(s)) return;
-  var hasSession = false;
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
-        var val = localStorage.getItem(k);
-        if (val && val.length > 10) { hasSession = true; break; }
-      }
-    }
-  } catch(e) {}
-  if (!hasSession) {
-    window.location.replace(LOGIN + '?next=' + encodeURIComponent(page));
-  }
-})();
-</script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mastery Report &mdash; UE School</title>
-
-<!-- ╔══════════════════════════════════════════════════════╗
-     ║  SECURITY BLOCK &mdash; must be first in <head>           ║
-     ║  NOTE: report.html allows public token-based access ║
-     ║  The gatekeeper skips redirect when ?token= present ║
-     ╚══════════════════════════════════════════════════════╝ -->
-<script>
-// Inline micro-gatekeeper for report.html:
-// If no ?token= param AND no localStorage session \u2192 redirect to login.
-// This runs synchronously before any CSS or body renders.
-(function(){
   var params = new URLSearchParams(window.location.search);
-  if (params.get('token')) return; // public share link \u2014 allow through
-  // Load config.js values inline (config.js may not be loaded yet)
-  var sessionFound = false;
+  if (params.get('token')) return;
+  var found = false;
   try {
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
       if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
         var raw = JSON.parse(localStorage.getItem(k) || '{}');
-        if (raw && raw.access_token && (raw.expires_at || 0) > Math.floor(Date.now()/1000)) {
-          sessionFound = true;
-        }
+        if (raw && raw.access_token && (raw.expires_at || 0) > Math.floor(Date.now()/1000)) { found = true; }
         break;
       }
     }
   } catch(e) {}
-  if (!sessionFound) {
-    window.location.replace('login.html?next=report.html');
-    throw new Error('[UE] No session');
-  }
+  if (!found) { window.location.replace('login.html?next=report.html'); throw new Error('[UE] No session'); }
 })();
 </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Mastery Report — UE School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/main.css">
 <style>
-body{background:var(--bg);padding:32px 0}
-.report-wrap{max-width:820px;margin:0 auto;padding:0 24px}
-@media print{.no-print{display:none!important}body{background:#fff;padding:0}.report-card{box-shadow:none!important;border:none!important}}
-.grade-pill{display:inline-block;padding:3px 12px;border-radius:6px;font-size:.78rem;font-weight:700}
+/* ── RESET & BASE ── */
+*{box-sizing:border-box}
+body{background:#f0f4f9;padding:28px 0;font-family:'DM Sans',system-ui,sans-serif;font-size:15px;color:#0f1c3f;visibility:hidden}
+.wrap{max-width:860px;margin:0 auto;padding:0 18px}
+
+/* ── ACTION BAR ── */
+.action-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:8px}
+.action-bar .btn{font-size:.8rem;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;text-decoration:none;border:1.5px solid;transition:all .15s}
+.btn-outline-sm{background:#fff;color:#374151;border-color:#d1d5db}
+.btn-outline-sm:hover{border-color:#6b7280}
+.btn-primary-sm{background:#1a56ff;color:#fff;border-color:#1a56ff}
+.btn-primary-sm:hover{background:#1344d4}
+
+/* ── CARD ── */
+.card{background:#fff;border-radius:16px;padding:28px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.06),0 4px 20px rgba(0,0,0,.04);border:1px solid #e5e9f2}
+.card-sm{padding:20px}
+
+/* ── REPORT HEADER ── */
+.rpt-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;padding-bottom:20px;margin-bottom:22px;border-bottom:2px solid #e5e9f2}
+.rpt-brand{font-size:.78rem;font-weight:800;color:#1a56ff;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.rpt-title{font-size:1.7rem;font-weight:800;color:#0f1c3f;letter-spacing:-.03em;line-height:1.15}
+.rpt-meta{font-size:.76rem;color:#6b7280;margin-top:5px}
+.rpt-token{background:#f8faff;border:1.5px solid #e0e8ff;border-radius:10px;padding:10px 16px;text-align:right}
+.rpt-token-label{font-size:.68rem;color:#9ca3af;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em}
+.rpt-token-val{font-family:'DM Mono',monospace;font-size:.82rem;color:#374151;font-weight:500}
+
+/* ── RISK BANNER ── */
+.risk-banner{border-radius:12px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:flex-start;gap:14px}
+.risk-amber{background:#fffbeb;border:1.5px solid #fde68a}
+.risk-green{background:#f0fdf4;border:1.5px solid #bbf7d0}
+.risk-icon{font-size:1.4rem;flex-shrink:0;margin-top:1px}
+.risk-title{font-weight:800;font-size:.92rem;margin-bottom:3px}
+.risk-amber .risk-title{color:#92400e}
+.risk-green .risk-title{color:#065f46}
+.risk-body{font-size:.8rem;line-height:1.5}
+.risk-amber .risk-body{color:#78350f}
+.risk-green .risk-body{color:#064e3b}
+
+/* ── INFO GRID ── */
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.info-cell .lbl{font-size:.68rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.info-cell .val{font-weight:700;font-size:.9rem;color:#0f1c3f;line-height:1.3}
+
+/* ── SECTION TITLE ── */
+.sec-title{font-size:1rem;font-weight:800;color:#0f1c3f;margin-bottom:14px;letter-spacing:-.01em}
+.sec-subtitle{font-size:.76rem;color:#6b7280;margin-top:-10px;margin-bottom:14px}
+
+/* ── SCORE CARDS ── */
+.score-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.score-card{background:#f8faff;border:1.5px solid #e0e8ff;border-radius:12px;padding:16px}
+.score-card-label{font-size:.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.score-card-value{font-size:1.6rem;font-weight:800;color:#1a56ff;letter-spacing:-.03em;line-height:1}
+.score-card-sub{font-size:.72rem;color:#6b7280;margin-top:5px;line-height:1.4}
+
+/* ── CONSISTENCY ── */
+.consistency-row{display:flex;gap:4px;margin:10px 0}
+.day-dot{width:22px;height:22px;border-radius:50%;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.day-active{background:#1a56ff;color:#fff}
+.day-idle{background:#e5e9f2;color:#9ca3af}
+.consistency-label{font-size:.72rem;color:#6b7280;margin-top:4px}
+
+/* ── STRENGTHS / WEAKNESSES ── */
+.sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.sw-card{border-radius:12px;padding:14px}
+.sw-strong{background:#f0fdf4;border:1.5px solid #bbf7d0}
+.sw-weak{background:#fff7ed;border:1.5px solid #fed7aa}
+.sw-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.sw-strong .sw-label{color:#065f46}
+.sw-weak .sw-label{color:#c2410c}
+.sw-item{font-size:.8rem;font-weight:600;padding:3px 0;color:#374151;display:flex;align-items:center;gap:6px}
+.sw-item::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sw-strong .sw-item::before{background:#22c55e}
+.sw-weak .sw-item::before{background:#f97316}
+
+/* ── NEXT TOPICS ── */
+.next-topics{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.next-topic-item{display:flex;align-items:center;gap:12px;background:#f8faff;border:1px solid #e0e8ff;border-radius:10px;padding:10px 14px}
+.next-topic-num{width:24px;height:24px;background:#1a56ff;color:#fff;border-radius:50%;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.next-topic-name{font-weight:700;font-size:.85rem;color:#0f1c3f}
+.next-topic-sub{font-size:.72rem;color:#6b7280}
+
+/* ── SUBJECT COVERAGE ── */
+.coverage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.cov-item{background:var(--bg,#f8faff);border:1px solid #e5e9f2;border-radius:10px;padding:10px 12px;text-align:center}
+.cov-subj{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:4px}
+.cov-bar-track{height:6px;background:#e5e9f2;border-radius:999px;overflow:hidden;margin-bottom:4px}
+.cov-bar-fill{height:100%;border-radius:999px;background:#1a56ff;transition:width .4s}
+.cov-pct{font-size:.68rem;color:#6b7280;font-family:'DM Mono',monospace}
+.cov-none{opacity:.5}
+
+/* ── PROGRESS TABLE ── */
+.progress-track{height:8px;background:#e5e9f2;border-radius:999px;overflow:hidden;width:72px;display:inline-block;vertical-align:middle}
+.progress-fill{height:100%;border-radius:999px}
+.fill-green{background:#22c55e}.fill-orange{background:#f97316}.fill-blue{background:#1a56ff}.fill-grey{background:#d1d5db}
+.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid #e5e9f2}
+table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:400px}
+th{text-align:left;padding:9px 12px;border-bottom:2px solid #e5e9f2;font-weight:700;white-space:nowrap;background:#f8faff;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#6b7280}
+td{padding:9px 12px;border-bottom:1px solid #f0f4f9;vertical-align:middle;color:#374151}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbff}
+
+/* ── STATUS PILLS ── */
+.pill{font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:999px;display:inline-block;white-space:nowrap}
+.pill-green{background:#dcfce7;color:#15803d}
+.pill-amber{background:#fef3c7;color:#b45309}
+.pill-red{background:#fee2e2;color:#b91c1c}
+.pill-grey{background:#f3f4f6;color:#6b7280}
+.grade-pill{font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-block}
 .grade-A1{background:#d1fae5;color:#065f46}.grade-B2{background:#dbeafe;color:#1d4ed8}
 .grade-B3{background:#e0e7ff;color:#3730a3}.grade-C4,.grade-C5,.grade-C6{background:#fef3c7;color:#b45309}
 .grade-D7{background:#fee2e2;color:#991b1b}.grade-F9{background:#fef2f2;color:#7f1d1d}
 .grade-nil{background:#f3f4f6;color:#6b7280}
-.report-card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 40px rgba(0,0,0,.08);border:1.5px solid var(--border)}
-.stat-label{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
-.stat-value{font-weight:700;font-size:1rem}
-.progress-track{height:8px;background:var(--border);border-radius:999px;overflow:hidden;width:80px;display:inline-block}
-.progress-fill{height:100%;border-radius:999px}
-.fill-green{background:var(--accent2)}.fill-orange{background:var(--warning)}.fill-blue{background:var(--accent)}.fill-grey{background:var(--border2)}
-.status-good{background:#d1fae5;color:#065f46;font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
-.status-warn{background:#fff7ed;color:#c2410c;font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
-.status-danger{background:#fee2e2;color:#991b1b;font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
-.status-nil{background:var(--border);color:var(--muted);font-size:.78rem;font-weight:700;padding:2px 10px;border-radius:999px;display:inline-block}
 
-/* ── TABLE — scrollable on mobile ── */
-.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid var(--border)}
-table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:420px}
-th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--border);font-weight:700;white-space:nowrap}
-td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
-tr:last-child td{border-bottom:none}
-thead tr{background:var(--bg)}
-
-.loading-wrap{text-align:center;padding:80px 24px;color:var(--muted)}
-.load-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+/* ── LOADING / ERROR ── */
+.loading-wrap{text-align:center;padding:80px 24px;color:#6b7280}
+.load-spinner{width:36px;height:36px;border:3px solid #e5e9f2;border-top-color:#1a56ff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.section-head{font-family:var(--font-head);font-size:1.2rem;font-weight:700;margin-bottom:14px;color:var(--text)}
+
+/* ── FOOTER ── */
+.rpt-footer{font-size:.7rem;color:#9ca3af;text-align:center;padding-top:14px;border-top:1px solid #e5e9f2;line-height:1.6}
+
+/* ── PRINT ── */
+@media print{
+  .no-print{display:none!important}
+  body{background:#fff;padding:0;visibility:visible!important}
+  .card{box-shadow:none;border:1px solid #e5e9f2;break-inside:avoid}
+}
 
 /* ── MOBILE ── */
 @media(max-width:640px){
-  body{padding:16px 0}
-  .report-wrap{padding:0 12px}
-  .report-card{padding:20px 16px;border-radius:12px}
-  .info-grid{grid-template-columns:1fr 1fr!important}
-  .pred-grid{grid-template-columns:1fr!important}
-  .section-head{font-size:1rem}
-  .no-print{flex-direction:column;gap:8px}
-  .no-print > div{flex-wrap:wrap;gap:6px}
-  .no-print .btn{font-size:.78rem;padding:8px 12px}
-  .progress-track{width:50px}
-  table{font-size:.76rem;min-width:360px}
-  th,td{padding:8px 10px}
+  body{padding:12px 0}
+  .wrap{padding:0 12px}
+  .card{padding:16px;border-radius:12px}
+  .rpt-title{font-size:1.3rem}
+  .info-grid{grid-template-columns:1fr 1fr}
+  .score-cards{grid-template-columns:1fr}
+  .sw-grid{grid-template-columns:1fr}
+  .coverage-grid{grid-template-columns:1fr 1fr}
+  .action-bar{flex-direction:column;align-items:stretch}
+  .action-bar > *{width:100%;text-align:center}
+  .score-card-value{font-size:1.3rem}
 }
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(15,28,63,.9);color:#fff;padding:10px 20px;border-radius:12px;font-size:.82rem;font-weight:600;opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;max-width:calc(100vw - 32px);text-align:center;white-space:normal}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
-<body style="visibility:hidden">
-<noscript>
-  <div style="padding:40px;text-align:center;font-family:system-ui">
-    <h2>JavaScript is required</h2>
-    <p>Please enable JavaScript or <a href="login.html">click here to log in</a>.</p>
-  </div>
-</noscript>
-<div class="report-wrap">
+<body>
+<noscript><div style="padding:40px;text-align:center"><h2>JavaScript required</h2></div></noscript>
+<div class="wrap">
 
+  <!-- Loading -->
   <div id="loading-state" class="loading-wrap">
     <div class="load-spinner"></div>
-    <div>Loading report…</div>
+    <div>Loading your report…</div>
   </div>
 
+  <!-- Error -->
   <div id="error-state" style="display:none;text-align:center;padding:80px 24px">
-    <div style="font-size:3rem;margin-bottom:16px">&#x26A0;</div>
-    <h2 style="font-family:var(--font-head);font-size:1.8rem;margin-bottom:8px">Report Not Found</h2>
-    <p style="color:var(--muted);margin-bottom:24px">This report link may have expired or is invalid.</p>
-    <a href="dashboard.html" class="btn btn-primary">Go to Dashboard</a>
+    <div style="font-size:3rem;margin-bottom:16px">⚠</div>
+    <h2 style="font-size:1.4rem;margin-bottom:8px">Report Not Found</h2>
+    <p style="color:#6b7280;margin-bottom:24px" id="error-msg">This report link may have expired or is invalid.</p>
+    <a href="dashboard.html" style="background:#1a56ff;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700">Go to Dashboard</a>
   </div>
 
+  <!-- Report -->
   <div id="report-content" style="display:none">
 
-    <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <a href="dashboard.html" class="btn btn-outline">&larr; Back to Dashboard</a>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button class="btn btn-outline" id="copy-share-btn" onclick="copyShareLink()" style="font-size:.82rem">🔗 Copy Share Link</button>
-        <button class="btn btn-primary" id="download-pdf-btn" onclick="downloadReportPDF()">&#x2B07; Download PDF</button>
-        <button class="btn btn-outline" onclick="window.print()" style="font-size:.82rem">🖨 Print</button>
+    <!-- Action bar -->
+    <div class="action-bar no-print">
+      <a href="dashboard.html" class="btn btn-outline-sm">← Dashboard</a>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline-sm" id="copy-share-btn" onclick="copyShareLink()">🔗 Share Link</button>
+        <button class="btn btn-outline-sm" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-primary-sm" id="download-pdf-btn" onclick="downloadReportPDF()">⬇ Download PDF</button>
       </div>
     </div>
 
-    <div class="report-card">
-
-      <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap;gap:12px">
+    <!-- ① HEADER CARD -->
+    <div class="card">
+      <div class="rpt-header">
         <div>
-          <div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent);letter-spacing:.06em;margin-bottom:4px">UE School</div>
-          <div style="font-family:var(--font-head);font-size:2.2rem;margin-bottom:4px">Student Mastery Report</div>
-          <div style="font-size:.82rem;color:var(--muted)" id="report-generated-date">Generated: &mdash;</div>
+          <div class="rpt-brand">UE School</div>
+          <div class="rpt-title">Student Mastery Report</div>
+          <div class="rpt-meta" id="report-generated-date">Generated: —</div>
         </div>
-        <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:12px 18px;text-align:right">
-          <div style="font-size:.75rem;color:var(--muted);margin-bottom:2px">Report Token</div>
-          <div style="font-family:var(--font-mono);font-size:.82rem;color:var(--text)" id="report-token">&mdash;</div>
-        </div>
-      </div>
-
-      <!-- Student Info -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px" class="info-grid">
-        <div><div class="stat-label">Student Name</div><div class="stat-value" id="info-name" style="font-size:.9rem;line-height:1.3;word-break:break-word"><div class="stat-value" id="info-name">&mdash;</div>mdash;</div></div>
-        <div><div class="stat-label">Exam Type</div><div class="stat-value" id="info-exams">&mdash;</div></div>
-        <div><div class="stat-label">Exam Date</div><div class="stat-value" id="info-exam-date">&mdash;</div></div>
-        <div><div class="stat-label">Target Score</div><div class="stat-value" id="info-target">&mdash;</div></div>
-        <div><div class="stat-label">Study Mode</div><div class="stat-value" id="info-mode">&mdash;</div></div>
-        <div><div class="stat-label">Total XP</div><div class="stat-value" id="info-xp">&mdash;</div></div>
-      </div>
-
-      <!-- Predictions -->
-      <div style="background:var(--bg);border-radius:12px;padding:20px;margin-bottom:28px" id="predictions-block">
-        <div class="section-head">Score Predictions</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="pred-grid" id="predictions-grid">
-          <div id="pred-jamb-col" style="background:#fff;border-radius:10px;padding:16px;border:1px solid var(--border)">
-            <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Predicted JAMB Score</div>
-            <div style="font-family:var(--font-head);font-size:1.7rem;font-weight:800;color:var(--accent);line-height:1.1" id="pred-jamb">No data yet</div>
-            <div style="font-size:.76rem;color:var(--muted);margin-top:5px" id="pred-jamb-sub">Complete practice sessions to see your prediction</div>
-          </div>
-          <div id="pred-waec-col" style="background:#fff;border-radius:10px;padding:16px;border:1px solid var(--border)">
-            <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">WAEC / NECO Estimates</div>
-            <div id="grade-predictions"><div style="color:var(--muted);font-size:.82rem">No session data yet</div></div>
-          </div>
+        <div class="rpt-token">
+          <div class="rpt-token-label">Report Token</div>
+          <div class="rpt-token-val" id="report-token">—</div>
         </div>
       </div>
 
-      <!-- Topic weakness table -->
-      <div style="margin-bottom:28px">
-        <div class="section-head">Topic-Level Analysis</div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Topic</th><th>Subject</th><th style="min-width:100px">Mastery</th><th style="min-width:110px">Status</th></tr></thead>
-            <tbody id="weakness-table-body">
-              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:32px">No topic data yet &mdash; complete CBT sessions to populate this.</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <!-- Student info -->
+      <div class="info-grid">
+        <div class="info-cell"><div class="lbl">Student Name</div><div class="val" id="info-name">—</div></div>
+        <div class="info-cell"><div class="lbl">Exam Type</div><div class="val" id="info-exams">—</div></div>
+        <div class="info-cell"><div class="lbl">Exam Date</div><div class="val" id="info-exam-date">—</div></div>
+        <div class="info-cell"><div class="lbl">Target Score</div><div class="val" id="info-target">—</div></div>
+        <div class="info-cell"><div class="lbl">Study Mode</div><div class="val" id="info-mode">—</div></div>
+        <div class="info-cell"><div class="lbl">Total XP</div><div class="val" id="info-xp">—</div></div>
       </div>
 
-      <!-- Recent sessions -->
-      <div style="margin-bottom:28px">
-        <div class="section-head">Recent Sessions</div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Date</th><th>Exam Type</th><th>Score</th><th>Accuracy</th><th>Avg Time/Q</th></tr></thead>
-            <tbody id="sessions-table-body">
-              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">No sessions recorded yet.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <!-- Risk banner -->
+      <div id="risk-banner"></div>
+    </div>
 
-      <div style="font-size:.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:16px;text-align:center">
-        WAEC/NECO grade predictions are algorithmic estimates based on practice performance. &bull; UE School &copy; 2026
+    <!-- ② PERFORMANCE SNAPSHOT -->
+    <div class="card card-sm">
+      <div class="sec-title">📊 Performance Snapshot</div>
+      <div class="score-cards">
+        <div class="score-card">
+          <div class="score-card-label">Predicted JAMB Score</div>
+          <div class="score-card-value" id="pred-jamb">—</div>
+          <div class="score-card-sub" id="pred-jamb-sub">Complete sessions to see prediction</div>
+        </div>
+        <div class="score-card" style="background:#f0fdf4;border-color:#bbf7d0">
+          <div class="score-card-label">Overall Mastery</div>
+          <div class="score-card-value" id="overall-mastery" style="color:#16a34a">—</div>
+          <div class="score-card-sub" id="overall-mastery-sub">Across all topics practiced</div>
+        </div>
+        <div class="score-card" style="background:#fffbeb;border-color:#fde68a">
+          <div class="score-card-label">Sessions Completed</div>
+          <div class="score-card-value" id="session-count" style="color:#d97706">—</div>
+          <div class="score-card-sub" id="session-trend">—</div>
+        </div>
+        <div class="score-card" style="background:#fdf4ff;border-color:#e9d5ff">
+          <div class="score-card-label">Avg Session Score</div>
+          <div class="score-card-value" id="avg-score" style="color:#7c3aed">—</div>
+          <div class="score-card-sub" id="avg-score-sub">—</div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- ③ PARENT/TEACHER VIEW -->
+    <div class="card card-sm">
+      <div class="sec-title">📅 Study Habits & Consistency</div>
+      <div class="sec-subtitle">A snapshot parents and teachers can read at a glance</div>
+
+      <!-- Consistency -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:.8rem;font-weight:700;color:#374151;margin-bottom:8px">Practice Consistency (last 7 days)</div>
+        <div class="consistency-row" id="consistency-dots"></div>
+        <div class="consistency-label" id="consistency-label">—</div>
+      </div>
+
+      <!-- Time studied + improvement -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div style="background:#f8faff;border-radius:10px;padding:12px">
+          <div style="font-size:.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Total Study Time</div>
+          <div style="font-size:1.2rem;font-weight:800;color:#0f1c3f" id="total-time">—</div>
+          <div style="font-size:.72rem;color:#6b7280">estimated from session data</div>
+        </div>
+        <div style="background:#f8faff;border-radius:10px;padding:12px">
+          <div style="font-size:.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Progress Trend</div>
+          <div style="font-size:1.2rem;font-weight:800" id="trend-val">—</div>
+          <div style="font-size:.72rem;color:#6b7280" id="trend-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Subject coverage -->
+      <div>
+        <div style="font-size:.8rem;font-weight:700;color:#374151;margin-bottom:10px">Subject Coverage</div>
+        <div class="coverage-grid" id="coverage-grid">
+          <div style="color:#6b7280;font-size:.8rem;grid-column:1/-1">No subject data yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ STRENGTHS & WEAKNESSES -->
+    <div class="card card-sm">
+      <div class="sec-title">💪 Strengths & Areas to Improve</div>
+      <div class="sw-grid" id="sw-grid">
+        <div style="color:#6b7280;font-size:.82rem">Complete more sessions to see your strengths and weaknesses.</div>
+      </div>
+    </div>
+
+    <!-- ⑤ NEXT RECOMMENDED TOPICS -->
+    <div class="card card-sm">
+      <div class="sec-title">🎯 Next Recommended Topics</div>
+      <div class="sec-subtitle">Focus on these to improve your score fastest</div>
+      <div id="next-topics-list">
+        <div style="color:#6b7280;font-size:.82rem">No recommendations yet — complete a few sessions first.</div>
+      </div>
+    </div>
+
+    <!-- ⑥ SCORE PREDICTIONS -->
+    <div class="card card-sm">
+      <div class="sec-title">📈 Score Predictions</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="predictions-grid">
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:10px">WAEC / NECO Grade Estimates</div>
+          <div id="grade-predictions"><div style="color:#6b7280;font-size:.82rem">No data yet</div></div>
+        </div>
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:10px">Topics Never Attempted</div>
+          <div id="not-started-list"><div style="color:#6b7280;font-size:.82rem">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑦ TOPIC-LEVEL ANALYSIS -->
+    <div class="card card-sm">
+      <div class="sec-title">🔬 Topic-Level Analysis</div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Topic</th><th>Subject</th><th>Mastery</th><th>Sessions</th><th>Status</th></tr></thead>
+          <tbody id="topic-table-body">
+            <tr><td colspan="5" style="text-align:center;color:#6b7280;padding:28px">Complete CBT sessions to populate this.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ⑧ RECENT SESSIONS -->
+    <div class="card card-sm">
+      <div class="sec-title">📋 Recent Sessions</div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Subject</th><th>Exam Type</th><th>Score</th><th>Accuracy</th><th>Avg Time/Q</th></tr></thead>
+          <tbody id="sessions-table-body">
+            <tr><td colspan="6" style="text-align:center;color:#6b7280;padding:28px">No sessions yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="card card-sm">
+      <div class="rpt-footer">
+        Score predictions and grade estimates are algorithmic — based on CBT practice performance only.<br>
+        They are not guarantees of actual exam results. Encourage consistent daily practice for best outcomes.<br><br>
+        <strong>UE School</strong> &bull; school.ultimateedge.info &bull; &copy; 2026
+      </div>
+    </div>
+
+  </div><!-- /report-content -->
+</div><!-- /wrap -->
 
 <div id="toast"></div>
-<script src="js/config.js"></script>
-<script src="js/head-gatekeeper.js?v=3"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="js/config.js"></script>
 <script src="js/supabase.js"></script>
 <script src="js/app.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/auth-guard.js?v=3"></script>
 <script src="js/smartpath.js"></script>
 <script>
-// window.sb is set by supabase.js — read at call time, not parse time
-function getSB(){return window.sb;}
-const SUBJ_LABELS={mathematics:'Mathematics',english:'English Language',physics:'Physics',chemistry:'Chemistry',biology:'Biology',economics:'Economics',government:'Government',literature:'Literature',geography:'Geography',commerce:'Commerce',accounts:'Accounts',crk:'CRK'};
-function setEl(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-function fmtDate(ts){if(!ts)return'\u2014';const d=new Date(ts);return d.getDate().toString().padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
-function masteryToGrade(m){if(m===null||m===undefined)return{label:'NIL',cls:'grade-nil'};const p=m*100;if(p>=75)return{label:'A1',cls:'grade-A1'};if(p>=65)return{label:'B2',cls:'grade-B2'};if(p>=60)return{label:'B3',cls:'grade-B3'};if(p>=55)return{label:'C4',cls:'grade-C4'};if(p>=50)return{label:'C5',cls:'grade-C5'};if(p>=45)return{label:'C6',cls:'grade-C6'};if(p>=40)return{label:'D7',cls:'grade-D7'};return{label:'F9',cls:'grade-F9'};}
-function pColor(p){if(!p)return'fill-grey';if(p>=70)return'fill-green';if(p>=40)return'fill-orange';return'fill-blue';}
-function statusBadge(c){const m={'On Track':'<span class="status-good">On Track</span>','Building Up':'<span class="status-warn">Building Up</span>','Needs Attention':'<span class="status-danger">Needs Attention</span>','Not Started':'<span class="status-nil">Not Started</span>'};return m[c]||'<span class="status-nil">\u2014</span>';}
+'use strict';
 
-function renderReport(profile,masteryRows,sessions){
-  const examTypes=profile.exam_types||[];
-  // If no exam types set, show both prediction columns as a default
-  const hasJAMB = examTypes.length === 0 || examTypes.includes('JAMB') || examTypes.includes('Post-UTME');
-  const hasGrade= examTypes.length === 0 || examTypes.includes('WAEC') || examTypes.includes('NECO');
+// ── helpers ──────────────────────────────────────────────────────
+function getSB(){ return window.sb; }
+function el(id){ return document.getElementById(id); }
+function setEl(id,v){ const e=el(id); if(e) e.textContent=v; }
+function setHTML(id,h){ const e=el(id); if(e) e.innerHTML=h; }
 
-  const rawName = profile.full_name || '\u2014';
-  const fmtName = rawName === '\u2014' ? rawName : rawName.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').replace(/,\s*/g,', ');
+const SUBJ_LABELS={
+  mathematics:'Mathematics',english:'English Language',physics:'Physics',
+  chemistry:'Chemistry',biology:'Biology',economics:'Economics',
+  government:'Government',literature:'Literature in English',
+  geography:'Geography',commerce:'Commerce',accounts:'Financial Accounts',crk:'CRK'
+};
+const SUBJ_ICONS={
+  mathematics:'📐',english:'📖',physics:'⚛️',chemistry:'🧪',biology:'🌿',
+  economics:'📊',government:'🏛️',literature:'✍️',geography:'🌍',
+  commerce:'🛒',accounts:'🧾',crk:'✝️'
+};
+
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d=new Date(ts);
+  return d.getDate().toString().padStart(2,'0')+'/'+
+         String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+
+function pColor(p){
+  if(p===null||p===undefined) return 'fill-grey';
+  if(p>=70) return 'fill-green';
+  if(p>=40) return 'fill-orange';
+  return 'fill-blue';
+}
+
+function masteryToGrade(m){
+  if(m===null||m===undefined) return{label:'NIL',cls:'grade-nil'};
+  const p=m*100;
+  if(p>=75)return{label:'A1',cls:'grade-A1'};if(p>=65)return{label:'B2',cls:'grade-B2'};
+  if(p>=60)return{label:'B3',cls:'grade-B3'};if(p>=55)return{label:'C4',cls:'grade-C4'};
+  if(p>=50)return{label:'C5',cls:'grade-C5'};if(p>=45)return{label:'C6',cls:'grade-C6'};
+  if(p>=40)return{label:'D7',cls:'grade-D7'};return{label:'F9',cls:'grade-F9'};
+}
+
+function statusPill(c){
+  const m={
+    'On Track':     '<span class="pill pill-green">On Track</span>',
+    'Building Up':  '<span class="pill pill-amber">Building Up</span>',
+    'Needs Attention':'<span class="pill pill-red">Needs Attention</span>',
+    'Not Started':  '<span class="pill pill-grey">Not Started</span>'
+  };
+  return m[c]||'<span class="pill pill-grey">—</span>';
+}
+
+// ── renderReport ────────────────────────────────────────────────
+function renderReport(profile, masteryRows, sessions){
+  // ── Basic info ──
+  const examTypes = profile.exam_types || [];
+  const rawName   = profile.full_name || '—';
+  const fmtName   = rawName==='—' ? rawName
+    : rawName.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').replace(/,\s*/g,', ');
   setEl('info-name', fmtName);
-  setEl('info-exams',examTypes.join(' / ')||'\u2014');
-  setEl('info-exam-date',profile.exam_date?fmtDate(profile.exam_date+'-01'):'\u2014');
-  // Target line: JAMB users see "/ 400", WAEC-only users see the grade letter
-  if (hasJAMB && profile.target_score) {
-    setEl('info-target', profile.target_score + ' / 400');
-  } else if (!hasJAMB && hasGrade && profile.target_grade) {
-    setEl('info-target', 'Grade ' + profile.target_grade);
+  setEl('info-exams', examTypes.join(' / ') || '—');
+  setEl('info-exam-date', profile.exam_date ? fmtDate(profile.exam_date+'-01') : '—');
+  setEl('info-mode', profile.study_mode==='cbt_only' ? 'CBT Only' : 'Drill + Videos');
+  setEl('info-xp', (profile.total_xp??0)+' XP');
+  setEl('report-generated-date', 'Generated: '+fmtDate(new Date().toISOString())+' · Shareable Report');
+  setEl('report-token', 'RPT-'+(profile.report_share_token||'').toString().toUpperCase().slice(0,8));
+
+  const hasJAMB = examTypes.length===0||examTypes.includes('JAMB')||examTypes.includes('Post-UTME');
+  const targetScore = hasJAMB ? (profile.target_score||250) : null;
+  if(targetScore) setEl('info-target', targetScore+' / 400');
+  else if(profile.target_grade) setEl('info-target','Grade '+profile.target_grade);
+  else setEl('info-target','—');
+
+  const rows   = (masteryRows||[]).filter(r=>r.mastery_level!=null);
+  const allRows= masteryRows||[];
+
+  // ── JAMB prediction ──
+  if(window.SMARTPATH && rows.length>0){
+    const pred = SMARTPATH.predictJAMBScore(profile, rows);
+    if(pred){
+      setEl('pred-jamb', pred.low+'–'+pred.high+' / 400');
+      const gap = targetScore ? (targetScore - pred.raw) : null;
+      setEl('pred-jamb-sub', gap!=null
+        ? (gap>0 ? gap+' points below your target of '+targetScore : 'Above your target! 🎉')
+        : 'Based on '+rows.length+' topic'+(rows.length!==1?'s':'')+' practiced');
+    }
+  }
+
+  // ── Overall mastery ──
+  if(rows.length>0){
+    const avg = Math.round(rows.reduce((s,r)=>s+r.mastery_level,0)/rows.length*100);
+    setEl('overall-mastery', avg+'%');
+    setEl('overall-mastery-sub', rows.length+' topic'+(rows.length!==1?'s':'')+' practiced');
+  }
+
+  // ── Sessions stats ──
+  const sess = sessions||[];
+  setEl('session-count', sess.length.toString());
+  if(sess.length>=2){
+    const first = Math.round((sess[sess.length-1].accuracy||0)*100);
+    const last  = Math.round((sess[0].accuracy||0)*100);
+    const diff  = last - first;
+    setEl('session-trend', diff>=0?'↑ +'+diff+'% since first session':'↓ '+diff+'% since first session');
+    el('session-trend').style.color = diff>=0?'#16a34a':'#dc2626';
   } else {
-    setEl('info-target', '\u2014');
+    setEl('session-trend', 'More sessions needed for trend');
   }
 
-  // Show / hide the right prediction column for this user
-  const jambCol=document.getElementById('pred-jamb-col');
-  const waecCol=document.getElementById('pred-waec-col');
-  const grid   =document.getElementById('predictions-grid');
-  if(jambCol) jambCol.style.display = hasJAMB  ? '' : 'none';
-  if(waecCol) waecCol.style.display = hasGrade ? '' : 'none';
-  if(grid && (!hasJAMB || !hasGrade)) grid.style.gridTemplateColumns = '1fr';
-  setEl('info-mode',profile.study_mode==='cbt_only'?'CBT Only':'Drill + Videos');
-  setEl('info-xp',(profile.total_xp??0)+' XP');
-  setEl('report-generated-date','Generated: '+fmtDate(new Date().toISOString())+' · Shareable Report');
-  setEl('report-token','RPT-'+(profile.report_share_token||'').toString().toUpperCase().slice(0,8));
+  const avgAcc = sess.length
+    ? Math.round(sess.reduce((s,r)=>s+(r.accuracy||0),0)/sess.length*100) : 0;
+  setEl('avg-score', avgAcc+'%');
+  setEl('avg-score-sub', avgAcc>=70?'Above pass threshold ✓':avgAcc>=40?'Approaching pass threshold':'Below pass threshold — keep practicing');
+  el('avg-score').style.color = avgAcc>=70?'#16a34a':avgAcc>=40?'#d97706':'#dc2626';
 
-  const rows=(masteryRows||[]).filter(r=>r.mastery_level!==null&&r.mastery_level!==undefined);
-  if(window.SMARTPATH && rows.length > 0){
-    const pred=SMARTPATH.predictJAMBScore(profile,rows);
-    if(pred){setEl('pred-jamb',`${pred.low}\u2013${pred.high} / 400`);setEl('pred-jamb-sub',`Based on ${rows.length} topic${rows.length!==1?'s':''} practiced`);}
+  // ── Risk banner ──
+  const riskEl = el('risk-banner');
+  if(riskEl){
+    let riskClass,riskIcon,riskTitle,riskBody;
+    if(sess.length===0){
+      riskClass='risk-amber';riskIcon='🎯';
+      riskTitle='Ready to Begin Your Journey?';
+      riskBody='No sessions recorded yet. Every top student started exactly here. Take your first Quick Drill today — it only takes 10 minutes and unlocks your personalised study plan.';
+    } else if(avgAcc<40){
+      riskClass='risk-amber';riskIcon='💪';
+      riskTitle='Room to Grow — Let\'s Fix This Together';
+      riskBody='Every expert started as a beginner. Your accuracy is building up — a few focused sessions on your recommended topics will move the needle fast. You\'re already ahead of students who haven\'t started.';
+    } else if(avgAcc<70){
+      riskClass='risk-amber';riskIcon='⚡';
+      riskTitle='Building Momentum — Keep Going!';
+      riskBody='You\'re making real progress. Daily 10-minute practice sessions will push you past the 70% threshold. You\'re closer than you think — stay consistent and watch your score climb.';
+    } else {
+      riskClass='risk-green';riskIcon='🔥';
+      riskTitle='Strong Performance — Push for Excellence!';
+      riskBody='You\'re ahead of most students at this stage. Your discipline is showing in the results. Now is the time to tackle harder topics and aim even higher. Keep this momentum going!';
+    }
+    riskEl.className='risk-banner '+riskClass;
+    riskEl.innerHTML=`<div class="risk-icon">${riskIcon}</div><div><div class="risk-title">${riskTitle}</div><div class="risk-body">${riskBody}</div></div>`;
   }
 
+  // ── Consistency dots (last 7 days) ──
+  const today = new Date();
+  const sessionDays = new Set(sess.map(s=>{
+    const d=new Date(s.created_at);
+    return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+  }));
+  const days=['S','M','T','W','T','F','S'];
+  let activeDays=0;
+  const dotsHTML = Array.from({length:7},(_,i)=>{
+    const d=new Date(today);d.setDate(today.getDate()-(6-i));
+    const key=d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+    const active=sessionDays.has(key);
+    if(active) activeDays++;
+    return`<div class="day-dot ${active?'day-active':'day-idle'}" title="${fmtDate(d.toISOString())}">${days[d.getDay()]}</div>`;
+  }).join('');
+  setHTML('consistency-dots', dotsHTML);
+  setEl('consistency-label',
+    activeDays===0?'No sessions in the last 7 days':
+    activeDays<=2?activeDays+' of 7 days — try to practice daily':
+    activeDays<=5?activeDays+' of 7 days — good consistency!':
+    activeDays+' of 7 days — excellent discipline! 🔥');
+
+  // ── Total time ──
+  const totalSecs = sess.reduce((s,r)=>s+(r.avg_time_per_q||0)*(r.total_questions||0),0);
+  const totalMins = Math.round(totalSecs/60);
+  setEl('total-time', totalMins>=60
+    ? Math.floor(totalMins/60)+'h '+( totalMins%60>0?(totalMins%60)+'m':'')
+    : totalMins+'m');
+
+  // ── Progress trend ──
+  if(sess.length>=3){
+    const half=Math.floor(sess.length/2);
+    const recent=sess.slice(0,half).reduce((s,r)=>s+(r.accuracy||0),0)/half;
+    const older =sess.slice(half).reduce((s,r)=>s+(r.accuracy||0),0)/half;
+    const delta =Math.round((recent-older)*100);
+    const trendEl=el('trend-val');
+    if(trendEl){
+      trendEl.textContent=delta>=0?'↑ Improving':'↓ Declining';
+      trendEl.style.color=delta>=0?'#16a34a':'#dc2626';
+    }
+    setEl('trend-sub', Math.abs(delta)+'% change vs earlier sessions');
+  } else {
+    setEl('trend-val','—');
+    setEl('trend-sub','Need 3+ sessions for trend');
+  }
+
+  // ── Subject coverage ──
   const subjMap={};
-  for(const r of rows){const s=r.topic_id.split('.')[0];if(!subjMap[s])subjMap[s]=[];subjMap[s].push(r.mastery_level);}
-  // Derive exam_subjects from mastery data if profile field not set
-  const rawSubjs = profile.exam_subjects && profile.exam_subjects.length > 0
-    ? profile.exam_subjects
-    : [...new Set((masteryRows||[]).map(r=>r.topic_id.split('.')[0]))].filter(Boolean);
-  const subjs = rawSubjs;
-  if(subjs.length>0&&rows.length>0){
-    document.getElementById('grade-predictions').innerHTML=subjs.map(s=>{
-      const arr=subjMap[s];const avg=arr?arr.reduce((a,b)=>a+b,0)/arr.length:null;const g=masteryToGrade(avg);
-      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:.9rem;font-weight:600">${SUBJ_LABELS[s]||s}</span><span class="grade-pill ${g.cls}">${g.label}</span></div>`;
-    }).join('');
+  for(const r of allRows){
+    const s=r.topic_id.split('.')[0];
+    if(!subjMap[s]) subjMap[s]={mastery:[],count:0};
+    if(r.mastery_level!=null) subjMap[s].mastery.push(r.mastery_level);
+    subjMap[s].count++;
+  }
+  const covSubjs=Object.keys(subjMap);
+  if(covSubjs.length>0){
+    setHTML('coverage-grid', covSubjs.map(s=>{
+      const avg=subjMap[s].mastery.length
+        ? Math.round(subjMap[s].mastery.reduce((a,b)=>a+b,0)/subjMap[s].mastery.length*100):0;
+      const icon=SUBJ_ICONS[s]||'📚';
+      return`<div class="cov-item">
+        <div class="cov-subj">${icon} ${SUBJ_LABELS[s]||s}</div>
+        <div class="cov-bar-track"><div class="cov-bar-fill" style="width:${avg}%"></div></div>
+        <div class="cov-pct">${avg}%</div>
+      </div>`;
+    }).join(''));
   }
 
-  if(masteryRows&&masteryRows.length>0){
-    const sorted=[...masteryRows].sort((a,b)=>(a.mastery_level??-1)-(b.mastery_level??-1));
-    document.getElementById('weakness-table-body').innerHTML=sorted.map(row=>{
-      const parts=row.topic_id.split('.');const subj=parts[0],topic=parts.slice(1).join(' ');
-      const pct=row.mastery_level!==null?Math.round(row.mastery_level*100):null;
-      const bar=pct!==null?`<div style="display:flex;align-items:center;gap:8px"><div class="progress-track"><div class="progress-fill ${pColor(pct)}" style="width:${pct}%"></div></div><span style="font-family:var(--font-mono);font-size:.78rem">${pct}%</span></div>`:'<span class="status-nil">NIL</span>';
-      const status=window.SMARTPATH?statusBadge(SMARTPATH.classifyTopic(row)):'—';
-      return`<tr><td>${topic||row.topic_id}</td><td>${SUBJ_LABELS[subj]||subj}</td><td>${bar}</td><td>${status}</td></tr>`;
-    }).join('');
+  // ── Strengths & weaknesses ──
+  if(rows.length>0){
+    const sorted=[...rows].sort((a,b)=>b.mastery_level-a.mastery_level);
+    const strong=sorted.filter(r=>r.mastery_level>=0.5).slice(0,3);
+    const weak  =sorted.filter(r=>r.mastery_level<0.5).slice(-3).reverse();
+    const topicLabel=r=>{const p=r.topic_id.split('.');return p.slice(1).join(' ')||p[0];};
+    setHTML('sw-grid',`
+      <div class="sw-card sw-strong">
+        <div class="sw-label">💪 Strengths</div>
+        ${strong.length?strong.map(r=>`<div class="sw-item">${topicLabel(r)} <span style="margin-left:auto;font-size:.72rem;color:#16a34a">${Math.round(r.mastery_level*100)}%</span></div>`).join('')
+          :'<div style="font-size:.78rem;color:#6b7280">No strong topics yet — keep practicing!</div>'}
+      </div>
+      <div class="sw-card sw-weak">
+        <div class="sw-label">🎯 Needs Work</div>
+        ${weak.length?weak.map(r=>`<div class="sw-item">${topicLabel(r)} <span style="margin-left:auto;font-size:.72rem;color:#f97316">${Math.round(r.mastery_level*100)}%</span></div>`).join('')
+          :'<div style="font-size:.78rem;color:#6b7280">Complete more sessions to identify weak areas.</div>'}
+      </div>`);
   }
 
-  if(sessions&&sessions.length>0){
-    document.getElementById('sessions-table-body').innerHTML=sessions.map(s=>`<tr><td>${fmtDate(s.created_at)}</td><td>${s.exam_type}</td><td style="font-weight:700">${s.score}/${s.total_questions}</td><td>${Math.round((s.accuracy||0)*100)}%</td><td>${s.avg_time_per_q?s.avg_time_per_q.toFixed(1)+'s':'\u2014'}</td></tr>`).join('');
+  // ── Next recommended topics ──
+  if(window.SMARTPATH && allRows.length>0){
+    const queue=SMARTPATH.buildQueue ? SMARTPATH.buildQueue(allRows,5)
+      : allRows.sort((a,b)=>(a.mastery_level||0)-(b.mastery_level||0)).slice(0,5);
+    if(queue&&queue.length){
+      setHTML('next-topics-list', queue.map((item,i)=>{
+        const tid=(item.topic_id||'').split('.');
+        const subj=tid[0],topic=tid.slice(1).join(' ')||tid[0];
+        const pct=item.mastery_level!=null?Math.round(item.mastery_level*100):0;
+        return`<div class="next-topic-item">
+          <div class="next-topic-num">${i+1}</div>
+          <div>
+            <div class="next-topic-name">${topic}</div>
+            <div class="next-topic-sub">${SUBJ_LABELS[subj]||subj} &bull; Current mastery: ${pct}%</div>
+          </div>
+          <a href="cbt.html?subject=${subj}&topic=${encodeURIComponent(topic)}"
+             style="margin-left:auto;background:#1a56ff;color:#fff;padding:6px 12px;border-radius:7px;font-size:.72rem;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+            Practice →
+          </a>
+        </div>`;
+      }).join(''));
+    }
+  }
+
+  // ── WAEC grade estimates ──
+  const rawSubjs=profile.exam_subjects&&profile.exam_subjects.length>0
+    ?profile.exam_subjects:covSubjs;
+  if(rawSubjs.length>0){
+    setHTML('grade-predictions', rawSubjs.map(s=>{
+      const arr=subjMap[s]?subjMap[s].mastery:[];
+      const avg=arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:null;
+      const g=masteryToGrade(avg);
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f4f9">
+        <span style="font-size:.82rem;font-weight:600">${SUBJ_ICONS[s]||'📚'} ${SUBJ_LABELS[s]||s}</span>
+        <span class="grade-pill ${g.cls}">${g.label}</span>
+      </div>`;
+    }).join(''));
+  }
+
+  // ── Topics never attempted ──
+  const notStarted=allRows.filter(r=>r.mastery_level===null||r.mastery_level===0);
+  if(notStarted.length){
+    setHTML('not-started-list', notStarted.slice(0,6).map(r=>{
+      const parts=r.topic_id.split('.');
+      return`<div style="font-size:.8rem;padding:3px 0;color:#374151">⬜ ${parts.slice(1).join(' ')||parts[0]}</div>`;
+    }).join('')+(notStarted.length>6?`<div style="font-size:.75rem;color:#6b7280;margin-top:4px">+${notStarted.length-6} more topics</div>`:''));
+  } else if(allRows.length>0){
+    setHTML('not-started-list','<div style="color:#16a34a;font-size:.82rem">✅ All topics attempted!</div>');
+  }
+
+  // ── Topic table ──
+  if(allRows.length>0){
+    const sorted=[...allRows].sort((a,b)=>(a.mastery_level??-1)-(b.mastery_level??-1));
+    setHTML('topic-table-body', sorted.map(row=>{
+      const parts=row.topic_id.split('.');
+      const subj=parts[0],topic=parts.slice(1).join(' ')||parts[0];
+      const pct=row.mastery_level!=null?Math.round(row.mastery_level*100):null;
+      const bar=pct!=null
+        ?`<div style="display:flex;align-items:center;gap:6px">
+            <div class="progress-track"><div class="progress-fill ${pColor(pct)}" style="width:${pct}%"></div></div>
+            <span style="font-family:'DM Mono',monospace;font-size:.74rem">${pct}%</span>
+          </div>`
+        :'<span class="pill pill-grey">NIL</span>';
+      const status=window.SMARTPATH?statusPill(SMARTPATH.classifyTopic(row)):'—';
+      return`<tr>
+        <td style="font-weight:600">${topic}</td>
+        <td>${SUBJ_ICONS[subj]||''} ${SUBJ_LABELS[subj]||subj}</td>
+        <td>${bar}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:.8rem">${row.attempts_at_grade1||0}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join(''));
+  }
+
+  // ── Sessions table ──
+  if(sess.length>0){
+    setHTML('sessions-table-body', sess.map(s=>`<tr>
+      <td style="white-space:nowrap">${fmtDate(s.created_at)}</td>
+      <td>${SUBJ_ICONS[s.subject]||''} ${SUBJ_LABELS[s.subject]||s.subject||'—'}</td>
+      <td>${s.exam_type||'—'}</td>
+      <td style="font-weight:700">${s.score}/${s.total_questions}</td>
+      <td>${Math.round((s.accuracy||0)*100)}%</td>
+      <td style="font-family:'DM Mono',monospace">${s.avg_time_per_q?s.avg_time_per_q.toFixed(1)+'s':'—'}</td>
+    </tr>`).join(''));
   }
 
   window._shareToken=profile.report_share_token;
-  document.getElementById('loading-state').style.display='none';
-  document.getElementById('report-content').style.display='block';
+  el('loading-state').style.display='none';
+  el('report-content').style.display='block';
   document.body.style.visibility='visible';
 }
 
+// ── PDF ──────────────────────────────────────────────────────────
 async function downloadReportPDF(){
-  const btn=document.getElementById('download-pdf-btn');
-  const node=document.querySelector('.report-card');
-  if(!node){toast('Nothing to export yet — wait for the report to load.');return;}
-  if(!window.html2canvas||!window.jspdf){toast('PDF tools still loading. Try again in a moment.');return;}
+  const btn=el('download-pdf-btn');
+  const node=el('report-content');
+  if(!node||!window.html2canvas||!window.jspdf){toast('Try again in a moment.');return;}
   const orig=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='Building PDF…';}
   try{
-    const canvas=await window.html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
-    const img=canvas.toDataURL('image/png');
-    const { jsPDF }=window.jspdf;
+    const canvas=await window.html2canvas(node,{scale:1.8,backgroundColor:'#f0f4f9',useCORS:true,logging:false});
+    const{jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
-    const pw=pdf.internal.pageSize.getWidth();
-    const ph=pdf.internal.pageSize.getHeight();
-    const ratio=canvas.width/canvas.height;
-    const imgW=pw-40;
-    const imgH=imgW/ratio;
-    let y=20;
-    if(imgH<=ph-40){
-      pdf.addImage(img,'PNG',20,y,imgW,imgH);
-    }else{
-      // Multi-page: slice the canvas into page-sized strips
-      const pageCanvasH=Math.floor((ph-40)*(canvas.width/imgW));
-      let sy=0;
-      while(sy<canvas.height){
-        const sliceH=Math.min(pageCanvasH,canvas.height-sy);
-        const tmp=document.createElement('canvas');
-        tmp.width=canvas.width; tmp.height=sliceH;
-        tmp.getContext('2d').drawImage(canvas,0,sy,canvas.width,sliceH,0,0,canvas.width,sliceH);
-        const sliceImg=tmp.toDataURL('image/png');
-        const sliceRenderH=(sliceH/canvas.width)*imgW;
-        pdf.addImage(sliceImg,'PNG',20,20,imgW,sliceRenderH);
-        sy+=sliceH;
-        if(sy<canvas.height) pdf.addPage();
-      }
+    const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+    const imgW=pw-32,imgH=imgW*(canvas.height/canvas.width);
+    const pageH=ph-32;
+    let sy=0;
+    while(sy<canvas.height){
+      const sliceH=Math.min(Math.round(pageH*(canvas.width/imgW)),canvas.height-sy);
+      const tmp=document.createElement('canvas');tmp.width=canvas.width;tmp.height=sliceH;
+      tmp.getContext('2d').drawImage(canvas,0,sy,canvas.width,sliceH,0,0,canvas.width,sliceH);
+      const sliceRenderH=sliceH*(imgW/canvas.width);
+      pdf.addImage(tmp.toDataURL('image/jpeg',0.92),'JPEG',16,16,imgW,sliceRenderH);
+      sy+=sliceH;
+      if(sy<canvas.height)pdf.addPage();
     }
-    const tokenEl=document.getElementById('report-token');
-    const stamp=new Date().toISOString().slice(0,10);
-    pdf.save('ue-school-mastery-report-'+stamp+'.pdf');
+    pdf.save('ue-school-report-'+new Date().toISOString().slice(0,10)+'.pdf');
     if(btn){btn.disabled=false;btn.textContent=orig;}
-    toast('PDF downloaded.');
+    toast('PDF downloaded!');
   }catch(e){
-    console.error('[REPORT] PDF export failed:',e);
+    console.error(e);
     if(btn){btn.disabled=false;btn.textContent=orig;}
-    toast('Could not build PDF. Try the Print option instead.');
+    toast('PDF failed — try Print instead.');
   }
 }
 
 function copyShareLink(){
-  const url=`${window.location.origin}/report.html?token=${window._shareToken}`;
-  navigator.clipboard.writeText(url).then(()=>{toast('Share link copied!');const b=document.getElementById('copy-share-btn');if(b){b.textContent='\u2713 Copied!';setTimeout(()=>b.textContent='🔗 Copy Share Link',2000);}}).catch(()=>prompt('Copy this link:',url));
+  const url=`${location.origin}/report.html?token=${window._shareToken}`;
+  navigator.clipboard.writeText(url)
+    .then(()=>{toast('Share link copied!');const b=el('copy-share-btn');if(b){b.textContent='✓ Copied!';setTimeout(()=>b.textContent='🔗 Share Link',2000);}})
+    .catch(()=>prompt('Copy this link:',url));
 }
 
-(async()=>{
-  // Auth guard — validate session and enforce login redirect
-  const authData = await AUTH_GUARD.init();
-  if (!authData) return; // redirect in progress
+function toast(msg,dur=2800){
+  const t=el('toast');if(!t)return;
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
 
-  function showError(msg){
-    document.getElementById('loading-state').style.display='none';
-    const e=document.getElementById('error-state');
-    if(msg&&e)e.querySelector('p').textContent=msg;
-    if(e)e.style.display='block';
-    document.body.style.visibility='visible';
-  }
+function showError(msg){
+  el('loading-state').style.display='none';
+  const e=el('error-state');
+  if(msg&&e){const p=e.querySelector('#error-msg');if(p)p.textContent=msg;}
+  if(e)e.style.display='block';
+  document.body.style.visibility='visible';
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+(async()=>{
   try{
     const SB=getSB();
-    if(!SB){showError('Could not connect to the server. Please refresh.');return;}
-    const params=new URLSearchParams(window.location.search);
+    if(!SB){showError('Could not connect. Please refresh.');return;}
+    const params=new URLSearchParams(location.search);
     const token=params.get('token');
     let profile=null,userId=null;
+
     if(token){
       const{data,error}=await SB.from('profiles').select('*').eq('report_share_token',token).single();
       if(error||!data){showError('This report link may have expired or is invalid.');return;}
       profile=data;userId=data.id;
       const nav=document.querySelector('.no-print');
-      if(nav)nav.innerHTML='<div style="text-align:center;width:100%"><a href="index.html" class="btn btn-outline">\u2190 UE School</a></div>';
+      if(nav)nav.innerHTML='<div style="text-align:center"><a href="index.html" style="color:#1a56ff;font-weight:600">← UE School</a></div>';
     } else {
       const{data:{session},error:sessErr}=await SB.auth.getSession();
-      if(sessErr||!session){window.location.href='login.html?next=report.html';return;}
+      if(sessErr||!session){location.href='login.html?next=report.html';return;}
       userId=session.user.id;
       const{data,error}=await SB.from('profiles').select('*').eq('id',userId).single();
-      if(error||!data){showError('Could not load your profile. Please try again.');return;}
+      if(error||!data){showError('Could not load your profile.');return;}
       profile=data;
     }
+
     const[{data:masteryRows},{data:sessions}]=await Promise.all([
-      SB.from('topic_mastery').select('*').eq('user_id',userId).order('mastery_level',{ascending:true}),
-      SB.from('session_scores').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(10),
+      SB.from('topic_mastery').select('*').eq('user_id',userId).order('last_studied',{ascending:false}),
+      SB.from('session_scores').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(20),
     ]);
-    renderReport(profile,masteryRows||[],sessions||[]);
+
+    renderReport(profile, masteryRows||[], sessions||[]);
+
   }catch(e){
-    console.error('[REPORT] Fatal error:',e);
-    document.getElementById('loading-state').style.display='none';
-    document.getElementById('error-state').style.display='block';
+    console.error('[REPORT]',e);
+    showError('Something went wrong. Please refresh.');
     document.body.style.visibility='visible';
   }
 })();
-
-function toast(msg,dur=2800){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 </script>
 </body>
 </html>
