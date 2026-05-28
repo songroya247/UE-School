@@ -30,6 +30,10 @@
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  SECURITY BLOCK &mdash; must be first in <head>           ║
      ╚══════════════════════════════════════════════════════╝ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="window._katexReady=true;if(window._katexQueue)window._katexQueue.forEach(function(fn){fn();})"></script>
 <script src="js/config.js"></script>
 <script src="js/head-gatekeeper.js?v=3"></script>
 <!-- END SECURITY BLOCK -->
@@ -398,6 +402,92 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 <script src="js/questions.js"></script>
 <script src="js/grading.js"></script>
 <script>
+// ════════════ MATH FORMATTER ════════════
+function formatMath(text) {
+  if (!text) return '';
+
+  // Replace LaTeX-style delimiters for KaTeX auto-render
+  // But first, do plain-text conversions for common patterns that don't need KaTeX
+
+  var s = String(text);
+
+  // Superscripts: x^2, y^3, cm^3, m^2 etc (outside of LaTeX blocks)
+  // Only convert simple single-char or digit superscripts
+  s = s.replace(/\^(\{[^}]+\})/g, function(_, b) {
+    // e.g. ^{circ} — leave for KaTeX
+    return '^' + b;
+  });
+
+  // Greek letters and math symbols (plain text in sheet)
+  s = s.replace(/\\pi/g, 'π');
+  s = s.replace(/\pi/g, 'π');
+  s = s.replace(/pi(?=\s*[=×·\*\/\(])/g, 'π'); // pi = | pi * | pi(
+  s = s.replace(/\\theta/g, 'θ');
+  s = s.replace(/\theta/g, 'θ');
+  s = s.replace(/\\alpha/g, 'α');
+  s = s.replace(/\alpha/g, 'α');
+  s = s.replace(/\\beta/g, 'β');
+  s = s.replace(/\beta/g, 'β');
+  s = s.replace(/\\sqrt/g, '√');
+
+  // Angle and degree symbols
+  s = s.replace(/\\angle/g, '∠');
+  s = s.replace(/\angle/g, '∠');
+  s = s.replace(/\\\s*circ/g, '°');
+  s = s.replace(/\\s*circ/g, '°');
+  s = s.replace(/\^\\circ/g, '°');
+  s = s.replace(/\^\circ/g, '°');
+  s = s.replace(/\^circ/g, '°');  // 90^circ → 90°
+
+  // Parallel symbol
+  s = s.replace(/\|\|/g, '∥');
+
+  // Simple superscripts: x^2 → x², n^3 → n³ etc (not preceded by backslash)
+  s = s.replace(/([a-zA-Z0-9])\^([0-9])/g, function(_, base, exp) {
+    var supMap = {'0':'⁰','1':'¹','2':'²','3':'³',
+                  '4':'⁴','5':'⁵','6':'⁶','7':'⁷',
+                  '8':'⁸','9':'⁹'};
+    return base + (supMap[exp] || ('^'+exp));
+  });
+
+  // Fractions: 1/2 → ½, 1/3 → ⅓, 1/4 → ¼, 2/3 → ⅔, 3/4 → ¾
+  var fracMap = {'1/2':'½','1/3':'⅓','2/3':'⅔',
+                 '1/4':'¼','3/4':'¾','1/5':'⅕',
+                 '2/5':'⅖','3/5':'⅗','4/5':'⅘',
+                 '1/6':'⅙','5/6':'⅚','1/7':'⅐',
+                 '1/8':'⅛','3/8':'⅜','5/8':'⅝','7/8':'⅞'};
+  // Only replace standalone fractions (not mixed numbers like 2 1/6 — keep those)
+  Object.keys(fracMap).forEach(function(f) {
+    // Replace fraction only when it appears alone (not after a digit+space which = mixed number)
+    var re = new RegExp('(?<![0-9] )' + f.replace('/', '\/') + '(?![0-9])', 'g');
+    s = s.replace(re, fracMap[f]);
+  });
+
+  // Multiplication: 	imes → ×
+  s = s.replace(/\\times/g, '×');
+  s = s.replace(/\times/g, '×');
+
+  // Less/greater than or equal
+  s = s.replace(/\\leq/g, '≤');
+  s = s.replace(/\leq/g, '≤');
+  s = s.replace(/\\geq/g, '≥');
+  s = s.replace(/\geq/g, '≥');
+
+  // Subscripts common in chemistry: H2O, CO2 etc — wrap digits after capital letters
+  // Only apply to known chemical formulas to avoid false positives
+  s = s.replace(/(H)2(O)/g, 'H₂O');
+  s = s.replace(/(CO)2/g, 'CO₂');
+  s = s.replace(/(SO)2/g, 'SO₂');
+  s = s.replace(/(NO)2/g, 'NO₂');
+
+  return s;
+}
+
+function setMathText(el, text) {
+  if (!el) return;
+  el.innerHTML = formatMath(text);
+}
+
 // ════════════ STATE ════════════
 let QUESTIONS=[], currentQ=0, answers={}, flags=new Set(), timings={};
 let qStartTime=null, timeLeft=1200, totalTime=1200;
@@ -625,7 +715,7 @@ function renderQ(){
 
   document.getElementById('q-counter').textContent=`Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
-  document.getElementById('q-text').textContent=q.text;
+  setMathText(document.getElementById('q-text'), q.text);
 
   // ── Diagram rendering ────────────────────────────────────────────
   const wrap=document.getElementById('q-diagram-wrap');
@@ -657,7 +747,7 @@ function renderQ(){
   q.opts.forEach((opt,i)=>{
     const btn=document.createElement('button');
     btn.className='drill-option'+(answers[currentQ]===i?' selected':'');
-    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${formatMath(opt)}</span>`;
     btn.onclick=()=>selectAnswer(i);
     oc.appendChild(btn);
   });
@@ -813,7 +903,7 @@ function renderReviewQ(){
   const q=QUESTIONS[currentQ], sel=answers[currentQ], isC=sel===q.ans;
   document.getElementById('q-counter').textContent=`Review \u2014 Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
-  document.getElementById('q-text').textContent=q.text;
+  setMathText(document.getElementById('q-text'), q.text);
 
   // ── Diagram rendering (review mode) ─────────────────────────────
   const wrap=document.getElementById('q-diagram-wrap');
@@ -843,12 +933,12 @@ function renderReviewQ(){
     if(i===q.ans) cls+=' correct';
     if(i===sel&&!isC) cls+=' wrong';
     btn.className=cls;
-    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${formatMath(opt)}</span>`;
     oc.appendChild(btn);
   });
 
   const eb=document.getElementById('explanation-box');
-  if(q.explanation){eb.innerHTML=`<strong>Explanation:</strong> ${q.explanation}`;eb.classList.add('show');}
+  if(q.explanation){eb.innerHTML=`<strong>Explanation:</strong> ${formatMath(q.explanation)}`;eb.classList.add('show');}
   else eb.classList.remove('show');
 
   document.getElementById('prev-btn').disabled=currentQ===0;
