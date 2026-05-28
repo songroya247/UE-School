@@ -432,12 +432,17 @@ function statusPill(c){
 // ── renderReport ────────────────────────────────────────────────
 function renderReport(profile, masteryRows, sessions){
   // ── Basic info ──
-  const examTypes = profile.exam_types || [];
   const rawName   = profile.full_name || '—';
   const fmtName   = rawName==='—' ? rawName
     : rawName.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').replace(/,\s*/g,', ');
   setEl('info-name', fmtName);
+  // Exam type — use profile field or derive from sessions
+  const examTypes = (profile.exam_types && profile.exam_types.length>0)
+    ? profile.exam_types
+    : [...new Set((sess||[]).map(s=>s.exam_type).filter(Boolean))];
   setEl('info-exams', examTypes.join(' / ') || '—');
+
+  // Exam date
   setEl('info-exam-date', profile.exam_date ? fmtDate(profile.exam_date+'-01') : '—');
   setEl('info-mode', profile.study_mode==='cbt_only' ? 'CBT Only' : 'Drill + Videos');
   setEl('info-xp', (profile.total_xp??0)+' XP');
@@ -454,14 +459,21 @@ function renderReport(profile, masteryRows, sessions){
   const allRows= masteryRows||[];
 
   // ── JAMB prediction ──
-  if(window.SMARTPATH && rows.length>0){
-    const pred = SMARTPATH.predictJAMBScore(profile, rows);
+  if(window.SMARTPATH){
+    // Pass all mastery rows — predictJAMBScore filters internally
+    // Also works when mastery_level is null by using session accuracy as proxy
+    let pred = rows.length>0 ? SMARTPATH.predictJAMBScore(profile, allRows) : null;
+    if(!pred && sess.length>0){
+      // Fallback: derive prediction from session accuracy
+      const fakeRows = sess.map(s=>({mastery_level:s.accuracy||0}));
+      pred = SMARTPATH.predictJAMBScore(profile, fakeRows);
+    }
     if(pred){
       setEl('pred-jamb', pred.low+'–'+pred.high+' / 400');
       const gap = targetScore ? (targetScore - pred.raw) : null;
       setEl('pred-jamb-sub', gap!=null
         ? (gap>0 ? gap+' points below your target of '+targetScore : 'Above your target! 🎉')
-        : 'Based on '+rows.length+' topic'+(rows.length!==1?'s':'')+' practiced');
+        : 'Based on '+(rows.length||sess.length)+' session'+(sess.length!==1?'s':'')+' analyzed');
     }
   }
 
