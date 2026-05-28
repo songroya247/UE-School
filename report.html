@@ -431,15 +431,21 @@ function statusPill(c){
 
 // ── renderReport ────────────────────────────────────────────────
 function renderReport(profile, masteryRows, sessions){
+  // Declare all derived arrays first to avoid ReferenceError
+  const sess    = sessions||[];
+  const allRows = masteryRows||[];
+  const rows    = allRows.filter(r=>r.mastery_level!=null);
+
   // ── Basic info ──
-  const rawName   = profile.full_name || '—';
-  const fmtName   = rawName==='—' ? rawName
+  const rawName = profile.full_name || '—';
+  const fmtName = rawName==='—' ? rawName
     : rawName.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ').replace(/,\s*/g,', ');
   setEl('info-name', fmtName);
+
   // Exam type — use profile field or derive from sessions
   const examTypes = (profile.exam_types && profile.exam_types.length>0)
     ? profile.exam_types
-    : [...new Set((sess||[]).map(s=>s.exam_type).filter(Boolean))];
+    : [...new Set(sess.map(s=>s.exam_type).filter(Boolean))];
   setEl('info-exams', examTypes.join(' / ') || '—');
 
   // Exam date
@@ -454,10 +460,6 @@ function renderReport(profile, masteryRows, sessions){
   if(targetScore) setEl('info-target', targetScore+' / 400');
   else if(profile.target_grade) setEl('info-target','Grade '+profile.target_grade);
   else setEl('info-target','—');
-
-  const rows   = (masteryRows||[]).filter(r=>r.mastery_level!=null);
-  const allRows= masteryRows||[];
-  const sess   = sessions||[];  // declared here so JAMB fallback can use it
 
   // ── JAMB prediction ──
   if(window.SMARTPATH){
