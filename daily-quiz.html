@@ -192,34 +192,51 @@ body { background: var(--bg); min-height: 100vh; }
 <script>
 'use strict';
 
-// ── MATH FORMATTER ────────────────────────────────────────────────
+// ── MATH FORMATTER ───────────────────────────────────────
+var MATH_CMDS={'angle':'\u2220','circ':'\u00B0','times':'\u00D7','div':'\u00F7',
+  'leq':'\u2264','geq':'\u2265','neq':'\u2260','approx':'\u2248','infty':'\u221E',
+  'sqrt':'\u221A','pm':'\u00B1','cdot':'\u00B7','pi':'\u03C0','theta':'\u03B8',
+  'alpha':'\u03B1','beta':'\u03B2','gamma':'\u03B3','delta':'\u03B4',
+  'sigma':'\u03C3','mu':'\u03BC','phi':'\u03C6','lambda':'\u03BB','omega':'\u03C9',
+  'rightarrow':'\u2192','leftarrow':'\u2190','Rightarrow':'\u21D2'};
+var _SUP={'0':'\u2070','1':'\u00B9','2':'\u00B2','3':'\u00B3','4':'\u2074',
+          '5':'\u2075','6':'\u2076','7':'\u2077','8':'\u2078','9':'\u2079'};
+var _SUB={'0':'\u2080','1':'\u2081','2':'\u2082','3':'\u2083','4':'\u2084',
+          '5':'\u2085','6':'\u2086','7':'\u2087','8':'\u2088','9':'\u2089'};
+var _BS = String.fromCharCode(92);
 function formatMath(text) {
   if (!text) return '';
-  var s = String(text);
-  s = s.replace(/\\pi/g, 'π');
-  s = s.replace(/\pi/g, 'π');
-  s = s.replace(/pi(?=\s*[=×·\*\/\(])/g, 'π');
-  s = s.replace(/\\theta/g, 'θ'); s = s.replace(/\theta/g, 'θ');
-  s = s.replace(/\\alpha/g, 'α'); s = s.replace(/\alpha/g, 'α');
-  s = s.replace(/\\beta/g, 'β');  s = s.replace(/\beta/g, 'β');
-  s = s.replace(/\\angle/g, '∠'); s = s.replace(/\angle/g, '∠');
-  s = s.replace(/\^\\circ/g, '°'); s = s.replace(/\^\circ/g, '°');
-  s = s.replace(/\^circ/g, '°');
-  s = s.replace(/\\circ/g, '°'); s = s.replace(/\circ/g, '°');
-  s = s.replace(/\|\|/g, '∥');
-  s = s.replace(/\\times/g, '×'); s = s.replace(/\times/g, '×');
-  s = s.replace(/\\leq/g, '≤'); s = s.replace(/\leq/g, '≤');
-  s = s.replace(/\\geq/g, '≥'); s = s.replace(/\geq/g, '≥');
-  s = s.replace(/([a-zA-Z0-9])\^([0-9])/g, function(_, base, exp) {
-    var m = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴',
-             '5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
-    return base + (m[exp] || ('^'+exp));
-  });
-  s = s.replace(/(H)2(O)/g, 'H₂O');
-  s = s.replace(/(CO)2/g, 'CO₂');
-  s = s.replace(/(SO)2/g, 'SO₂');
-  return s;
+  var s=String(text),out='',i=0;
+  while(i<s.length){
+    var c=s[i];
+    if(c===_BS){
+      if(s[i+1]===_BS){i++;}
+      var j=i+1;
+      while(j<s.length&&/[a-zA-Z]/.test(s[j]))j++;
+      var cmd=s.slice(i+1,j),sym=MATH_CMDS[cmd];
+      if(sym){if(cmd==='circ'&&out.length>0&&out[out.length-1]==='^')out=out.slice(0,-1);out+=sym;i=j;continue;}
+      if(cmd){out+=cmd;i=j;continue;}
+      i++;continue;
+    }
+    if(c==='^'){
+      var nx=s[i+1];
+      if(nx&&_SUP[nx]){out+=_SUP[nx];i+=2;continue;}
+      if(nx==='{'){var ke=s.indexOf('}',i+2);if(ke>0){var inn=s.slice(i+2,ke);out+=_SUP[inn]||(inn==='circ'?'\u00B0':'<sup>'+inn+'</sup>');i=ke+1;continue;}}
+      if(nx===_BS){out+=c;i++;continue;}
+      out+=c;i++;continue;
+    }
+    if(c==='_'){
+      var nx2=s[i+1];
+      if(nx2&&_SUB[nx2]){out+=_SUB[nx2];i+=2;continue;}
+      if(nx2==='{'){var ke2=s.indexOf('}',i+2);if(ke2>0){out+='<sub>'+s.slice(i+2,ke2)+'</sub>';i=ke2+1;continue;}}
+      out+=c;i++;continue;
+    }
+    if(c==='|'&&s[i+1]==='|'){out+='\u2225';i+=2;continue;}
+    out+=c;i++;
+  }
+  return out;
 }
+
 
 // ── CONSTANTS ──────────────────────────────────────────────────────
 const QUIZ_SIZE      = 10;
