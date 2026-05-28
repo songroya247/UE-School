@@ -457,14 +457,12 @@ function renderReport(profile, masteryRows, sessions){
 
   const rows   = (masteryRows||[]).filter(r=>r.mastery_level!=null);
   const allRows= masteryRows||[];
+  const sess   = sessions||[];  // declared here so JAMB fallback can use it
 
   // ── JAMB prediction ──
   if(window.SMARTPATH){
-    // Pass all mastery rows — predictJAMBScore filters internally
-    // Also works when mastery_level is null by using session accuracy as proxy
     let pred = rows.length>0 ? SMARTPATH.predictJAMBScore(profile, allRows) : null;
     if(!pred && sess.length>0){
-      // Fallback: derive prediction from session accuracy
       const fakeRows = sess.map(s=>({mastery_level:s.accuracy||0}));
       pred = SMARTPATH.predictJAMBScore(profile, fakeRows);
     }
@@ -485,7 +483,6 @@ function renderReport(profile, masteryRows, sessions){
   }
 
   // ── Sessions stats ──
-  const sess = sessions||[];
   setEl('session-count', sess.length.toString());
   if(sess.length>=2){
     const first = Math.round((sess[sess.length-1].accuracy||0)*100);
