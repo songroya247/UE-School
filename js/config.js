@@ -102,17 +102,16 @@
     //   5. Save config.js — the CBT subject dropdown updates automatically.
     //      No other file needs to change.
     QUESTION_SUBJECT_URLS: {
-      mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
-      // english:    'https://docs.google.com/...csv',
-      // physics:    'https://docs.google.com/...csv',
-      // chemistry:  'https://docs.google.com/...csv',
-      // biology:    'https://docs.google.com/...csv',
-      // economics:  'https://docs.google.com/...csv',
-      // government: 'https://docs.google.com/...csv',
-      // literature: 'https://docs.google.com/...csv',
-      // commerce:   'https://docs.google.com/...csv',
-      // accounting: 'https://docs.google.com/...csv',
-      // geography:  'https://docs.google.com/...csv',
+      mathematics:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
+      english:              'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1658933018&single=true&output=csv',
+      biology:              'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=249163164&single=true&output=csv',
+      'agricultural science': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1606390188&single=true&output=csv',
+      chemistry:            'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1758913667&single=true&output=csv',
+      crs:                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1557227201&single=true&output=csv',
+      commerce:             'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=906700658&single=true&output=csv',
+      'computer studies':   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=709734130&single=true&output=csv',
+      economics:            'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=39501907&single=true&output=csv',
+      physics:              'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1954223493&single=true&output=csv',
     },
 
     // ── Google Sheets — curriculum / syllabus (multi-subject) ─────
