@@ -1208,6 +1208,69 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+<!-- ─── Exam-countdown reminder opt-in wiring ────────────────────────
+     Reads & writes profiles.exam_reminder_optin. Silently no-ops if
+     the column doesn't exist yet.
+─────────────────────────────────────────────────────────────────────── -->
+<script>
+(function () {
+  'use strict';
+  var toggle = document.getElementById('exam-reminder-toggle');
+  var sub    = document.getElementById('ptool-reminder-sub');
+  if (!toggle) return;
+
+  function waitFor(cond, cb, tries) {
+    tries = tries || 30;
+    if (cond()) return cb();
+    if (tries <= 0) return;
+    setTimeout(function () { waitFor(cond, cb, tries - 1); }, 250);
+  }
+
+  waitFor(
+    function () { return window.sb && window.UE_USER_ID; },
+    function () {
+      window.sb
+        .from('profiles')
+        .select('exam_reminder_optin, exam_date')
+        .eq('id', window.UE_USER_ID)
+        .single()
+        .then(function (res) {
+          if (res.error) return; // column missing or other error — hide silently
+          var current = res.data && res.data.exam_reminder_optin !== false; // default ON
+          toggle.checked  = current;
+          toggle.disabled = false;
+          if (sub) sub.textContent = current
+            ? 'Email reminders are ON for your exam date'
+            : 'Get an email at every milestone before exam day';
+        });
+
+      toggle.addEventListener('change', function () {
+        var nextVal = !!toggle.checked;
+        toggle.disabled = true;
+        window.sb
+          .from('profiles')
+          .update({ exam_reminder_optin: nextVal })
+          .eq('id', window.UE_USER_ID)
+          .then(function (res) {
+            toggle.disabled = false;
+            if (res.error) {
+              toggle.checked = !nextVal;
+              if (typeof window.toast === 'function') window.toast('Could not save preference.');
+              return;
+            }
+            if (sub) sub.textContent = nextVal
+              ? 'Email reminders are ON for your exam date'
+              : 'Get an email at every milestone before exam day';
+            if (typeof window.toast === 'function') {
+              window.toast(nextVal ? 'Exam reminders ON' : 'Exam reminders OFF');
+            }
+          });
+      });
+    }
+  );
+})();
+</script>
+
 <script>
   function toggleExpand(id, rowEl) {
     const detail = document.getElementById(id);
@@ -1274,18 +1337,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 const ALL_SUBJECTS = [
-  {id:'mathematics', label:'Mathematics', icon:'\uD83D\uDCD0'},
-  {id:'english',     label:'English',     icon:'\uD83D\uDCD6'},
-  {id:'physics',     label:'Physics',     icon:'\u269B'},
-  {id:'chemistry',   label:'Chemistry',   icon:'\uD83E\uDDEA'},
-  {id:'biology',     label:'Biology',     icon:'\uD83C\uDF3F'},
-  {id:'economics',   label:'Economics',   icon:'\uD83D\uDCC8'},
-  {id:'government',  label:'Government',  icon:'\uD83C\uDFDB'},
-  {id:'literature',  label:'Literature',  icon:'\uD83D\uDCDA'},
-  {id:'geography',   label:'Geography',   icon:'\uD83C\uDF0D'},
-  {id:'commerce',    label:'Commerce',    icon:'\uD83D\uDCBC'},
-  {id:'accounts',    label:'Accounts',    icon:'\uD83D\uDCCA'},
-  {id:'crk',         label:'CRK',         icon:'\u271D'},
+  {id:'mathematics',                 label:'Mathematics',                 icon:'\uD83D\uDCD0'},
+  {id:'english language',            label:'English Language',            icon:'\uD83D\uDCD6'},
+  {id:'physics',                     label:'Physics',                     icon:'\u269B'},
+  {id:'chemistry',                   label:'Chemistry',                   icon:'\uD83E\uDDEA'},
+  {id:'biology',                     label:'Biology',                     icon:'\uD83C\uDF3F'},
+  {id:'economics',                   label:'Economics',                   icon:'\uD83D\uDCC8'},
+  {id:'agricultural science',        label:'Agricultural Science',        icon:'\uD83C\uDF3E'},
+  {id:'commerce',                    label:'Commerce',                    icon:'\uD83D\uDCBC'},
+  {id:'computer studies',            label:'Computer Studies',            icon:'\uD83D\uDCBB'},
+  {id:'christian religious studies', label:'Christian Religious Studies', icon:'\u271D'},
 ];
 
 function openSubjectManager() {
@@ -1428,23 +1489,13 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
       /* No data yet — show flat placeholder ticks counting down to exam */
       const steps = 6;
       for (let s = 1; s <= steps; s++) {
-        if (examDate && daysLeft != null) {
-          const remaining = daysLeft - ((s - 1) * daysLeft / (steps - 1));
-          labels.push(daysLabel(remaining));
-        } else {
-          labels.push('Day ' + s);
-        }
+        labels.push('Exam ' + s);
         readinessData.push(null);
         scoreData.push(null);
       }
     } else {
       exams.forEach((ex, i) => {
-        const d = ex.created_at ? new Date(ex.created_at) : null;
-        if (examDate && d) {
-          labels.push(daysLabel(daysLeftAt(d)));
-        } else {
-          labels.push('Exam ' + (i + 1));
-        }
+        labels.push('Exam ' + (i + 1));
         scoreData.push(+(ex.score_pct || 0).toFixed(1));
       });
 
@@ -1462,8 +1513,7 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
         const futureSteps = Math.min(4, Math.max(1, Math.ceil(daysLeft / 14)));
         const lastReady   = readinessData[readinessData.length - 1] || 0;
         for (let s = 1; s <= futureSteps; s++) {
-          const remaining = daysLeft - (s * daysLeft / futureSteps);
-          labels.push(daysLabel(remaining));
+          labels.push('Exam ' + (exams.length + s));
           /* Projected (linear extrapolation capped at 100) */
           readinessData.push(Math.min(100, +(lastReady + s * 2).toFixed(1)));
           scoreData.push(null); /* no score yet */
@@ -1503,16 +1553,23 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
       ctx.fillText(pct + '%', PAD.left - 8, y);
     }
 
-    /* 70% threshold dashed line */
+    /* 70% threshold dashed line + label */
     const threshY = PAD.top + cH - (70 / 100) * cH;
+    ctx.save();
     ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = 'rgba(239,68,68,.45)';
+    ctx.strokeStyle = 'rgba(239,68,68,.55)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(PAD.left, threshY);
     ctx.lineTo(PAD.left + cW, threshY);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.font = 'bold 9px Inter, sans-serif';
+    ctx.fillStyle = 'rgba(239,68,68,.8)';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Pass (70%)', PAD.left + cW, threshY - 3);
+    ctx.restore();
 
     /* x-axis labels */
     ctx.textAlign = 'center';
@@ -1562,15 +1619,26 @@ document.getElementById('subject-manager-modal').addEventListener('click', funct
       ctx.stroke();
       ctx.setLineDash([]);
 
-      /* dots */
-      pts.forEach(p => {
+      /* dots + value labels */
+      pts.forEach((p, i) => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
+        // value label above dot
+        const val = data[i];
+        if (val != null) {
+          ctx.save();
+          ctx.font = 'bold 9px Inter, sans-serif';
+          ctx.fillStyle = color;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(Math.round(val) + '%', p.x, p.y - 7);
+          ctx.restore();
+        }
       });
 
       ctx.restore();
