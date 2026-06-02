@@ -121,13 +121,13 @@ const QUESTION_BANK = (function () {
         const results = await Promise.allSettled(subjectKeys.map(s => gs.fetchAll(s)));
         results.forEach(r => {
           if (r.status === 'fulfilled') {
-            r.value.forEach(q => q.subject && subjectSet.add(q.subject));
+            r.value.forEach(q => q.subject && subjectSet.add(q.subject.toLowerCase().trim()));
           }
         });
       } else {
         // Single fallback sheet covers all subjects
         const all = await gs.fetchAll(null);
-        all.forEach(q => q.subject && subjectSet.add(q.subject));
+        all.forEach(q => q.subject && subjectSet.add(q.subject.toLowerCase().trim()));
       }
 
       return [...subjectSet].filter(Boolean).sort();
