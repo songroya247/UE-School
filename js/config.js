@@ -240,42 +240,50 @@
     //     tag    short label, eg "JAMB", "WAEC", "UE School"
     //     link   optional full URL ("Read more →")
     //     source optional short publisher name shown beside the date
-    NEWS_FEED_URL: '',
+    // ── HOW TO UPDATE NEWS ────────────────────────────────────────
+    // Edit NEWS_ITEMS below — newest item first.
+    // Each item needs: id (unique), date (YYYY-MM-DD), tag, title, body.
+    // Optional: link (URL for "Read more"), source (publisher name).
+    // Deploy config.js after editing to push updates live immediately.
+    // Set this to your deployed Edge Function URL after running:
+    //   supabase functions deploy news-feed --no-verify-jwt
+    // URL format: https://<your-project-ref>.supabase.co/functions/v1/news-feed
+    NEWS_FEED_URL: '',  // ← paste your Edge Function URL here
     NEWS_ITEMS: [
       {
-        id:    'ue-2026-01',
-        date:  '2026-04-20',
+        id:    'ue-2026-06',
+        date:  '2026-06-01',
         tag:   'UE School',
-        title: 'New 1-on-1 Tutor Staffroom is live',
-        body:  'You can now book a verified UE School tutor directly from the dashboard. Free for every registered student to try.',
-        link:  'https://staffroom.ultimateedge.info',
+        title: '9 subjects now live on CBT Practice',
+        body:  'Mathematics, English Language, Biology, Chemistry, Physics, Economics, Commerce, Agricultural Science, Computer Studies and CRS are now available on the Exam Engine.',
+        link:  'cbt.html',
         source:'UE School',
       },
       {
-        id:    'jamb-2026-01',
-        date:  '2026-04-15',
-        tag:   'JAMB',
-        title: 'JAMB releases 2026 UTME timetable',
-        body:  'JAMB has confirmed the official UTME timetable. Check your subject combinations and CBT centre as soon as possible.',
-        link:  'https://www.jamb.gov.ng/',
-        source:'JAMB',
-      },
-      {
-        id:    'waec-2026-01',
-        date:  '2026-04-10',
+        id:    'waec-2026-02',
+        date:  '2026-05-20',
         tag:   'WAEC',
-        title: 'WAEC SSCE registration window opens',
-        body:  'Registration for the May/June WAEC SSCE has opened. Make sure your school submits your photo and bio data on time.',
+        title: 'WAEC May/June 2026 exams ongoing',
+        body:  'The 2026 WAEC SSCE May/June examinations are currently in progress. Stay focused, revise past questions, and use the CBT engine daily.',
         link:  'https://www.waecnigeria.org/',
         source:'WAEC',
       },
       {
-        id:    'ue-2026-02',
-        date:  '2026-04-05',
+        id:    'jamb-2026-02',
+        date:  '2026-05-10',
+        tag:   'JAMB',
+        title: 'JAMB 2026 UTME results released',
+        body:  'JAMB has released the 2026 UTME results. Check your score on the JAMB portal and begin preparation for Post-UTME screening.',
+        link:  'https://www.jamb.gov.ng/',
+        source:'JAMB',
+      },
+      {
+        id:    'ue-2026-05',
+        date:  '2026-04-20',
         tag:   'UE School',
-        title: 'Free sample: try one CBT, one video & one PDF',
-        body:  'Every newly-registered student now gets a no-charge sample of every premium tool. Like what you see? Upgrade in two taps.',
-        link:  'pricing.html',
+        title: '1-on-1 Tutor Staffroom is live',
+        body:  'Book a verified UE School tutor directly from the dashboard. Free for every registered student to try.',
+        link:  'https://staffroom.ultimateedge.info',
         source:'UE School',
       },
     ],
