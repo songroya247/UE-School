@@ -73,8 +73,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 .exam-logo-pill{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#93c5fd;background:rgba(147,197,253,.1);border:1px solid rgba(147,197,253,.2);padding:4px 10px;border-radius:6px}
 #exam-title{font-size:1rem;font-weight:700;color:#fff}
 .exam-header-right{display:flex;align-items:center;gap:12px}
-.jamb-pred-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;font-size:.78rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:6px}
-.jamb-pred-pill span{font-weight:800;font-size:.95rem;color:#fbbf24}
+
 .timer-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 14px;font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.04em;color:#fff;min-width:90px;text-align:center;transition:background .4s,border-color .4s}
 .timer-box.warning{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.5);color:#fca5a5}
 .timer-box.critical{background:rgba(239,68,68,.5);border-color:#ef4444;color:#fff;animation:tpulse .5s ease infinite alternate}
@@ -273,7 +272,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
   .exam-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
   #exam-title{font-size:.9rem}
   .timer-box{font-size:.85rem;padding:5px 10px}
-  .jamb-pred-pill{font-size:.72rem;padding:4px 8px}
   #map-toggle-btn{display:inline-flex}
   .exam-body{flex-direction:column;overflow:visible}
   .exam-main{overflow-y:visible;padding:16px}
@@ -383,7 +381,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
         &#x25A6; Question Map
       </button>
       <button id="calc-toggle-btn" onclick="toggleCalculator()" title="Scientific Calculator">&#x1F5A9;<span class="calc-btn-label"> Calculator</span></button>
-      <div class="jamb-pred-pill">Pred. JAMB: <span id="jamb-pred">&mdash;</span></div>
       <div class="timer-box" id="timer-display">20:00</div>
     </div>
   </header>
@@ -886,7 +883,6 @@ function renderQ(){
   const done=Object.keys(answers).length;
   if(done>0){
     const corr=QUESTIONS.filter((qq,i)=>answers[i]===qq.ans).length;
-    document.getElementById('jamb-pred').textContent=Math.round(120+(corr/done)*260);
   }
 }
 
@@ -962,7 +958,6 @@ function showResults(gr){
   const total=QUESTIONS.length, pct=Math.round(correct/total*100);
   const timeSpent=totalTime-timeLeft;
   const mins=Math.floor(timeSpent/60),secs=timeSpent%60;
-  const jambPred=Math.round(120+(correct/total)*260);
 
   const icon=document.getElementById('results-icon');
   const title=document.getElementById('results-title');
@@ -977,7 +972,6 @@ function showResults(gr){
     <div class="result-stat"><div class="result-stat-label">Score</div><div class="result-stat-val">${correct}/${total}</div></div>
     <div class="result-stat accent"><div class="result-stat-label">Accuracy</div><div class="result-stat-val">${pct}%</div></div>
     <div class="result-stat"><div class="result-stat-label">Time</div><div class="result-stat-val">${pad(mins)}:${pad(secs)}</div></div>
-    <div class="result-stat accent"><div class="result-stat-label">Pred. JAMB</div><div class="result-stat-val">${jambPred}</div></div>
   `;
 
   if(gr){
