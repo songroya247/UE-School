@@ -133,29 +133,10 @@
     // but SUBJECT_SHEET_URLS takes priority when present.
     //
     SUBJECT_SHEET_URLS: {
-      mathematics:                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
-      english:                      'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
-      // ── Add your remaining subjects below ────────────────────────
-      // Steps:
-      //   1. Open (or create) a Google Sheet tab for the subject.
-      //   2. File → Share → "Anyone with the link" → Viewer.
-      //   3. File → Publish to web → (select the tab) → CSV → Copy URL.
-      //   4. Replace the placeholder URL below with your copied URL.
-      //   5. Save config.js — videos will appear immediately on next page load.
-      //
-      // The subject key must be lowercase and match what is stored in
-      // the student's exam_subjects profile field exactly.
-      physics:                      '', // ← paste CSV URL here
-      biology:                      '', // ← paste CSV URL here
-      chemistry:                    '', // ← paste CSV URL here
-      economics:                    '', // ← paste CSV URL here
-      'agricultural science':       '', // ← paste CSV URL here
-      'christian religious studies':'', // ← paste CSV URL here
-      commerce:                     '', // ← paste CSV URL here
-      'computer studies':           '', // ← paste CSV URL here
-      government:                   '', // ← paste CSV URL here
-      literature:                   '', // ← paste CSV URL here
-      // Add more subjects as needed, following the same pattern.
+      mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
+      english:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
+      // physics:  'https://docs.google.com/...csv',   ← add more subjects here later
+      // biology:  'https://docs.google.com/...csv',
     },
 
     // Legacy single-sheet URL (used only if SUBJECT_SHEET_URLS is empty)
