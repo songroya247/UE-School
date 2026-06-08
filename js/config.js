@@ -182,8 +182,8 @@
 
       // ── SCIENCES ─────────────────────────────────────────────────
       physics:                             '', // ← paste CSV URL here
-      chemistry:                           '', // ← paste CSV URL here
-      biology:                             '', // ← paste CSV URL here
+      chemistry:                           'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1868007193&single=true&output=csv',
+      biology:                             'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=325628962&single=true&output=csv',
       'further mathematics':               '', // ← paste CSV URL here
 
       // ── COMMERCIAL ───────────────────────────────────────────────
