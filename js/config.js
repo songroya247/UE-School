@@ -102,16 +102,45 @@
     //   5. Save config.js — the CBT subject dropdown updates automatically.
     //      No other file needs to change.
     QUESTION_SUBJECT_URLS: {
-      'mathematics':                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
-      'english language':             'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1658933018&single=true&output=csv',
-      'biology':                      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=249163164&single=true&output=csv',
-      'agricultural science':         'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1606390188&single=true&output=csv',
-      'chemistry':                    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1758913667&single=true&output=csv',
-      'christian religious studies':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1557227201&single=true&output=csv',
-      'commerce':                     'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=906700658&single=true&output=csv',
-      'computer studies':             'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=709734130&single=true&output=csv',
-      'economics':                    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=39501907&single=true&output=csv',
-      'physics':                      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1954223493&single=true&output=csv',
+      // ── CORE (already connected) ──────────────────────────────────
+      'mathematics':                       'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
+      'english language':                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1658933018&single=true&output=csv',
+      'biology':                           'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=249163164&single=true&output=csv',
+      'agricultural science':              'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1606390188&single=true&output=csv',
+      'chemistry':                         'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1758913667&single=true&output=csv',
+      'christian religious studies':       'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1557227201&single=true&output=csv',
+      'commerce':                          'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=906700658&single=true&output=csv',
+      'computer studies':                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=709734130&single=true&output=csv',
+      'economics':                         'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=39501907&single=true&output=csv',
+      'physics':                           'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1954223493&single=true&output=csv',
+
+      // ── AWAITING QUESTION SHEETS ─────────────────────────────────
+      // Follow the same 5-step process above to add question banks.
+      'further mathematics':               '', // ← paste CSV URL here
+      'government':                        '', // ← paste CSV URL here
+      'civic education':                   '', // ← paste CSV URL here
+      'history':                           '', // ← paste CSV URL here
+      'geography':                         '', // ← paste CSV URL here
+      'literature in english':             '', // ← paste CSV URL here
+      'accounting':                        '', // ← paste CSV URL here
+      'business studies':                  '', // ← paste CSV URL here
+      'home economics':                    '', // ← paste CSV URL here
+      'food and nutrition':                '', // ← paste CSV URL here
+      'technical drawing':                 '', // ← paste CSV URL here
+      'auto mechanics':                    '', // ← paste CSV URL here
+      'building construction':             '', // ← paste CSV URL here
+      'electrical installation':           '', // ← paste CSV URL here
+      'metal work':                        '', // ← paste CSV URL here
+      'wood work':                         '', // ← paste CSV URL here
+      'yoruba':                            '', // ← paste CSV URL here
+      'igbo':                              '', // ← paste CSV URL here
+      'hausa':                             '', // ← paste CSV URL here
+      'french':                            '', // ← paste CSV URL here
+      'arabic':                            '', // ← paste CSV URL here
+      'islamic religious studies':         '', // ← paste CSV URL here
+      'physical and health education':     '', // ← paste CSV URL here
+      'visual arts':                       '', // ← paste CSV URL here
+      'music':                             '', // ← paste CSV URL here
     },
 
     // ── Google Sheets — curriculum / syllabus (multi-subject) ─────
@@ -133,10 +162,74 @@
     // but SUBJECT_SHEET_URLS takes priority when present.
     //
     SUBJECT_SHEET_URLS: {
-      mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
-      english:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
-      // physics:  'https://docs.google.com/...csv',   ← add more subjects here later
-      // biology:  'https://docs.google.com/...csv',
+      // ── HOW TO CONNECT A SUBJECT TO VIDEOS ───────────────────────
+      // 1. Create / open a Google Sheet tab for that subject.
+      //    Required columns: topic_id, subject, title, duration, blurb,
+      //    objectives, formulas, video_foundation, video_standard, video_mastery
+      //    (see gsheet-curriculum.js SHEET COLUMN GUIDE for full details).
+      // 2. File → Share → "Anyone with the link" → Viewer.
+      // 3. File → Publish to web → select the tab → CSV → Copy URL.
+      // 4. Replace '' below with your copied URL.
+      // 5. Save config.js and deploy — videos appear on the next page load.
+      //
+      // Subject keys are lowercase. They must match the value stored in the
+      // student's exam_subjects profile field AND the subject column in your sheet.
+      // ─────────────────────────────────────────────────────────────
+
+      // ── CORE (already connected) ──────────────────────────────────
+      mathematics:                         'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
+      english:                             'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
+
+      // ── SCIENCES ─────────────────────────────────────────────────
+      physics:                             '', // ← paste CSV URL here
+      chemistry:                           '', // ← paste CSV URL here
+      biology:                             '', // ← paste CSV URL here
+      'further mathematics':               '', // ← paste CSV URL here
+
+      // ── COMMERCIAL ───────────────────────────────────────────────
+      economics:                           '', // ← paste CSV URL here
+      commerce:                            '', // ← paste CSV URL here
+      accounting:                          '', // ← paste CSV URL here
+      'business studies':                  '', // ← paste CSV URL here
+
+      // ── ARTS & SOCIAL SCIENCES ───────────────────────────────────
+      government:                          '', // ← paste CSV URL here
+      'civic education':                   '', // ← paste CSV URL here
+      history:                             '', // ← paste CSV URL here
+      geography:                           '', // ← paste CSV URL here
+      'literature in english':             '', // ← paste CSV URL here
+
+      // ── VOCATIONAL / TECHNICAL ───────────────────────────────────
+      'agricultural science':              '', // ← paste CSV URL here
+      'home economics':                    '', // ← paste CSV URL here
+      'food and nutrition':                '', // ← paste CSV URL here
+      'technical drawing':                 '', // ← paste CSV URL here
+      'auto mechanics':                    '', // ← paste CSV URL here
+      'building construction':             '', // ← paste CSV URL here
+      'electrical installation':           '', // ← paste CSV URL here
+      'metal work':                        '', // ← paste CSV URL here
+      'wood work':                         '', // ← paste CSV URL here
+
+      // ── LANGUAGES ────────────────────────────────────────────────
+      'yoruba':                            '', // ← paste CSV URL here
+      'igbo':                              '', // ← paste CSV URL here
+      'hausa':                             '', // ← paste CSV URL here
+      'french':                            '', // ← paste CSV URL here
+      'arabic':                            '', // ← paste CSV URL here
+
+      // ── RELIGIOUS STUDIES ────────────────────────────────────────
+      'christian religious studies':       '', // ← paste CSV URL here
+      'islamic religious studies':         '', // ← paste CSV URL here
+
+      // ── ICT ───────────────────────────────────────────────────────
+      'computer studies':                  '', // ← paste CSV URL here
+
+      // ── HEALTH & PHYSICAL EDUCATION ──────────────────────────────
+      'physical and health education':     '', // ← paste CSV URL here
+
+      // ── FINE & CREATIVE ARTS ─────────────────────────────────────
+      'visual arts':                       '', // ← paste CSV URL here
+      'music':                             '', // ← paste CSV URL here
     },
 
     // Legacy single-sheet URL (used only if SUBJECT_SHEET_URLS is empty)
@@ -178,24 +271,57 @@
     // escape hatch for guides you intentionally want public.
     STUDY_GUIDES_BUCKET: 'study-guides',
     STUDY_GUIDES: {
+      // ── CORE ─────────────────────────────────────────────────────
       mathematics: [
-        { title: 'JAMB Mathematics — Master Guide',
-          path:  'mathematics/jamb-master-guide.pdf', size: '4.2 MB' },
-        { title: 'WAEC/NECO Mathematics — Quick Revision',
-          path:  'mathematics/waec-revision.pdf',     size: '2.8 MB' },
+        { title: 'JAMB Mathematics — Master Guide',          path: 'mathematics/jamb-master-guide.pdf',  size: '4.2 MB' },
+        { title: 'WAEC/NECO Mathematics — Quick Revision',   path: 'mathematics/waec-revision.pdf',      size: '2.8 MB' },
       ],
       english: [
-        { title: 'English Language — JAMB Survival Pack',
-          path:  'english/jamb-survival.pdf',         size: '3.1 MB' },
-        { title: 'WAEC English — Essay & Comprehension',
-          path:  'english/waec-essay.pdf',            size: '2.4 MB' },
+        { title: 'English Language — JAMB Survival Pack',    path: 'english/jamb-survival.pdf',          size: '3.1 MB' },
+        { title: 'WAEC English — Essay & Comprehension',     path: 'english/waec-essay.pdf',             size: '2.4 MB' },
       ],
-      physics:    [{ title:'Physics — Full Syllabus Guide',  path:'physics/syllabus.pdf',    size:'5.0 MB' }],
-      chemistry:  [{ title:'Chemistry — Full Syllabus Guide',path:'chemistry/syllabus.pdf',  size:'4.7 MB' }],
-      biology:    [{ title:'Biology — Full Syllabus Guide',  path:'biology/syllabus.pdf',    size:'4.1 MB' }],
-      economics:  [{ title:'Economics — Theory & Diagrams',  path:'economics/guide.pdf',     size:'3.6 MB' }],
-      government: [{ title:'Government — Constitutions',     path:'government/guide.pdf',    size:'3.0 MB' }],
-      literature: [{ title:'Literature — Set Texts Notes',   path:'literature/set-texts.pdf',size:'3.4 MB' }],
+      // ── SCIENCES ─────────────────────────────────────────────────
+      physics:                  [{ title: 'Physics — Full Syllabus Guide',             path: 'physics/syllabus.pdf',                    size: '5.0 MB' }],
+      chemistry:                [{ title: 'Chemistry — Full Syllabus Guide',           path: 'chemistry/syllabus.pdf',                  size: '4.7 MB' }],
+      biology:                  [{ title: 'Biology — Full Syllabus Guide',             path: 'biology/syllabus.pdf',                    size: '4.1 MB' }],
+      'further mathematics':    [{ title: 'Further Mathematics — Exam Guide',          path: 'further-mathematics/guide.pdf',           size: '3.8 MB' }],
+      // ── COMMERCIAL ───────────────────────────────────────────────
+      economics:                [{ title: 'Economics — Theory & Diagrams',             path: 'economics/guide.pdf',                     size: '3.6 MB' }],
+      commerce:                 [{ title: 'Commerce — Full Syllabus Guide',            path: 'commerce/guide.pdf',                      size: '3.2 MB' }],
+      accounting:               [{ title: 'Financial Accounting — Study Guide',        path: 'accounting/guide.pdf',                    size: '3.5 MB' }],
+      'business studies':       [{ title: 'Business Studies — WAEC/JAMB Guide',        path: 'business-studies/guide.pdf',              size: '3.0 MB' }],
+      // ── ARTS & SOCIAL SCIENCES ───────────────────────────────────
+      government:               [{ title: 'Government — Constitutions & Governance',   path: 'government/guide.pdf',                    size: '3.0 MB' }],
+      'civic education':        [{ title: 'Civic Education — Study Guide',             path: 'civic-education/guide.pdf',               size: '2.5 MB' }],
+      history:                  [{ title: 'History — Study Guide',                     path: 'history/guide.pdf',                       size: '3.1 MB' }],
+      geography:                [{ title: 'Geography — Physical & Human Guide',        path: 'geography/guide.pdf',                     size: '3.4 MB' }],
+      'literature in english':  [{ title: 'Literature in English — Set Texts Notes',   path: 'literature/set-texts.pdf',                size: '3.4 MB' }],
+      // ── VOCATIONAL / TECHNICAL ───────────────────────────────────
+      'agricultural science':   [{ title: 'Agricultural Science — Study Guide',        path: 'agricultural-science/guide.pdf',          size: '3.3 MB' }],
+      'home economics':         [{ title: 'Home Economics — Study Guide',              path: 'home-economics/guide.pdf',                size: '2.8 MB' }],
+      'food and nutrition':     [{ title: 'Food & Nutrition — Study Guide',            path: 'food-and-nutrition/guide.pdf',            size: '2.7 MB' }],
+      'technical drawing':      [{ title: 'Technical Drawing — Study Guide',           path: 'technical-drawing/guide.pdf',             size: '2.9 MB' }],
+      'auto mechanics':         [{ title: 'Auto Mechanics — Study Guide',              path: 'auto-mechanics/guide.pdf',                size: '2.6 MB' }],
+      'building construction':  [{ title: 'Building Construction — Study Guide',       path: 'building-construction/guide.pdf',         size: '2.8 MB' }],
+      'electrical installation':[{ title: 'Electrical Installation — Study Guide',     path: 'electrical-installation/guide.pdf',       size: '2.7 MB' }],
+      'metal work':             [{ title: 'Metal Work — Study Guide',                  path: 'metal-work/guide.pdf',                    size: '2.5 MB' }],
+      'wood work':              [{ title: 'Wood Work — Study Guide',                   path: 'wood-work/guide.pdf',                     size: '2.5 MB' }],
+      // ── LANGUAGES ────────────────────────────────────────────────
+      yoruba:                   [{ title: 'Yoruba Language — Study Guide',             path: 'yoruba/guide.pdf',                        size: '2.4 MB' }],
+      igbo:                     [{ title: 'Igbo Language — Study Guide',               path: 'igbo/guide.pdf',                          size: '2.4 MB' }],
+      hausa:                    [{ title: 'Hausa Language — Study Guide',              path: 'hausa/guide.pdf',                         size: '2.4 MB' }],
+      french:                   [{ title: 'French Language — Study Guide',             path: 'french/guide.pdf',                        size: '2.6 MB' }],
+      arabic:                   [{ title: 'Arabic Language — Study Guide',             path: 'arabic/guide.pdf',                        size: '2.5 MB' }],
+      // ── RELIGIOUS STUDIES ────────────────────────────────────────
+      'christian religious studies': [{ title: 'CRS — Study Guide',                   path: 'christian-religious-studies/guide.pdf',   size: '2.9 MB' }],
+      'islamic religious studies':   [{ title: 'IRS — Study Guide',                   path: 'islamic-religious-studies/guide.pdf',     size: '2.9 MB' }],
+      // ── ICT ───────────────────────────────────────────────────────
+      'computer studies':       [{ title: 'Computer Studies — Study Guide',            path: 'computer-studies/guide.pdf',              size: '3.0 MB' }],
+      // ── HEALTH & PHYSICAL EDUCATION ──────────────────────────────
+      'physical and health education': [{ title: 'PHE — Study Guide',                 path: 'physical-health-education/guide.pdf',     size: '2.6 MB' }],
+      // ── FINE & CREATIVE ARTS ─────────────────────────────────────
+      'visual arts':            [{ title: 'Visual Arts — Study Guide',                 path: 'visual-arts/guide.pdf',                   size: '2.7 MB' }],
+      music:                    [{ title: 'Music — Study Guide',                       path: 'music/guide.pdf',                         size: '2.5 MB' }],
     },
 
     // ── Post-UTME — universities offered in the bank ──────────────
