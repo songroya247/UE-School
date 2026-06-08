@@ -135,8 +135,9 @@
     SUBJECT_SHEET_URLS: {
       mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
       english:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
+      chemistry:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1868007193&single=true&output=csv',
+      biology:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=325628962&single=true&output=csv',
       // physics:  'https://docs.google.com/...csv',   ← add more subjects here later
-      // biology:  'https://docs.google.com/...csv',
     },
 
     // Legacy single-sheet URL (used only if SUBJECT_SHEET_URLS is empty)
