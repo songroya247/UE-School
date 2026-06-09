@@ -107,51 +107,13 @@ window.CLASSROOM = (function () {
      published CSV URL in config.js SUBJECT_SHEET_URLS.
   ───────────────────────────────────────────────────────────────────── */
   const CURRICULUM = {
-    // ── Core ──────────────────────────────────────────────────────
-    mathematics:                    { label: 'Mathematics',                   icon: '&#x1F4D0;', color: '#3b82f6', topics: [] },
-    english:                        { label: 'English Language',              icon: '&#x1F4D6;', color: '#10b981', topics: [] },
-    // ── Sciences ──────────────────────────────────────────────────
-    physics:                        { label: 'Physics',                       icon: '&#x269B;',  color: '#7c3aed', topics: [] },
-    chemistry:                      { label: 'Chemistry',                     icon: '&#x1F9EA;', color: '#ff6b35', topics: [] },
-    biology:                        { label: 'Biology',                       icon: '&#x1F33F;', color: '#0891b2', topics: [] },
-    'further mathematics':          { label: 'Further Mathematics',           icon: '&#x1F4D0;', color: '#0ea5e9', topics: [] },
-    // ── Commercial ────────────────────────────────────────────────
-    economics:                      { label: 'Economics',                     icon: '&#x1F4C8;', color: '#f59e0b', topics: [] },
-    commerce:                       { label: 'Commerce',                      icon: '&#x1F6D2;', color: '#f97316', topics: [] },
-    accounting:                     { label: 'Accounting',                    icon: '&#x1F4B9;', color: '#84cc16', topics: [] },
-    'business studies':             { label: 'Business Studies',              icon: '&#x1F4BC;', color: '#a3e635', topics: [] },
-    // ── Arts & Social Sciences ────────────────────────────────────
-    government:                     { label: 'Government',                    icon: '&#x1F3DB;', color: '#6366f1', topics: [] },
-    'civic education':              { label: 'Civic Education',               icon: '&#x1F5F3;', color: '#818cf8', topics: [] },
-    history:                        { label: 'History',                       icon: '&#x1F4DC;', color: '#a78bfa', topics: [] },
-    geography:                      { label: 'Geography',                     icon: '&#x1F30D;', color: '#34d399', topics: [] },
-    'literature in english':        { label: 'Literature in English',         icon: '&#x1F4D5;', color: '#6ee7b7', topics: [] },
-    // ── Vocational / Technical ────────────────────────────────────
-    'agricultural science':         { label: 'Agricultural Science',          icon: '&#x1F33E;', color: '#86efac', topics: [] },
-    'home economics':               { label: 'Home Economics',                icon: '&#x1F3E0;', color: '#fda4af', topics: [] },
-    'food and nutrition':           { label: 'Food & Nutrition',              icon: '&#x1F957;', color: '#fb7185', topics: [] },
-    'technical drawing':            { label: 'Technical Drawing',             icon: '&#x1F4D0;', color: '#94a3b8', topics: [] },
-    'auto mechanics':               { label: 'Auto Mechanics',                icon: '&#x1F527;', color: '#64748b', topics: [] },
-    'building construction':        { label: 'Building Construction',         icon: '&#x1F3D7;', color: '#78716c', topics: [] },
-    'electrical installation':      { label: 'Electrical Installation',       icon: '&#x26A1;',  color: '#facc15', topics: [] },
-    'metal work':                   { label: 'Metal Work',                    icon: '&#x1F528;', color: '#a8a29e', topics: [] },
-    'wood work':                    { label: 'Wood Work',                     icon: '&#x1FAB5;', color: '#d97706', topics: [] },
-    // ── Languages ─────────────────────────────────────────────────
-    yoruba:                         { label: 'Yoruba',                        icon: '&#x1F4AC;', color: '#c084fc', topics: [] },
-    igbo:                           { label: 'Igbo',                          icon: '&#x1F4AC;', color: '#e879f9', topics: [] },
-    hausa:                          { label: 'Hausa',                         icon: '&#x1F4AC;', color: '#f0abfc', topics: [] },
-    french:                         { label: 'French',                        icon: '&#x1F1EB;', color: '#60a5fa', topics: [] },
-    arabic:                         { label: 'Arabic',                        icon: '&#x1F4D6;', color: '#93c5fd', topics: [] },
-    // ── Religious Studies ─────────────────────────────────────────
-    'christian religious studies':  { label: 'Christian Religious Studies',   icon: '&#x271D;',  color: '#fbbf24', topics: [] },
-    'islamic religious studies':    { label: 'Islamic Religious Studies',     icon: '&#x262A;',  color: '#fcd34d', topics: [] },
-    // ── ICT ───────────────────────────────────────────────────────
-    'computer studies':             { label: 'Computer Studies',              icon: '&#x1F4BB;', color: '#38bdf8', topics: [] },
-    // ── Health & Physical Education ───────────────────────────────
-    'physical and health education':{ label: 'Physical & Health Education',   icon: '&#x26BD;',  color: '#4ade80', topics: [] },
-    // ── Fine & Creative Arts ──────────────────────────────────────
-    'visual arts':                  { label: 'Visual Arts',                   icon: '&#x1F3A8;', color: '#f472b6', topics: [] },
-    music:                          { label: 'Music',                         icon: '&#x1F3B5;', color: '#e879f9', topics: [] },
+    mathematics: { label: 'Mathematics',      icon: '&#x1F4D0;', color: '#3b82f6', topics: [] },
+    english:     { label: 'English Language', icon: '&#x1F4D6;', color: '#10b981', topics: [] },
+    physics:     { label: 'Physics',          icon: '&#x269B;',  color: '#7c3aed', topics: [] },
+    chemistry:   { label: 'Chemistry',        icon: '&#x1F9EA;', color: '#ff6b35', topics: [] },
+    biology:     { label: 'Biology',          icon: '&#x1F33F;', color: '#0891b2', topics: [] },
+    economics:   { label: 'Economics',        icon: '&#x1F4C8;', color: '#f59e0b', topics: [] },
+    government:  { label: 'Government',       icon: '&#x1F3DB;', color: '#6366f1', topics: [] },
   };
 
   /* ───────────────────────────────────────────────────────────────────
@@ -936,7 +898,7 @@ window.CLASSROOM = (function () {
     // Practice button
     const practiceBtn = document.getElementById('practice-btn');
     if (practiceBtn) {
-      const parts = getTopicParts(topic);
+      const parts = topicId(topic);
       practiceBtn.href = `cbt.html?subject=${parts.subj}&topic=${encodeURIComponent(parts.topic)}`;
     }
 
@@ -951,7 +913,7 @@ window.CLASSROOM = (function () {
     }
   }
 
-  function getTopicParts(topic) {
+  function topicId(topic) {
     const parts = topic.id.split('.');
     return { subj: parts[0], topic: parts.slice(1).join('.') };
   }
