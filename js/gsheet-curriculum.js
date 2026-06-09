@@ -424,47 +424,6 @@ window.GSHEET_CURRICULUM = (function () {
      missing, or if no usable video URL exists (buildVideos returns null).
      Null rows are silently skipped in fetchOneSheet().
   ───────────────────────────────────────────────────────────────────── */
-  /* ─────────────────────────────────────────────────────────────────
-     splitField(raw) — INTERNAL HELPER
-     ─────────────────────────────────────────────────────────────────
-     Splits a sheet cell that may use any of three delimiter styles:
-
-       1. Pipe-separated  (original format):   "Solve by factorising | Use formula"
-       2. Semicolon-separated:                 "ax²+bx+c=0; x=(-b±√...)÷2a"
-       3. Numbered sentences (TSV format):     "1. Solve by factorising 2. Use formula"
-
-     Priority: pipe → semicolon → numbered sentences.
-     Falls back to returning the whole string as a single-item array
-     if none of the delimiters are found.
-  ───────────────────────────────────────────────────────────────────── */
-  function splitField(raw) {
-    const s = (raw || '').trim();
-    if (!s) return [];
-
-    // 1. Pipe-separated (original format)
-    if (s.includes('|')) {
-      return s.split('|').map(v => v.trim()).filter(Boolean);
-    }
-
-    // 2. Semicolon-separated (formula format e.g. "a²−b²=(a+b)(a−b); ax²+bx+c")
-    if (s.includes(';')) {
-      return s.split(';').map(v => v.trim()).filter(Boolean);
-    }
-
-    // 3. Numbered sentences e.g. "1. First point 2. Second point 3. Third point"
-    //    Split on the pattern: space + digit(s) + period — but only when preceded
-    //    by a word character (end of previous sentence), not at the very start.
-    if (/\s\d+\./.test(s)) {
-      return s
-        .split(/(?<=\S)\s+(?=\d+\.\s)/)  // split before "2. ", "3. " etc.
-        .map(v => v.replace(/^\d+\.\s*/, '').trim()) // strip leading "1. "
-        .filter(Boolean);
-    }
-
-    // 4. Fallback — return as single item
-    return [s];
-  }
-
   function rowToBlueprint(row, idx, subjectOverride) {
     const topicId = g(row, idx, 'topic_id');
     // subjectOverride forces the subject key for sheets where every row
@@ -489,8 +448,8 @@ window.GSHEET_CURRICULUM = (function () {
       videos,
       blurb:      g(row, idx, 'blurb') || '',
       // Split pipe-delimited strings into arrays; classroom.js renders them as lists
-      objectives: splitField(g(row, idx, 'objectives')),
-      formulas:   splitField(g(row, idx, 'formulas')),
+      objectives: (g(row, idx, 'objectives') || '').split('|').map(s => s.trim()).filter(Boolean),
+      formulas:   (g(row, idx, 'formulas')   || '').split('|').map(s => s.trim()).filter(Boolean),
       subSkills:  [], // reserved for Skill Chamber adaptive layer
       _source:    'gsheet', // ← classroom.js mergeSheetIntoCurriculum() filters on this
     };
