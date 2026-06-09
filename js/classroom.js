@@ -494,10 +494,30 @@ window.CLASSROOM = (function () {
     if (!list) return;
 
     if (subj.topics.length === 0) {
+      // Determine if it's a config issue or genuinely empty
+      const sheetConfigured = window.UE_CONFIG &&
+        window.UE_CONFIG.SUBJECT_SHEET_URLS &&
+        window.UE_CONFIG.SUBJECT_SHEET_URLS[subjKey];
+      const sheetError = window.GSHEET_CURRICULUM &&
+        window.GSHEET_CURRICULUM.getLastError &&
+        window.GSHEET_CURRICULUM.getLastError();
+
+      let emptyMsg, emptyHint;
+      if (!sheetConfigured) {
+        emptyMsg = `${subj.label} — no sheet configured`;
+        emptyHint = `Add a published CSV URL for <strong>${subjKey}</strong> in <code>config.js → SUBJECT_SHEET_URLS</code>.`;
+      } else if (sheetError) {
+        emptyMsg = `${subj.label} — sheet failed to load`;
+        emptyHint = `Check the error banner above for details. Verify the sheet is published (File → Publish to web → CSV).`;
+      } else {
+        emptyMsg = `${subj.label} coming soon`;
+        emptyHint = `No lessons have been added yet. Add rows to the Google Sheet configured for this subject.`;
+      }
+
       list.innerHTML = `<div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:.84rem;line-height:1.6">
         <div style="font-size:1.8rem;margin-bottom:10px">&#x1F4CB;</div>
-        <strong style="display:block;margin-bottom:6px;color:var(--text2)">${subj.label} coming soon</strong>
-        No lessons have been added for this subject yet.
+        <strong style="display:block;margin-bottom:8px;color:var(--text2)">${emptyMsg}</strong>
+        <span style="font-size:.78rem">${emptyHint}</span>
       </div>`;
       return;
     }
