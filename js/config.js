@@ -102,16 +102,17 @@
     //   5. Save config.js — the CBT subject dropdown updates automatically.
     //      No other file needs to change.
     QUESTION_SUBJECT_URLS: {
-      'mathematics':                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
-      'english language':             'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1658933018&single=true&output=csv',
-      'biology':                      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=249163164&single=true&output=csv',
-      'agricultural science':         'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1606390188&single=true&output=csv',
-      'chemistry':                    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1758913667&single=true&output=csv',
-      'christian religious studies':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1557227201&single=true&output=csv',
-      'commerce':                     'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=906700658&single=true&output=csv',
-      'computer studies':             'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=709734130&single=true&output=csv',
-      'economics':                    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=39501907&single=true&output=csv',
-      'physics':                      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1954223493&single=true&output=csv',
+      mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
+      // english:    'https://docs.google.com/...csv',
+      // physics:    'https://docs.google.com/...csv',
+      // chemistry:  'https://docs.google.com/...csv',
+      // biology:    'https://docs.google.com/...csv',
+      // economics:  'https://docs.google.com/...csv',
+      // government: 'https://docs.google.com/...csv',
+      // literature: 'https://docs.google.com/...csv',
+      // commerce:   'https://docs.google.com/...csv',
+      // accounting: 'https://docs.google.com/...csv',
+      // geography:  'https://docs.google.com/...csv',
     },
 
     // ── Google Sheets — curriculum / syllabus (multi-subject) ─────
@@ -133,29 +134,10 @@
     // but SUBJECT_SHEET_URLS takes priority when present.
     //
     SUBJECT_SHEET_URLS: {
-      mathematics:                  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
-      english:                      'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
-      // ── Add your remaining subjects below ────────────────────────
-      // Steps:
-      //   1. Open (or create) a Google Sheet tab for the subject.
-      //   2. File → Share → "Anyone with the link" → Viewer.
-      //   3. File → Publish to web → (select the tab) → CSV → Copy URL.
-      //   4. Replace the placeholder URL below with your copied URL.
-      //   5. Save config.js — videos will appear immediately on next page load.
-      //
-      // The subject key must be lowercase and match what is stored in
-      // the student's exam_subjects profile field exactly.
-      physics:                      '', // ← paste CSV URL here
-      biology:                      '', // ← paste CSV URL here
-      chemistry:                    '', // ← paste CSV URL here
-      economics:                    '', // ← paste CSV URL here
-      'agricultural science':       '', // ← paste CSV URL here
-      'christian religious studies':'', // ← paste CSV URL here
-      commerce:                     '', // ← paste CSV URL here
-      'computer studies':           '', // ← paste CSV URL here
-      government:                   '', // ← paste CSV URL here
-      literature:                   '', // ← paste CSV URL here
-      // Add more subjects as needed, following the same pattern.
+      mathematics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=0&single=true&output=csv',
+      english:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1567958511&single=true&output=csv',
+      // physics:  'https://docs.google.com/...csv',   ← add more subjects here later
+      // biology:  'https://docs.google.com/...csv',
     },
 
     // Legacy single-sheet URL (used only if SUBJECT_SHEET_URLS is empty)
@@ -259,50 +241,42 @@
     //     tag    short label, eg "JAMB", "WAEC", "UE School"
     //     link   optional full URL ("Read more →")
     //     source optional short publisher name shown beside the date
-    // ── HOW TO UPDATE NEWS ────────────────────────────────────────
-    // Edit NEWS_ITEMS below — newest item first.
-    // Each item needs: id (unique), date (YYYY-MM-DD), tag, title, body.
-    // Optional: link (URL for "Read more"), source (publisher name).
-    // Deploy config.js after editing to push updates live immediately.
-    // Set this to your deployed Edge Function URL after running:
-    //   supabase functions deploy news-feed --no-verify-jwt
-    // URL format: https://<your-project-ref>.supabase.co/functions/v1/news-feed
-    NEWS_FEED_URL: '',  // ← paste your Edge Function URL here
+    NEWS_FEED_URL: '',
     NEWS_ITEMS: [
       {
-        id:    'ue-2026-06',
-        date:  '2026-06-01',
+        id:    'ue-2026-01',
+        date:  '2026-04-20',
         tag:   'UE School',
-        title: '9 subjects now live on CBT Practice',
-        body:  'Mathematics, English Language, Biology, Chemistry, Physics, Economics, Commerce, Agricultural Science, Computer Studies and CRS are now available on the Exam Engine.',
-        link:  'cbt.html',
+        title: 'New 1-on-1 Tutor Staffroom is live',
+        body:  'You can now book a verified UE School tutor directly from the dashboard. Free for every registered student to try.',
+        link:  'https://staffroom.ultimateedge.info',
         source:'UE School',
       },
       {
-        id:    'waec-2026-02',
-        date:  '2026-05-20',
-        tag:   'WAEC',
-        title: 'WAEC May/June 2026 exams ongoing',
-        body:  'The 2026 WAEC SSCE May/June examinations are currently in progress. Stay focused, revise past questions, and use the CBT engine daily.',
-        link:  'https://www.waecnigeria.org/',
-        source:'WAEC',
-      },
-      {
-        id:    'jamb-2026-02',
-        date:  '2026-05-10',
+        id:    'jamb-2026-01',
+        date:  '2026-04-15',
         tag:   'JAMB',
-        title: 'JAMB 2026 UTME results released',
-        body:  'JAMB has released the 2026 UTME results. Check your score on the JAMB portal and begin preparation for Post-UTME screening.',
+        title: 'JAMB releases 2026 UTME timetable',
+        body:  'JAMB has confirmed the official UTME timetable. Check your subject combinations and CBT centre as soon as possible.',
         link:  'https://www.jamb.gov.ng/',
         source:'JAMB',
       },
       {
-        id:    'ue-2026-05',
-        date:  '2026-04-20',
+        id:    'waec-2026-01',
+        date:  '2026-04-10',
+        tag:   'WAEC',
+        title: 'WAEC SSCE registration window opens',
+        body:  'Registration for the May/June WAEC SSCE has opened. Make sure your school submits your photo and bio data on time.',
+        link:  'https://www.waecnigeria.org/',
+        source:'WAEC',
+      },
+      {
+        id:    'ue-2026-02',
+        date:  '2026-04-05',
         tag:   'UE School',
-        title: '1-on-1 Tutor Staffroom is live',
-        body:  'Book a verified UE School tutor directly from the dashboard. Free for every registered student to try.',
-        link:  'https://staffroom.ultimateedge.info',
+        title: 'Free sample: try one CBT, one video & one PDF',
+        body:  'Every newly-registered student now gets a no-charge sample of every premium tool. Like what you see? Upgrade in two taps.',
+        link:  'pricing.html',
         source:'UE School',
       },
     ],
