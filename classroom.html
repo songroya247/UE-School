@@ -381,19 +381,17 @@ header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;ba
 <script src="js/intervention_modal.js"></script>
 
 <!--
-  ⚠️  gsheet-curriculum.js MUST come before classroom.js.
-  classroom.html calls GSHEET_CURRICULUM.init() before CLASSROOM.init().
-  gsheet-curriculum.js must still load before classroom.js so the global exists.
--->
-<script src="js/gsheet-curriculum.js"></script>
+  ⚠️  LOAD ORDER IS CRITICAL — DO NOT REORDER THESE TWO TAGS.
 
-<!--
-  ⚠️  gdrive-video.js MUST come before classroom.js.
-  classroom.js calls GDRIVE_VIDEO.embedUrl() inside renderLesson().
-  gsheet-curriculum.js also calls it at runtime (inside normaliseVideoUrl).
-  Both require GDRIVE_VIDEO to be registered before they execute.
+  gdrive-video.js MUST load BEFORE gsheet-curriculum.js.
+  gsheet-curriculum.js calls GDRIVE_VIDEO.embedUrl() inside
+  normaliseVideoUrl(), which runs during GSHEET_CURRICULUM.init().
+  init() is async and called from DOMContentLoaded — so by the time
+  it executes, all scripts have parsed.  But keeping gdrive-video.js
+  first is the safe, correct ordering and removes any edge-case risk.
 -->
 <script src="js/gdrive-video.js"></script>
+<script src="js/gsheet-curriculum.js"></script>
 <script src="js/classroom.js"></script>
 
 <!--
@@ -424,26 +422,76 @@ function toast(msg, dur = 2800) {
 ═══════════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  /* Fire auth + sheet fetch in parallel — both are independent network
-     requests. This shaves ~300-400ms off the time to first sidebar render
-     compared to the previous sequential approach. */
+  /* ── Step 1: Auth + sheet fetch run in parallel ──────────────────
+     Both are independent network requests.  We only need auth to
+     succeed; sheet failure is non-fatal (classroom still works on
+     built-in curriculum and we surface a warning in the sidebar). */
   const [authData] = await Promise.all([
     AUTH_GUARD.init(),
-    GSHEET_CURRICULUM.init(),   // runs concurrently with auth
+    (async () => {
+      if (!window.GSHEET_CURRICULUM || !GSHEET_CURRICULUM.isEnabled()) return;
+      try {
+        await GSHEET_CURRICULUM.init();
+      } catch (e) {
+        // init() itself catches all errors internally, but wrap as a
+        // safety net so a thrown error never aborts the Promise.all.
+        console.error('[classroom.html] GSHEET_CURRICULUM.init() threw unexpectedly:', e);
+      }
+    })(),
   ]);
 
   /* Auth failed — AUTH_GUARD already redirected to login.html. */
   if (!authData) return;
 
-  /* Both auth and sheet data are ready. Merge sheet topics into
-     CURRICULUM before CLASSROOM.init() renders the sidebar. */
+  /* ── Step 2: Merge sheet topics into CURRICULUM ──────────────────
+     Sheet data (if any) is now in window.TOPIC_BLUEPRINT.
+     mergeSheetIntoCurriculum() injects it into CLASSROOM.CURRICULUM
+     so renderSidebar() finds the topics immediately. */
   CLASSROOM.mergeSheetIntoCurriculum();
 
-  /* Store profile globally for video watermark (injectIframe reads it). */
+  /* ── Step 3: Surface any sheet load errors in the sidebar ────────
+     This gives operators a clear, visible message in the classroom UI
+     instead of silent "Loading topics…" that never resolves. */
+  if (window.GSHEET_CURRICULUM) {
+    const sheetError = GSHEET_CURRICULUM.getLastError && GSHEET_CURRICULUM.getLastError();
+    if (sheetError) {
+      // Inject a visible warning banner just below the nav
+      const banner = document.createElement('div');
+      banner.id = 'sheet-error-banner';
+      banner.style.cssText = [
+        'background:rgba(239,68,68,.08)',
+        'border-bottom:1px solid rgba(239,68,68,.25)',
+        'color:#b91c1c',
+        'font-size:.78rem',
+        'font-weight:500',
+        'padding:8px 20px',
+        'display:flex',
+        'align-items:center',
+        'gap:8px',
+        'flex-shrink:0',
+      ].join(';');
+      banner.innerHTML = `<span style="font-size:1rem">⚠️</span>
+        <span>Lesson sheet could not load — showing built-in content.
+        <strong>Operator:</strong> ${sheetError.split('\n')[0]}
+        <button onclick="this.closest('#sheet-error-banner').remove()"
+          style="margin-left:10px;background:none;border:none;color:inherit;cursor:pointer;font-weight:700">✕</button>
+        </span>`;
+      // Insert after the header element
+      const header = document.querySelector('header');
+      if (header && header.nextSibling) {
+        header.parentNode.insertBefore(banner, header.nextSibling);
+      }
+      console.warn('[classroom.html] Sheet load errors:\n' + sheetError);
+    }
+  }
+
+  /* ── Step 4: Store profile for video watermark ───────────────────
+     injectIframe() reads window._ueProfile to display the student
+     name watermark.  Must be set before CLASSROOM.init() renders. */
   if (authData.profile) window._ueProfile = authData.profile;
 
-  /* Render — CURRICULUM is fully merged, profile is set. */
-  await CLASSROOM.init(authData); // authData already fetched above — no second auth round-trip
+  /* ── Step 5: Render sidebar and first lesson ──────────────────── */
+  await CLASSROOM.init(authData);
 
   // Step 5: Float video when scrolled out of view
   // Uses a stable sentinel div — NOT the placeholder — to avoid observer loop blinking
