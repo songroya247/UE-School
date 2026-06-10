@@ -821,7 +821,26 @@ window.CLASSROOM = (function () {
         iframe.allow = 'autoplay; fullscreen';
         iframe.allowFullscreen = true;
         iframe.loading = 'lazy';
-        iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
+        // For Drive /preview iframes we expand height and shift up so Drive's
+        // internal title bar and bottom controls are hidden outside the
+        // overflow:hidden boundary of #video-area — this stops the video
+        // content itself being cropped.  YouTube embeds have no chrome so
+        // they keep the standard inset:0 / 100% sizing.
+        if (isYouTube) {
+          iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;z-index:3';
+        } else {
+          // Oversized by ~20% and shifted up so Drive's ~56px top bar and
+          // ~40px bottom bar sit outside the clipped container.
+          iframe.style.cssText = [
+            'position:absolute',
+            'top:-10%',
+            'left:0',
+            'width:100%',
+            'height:120%',
+            'border:none',
+            'z-index:3',
+          ].join(';');
+        }
 
         iframe.addEventListener('load', hideSkeleton);
         skeletonTimeoutId = setTimeout(() => { hideSkeleton(); skeletonTimeoutId = null; }, 8000);
@@ -852,10 +871,10 @@ window.CLASSROOM = (function () {
           cover.id = 'video-arrow-blocker';
           cover.style.cssText = [
             'position:absolute',
-            'top:0','right:0',
-            'width:120px','height:80px',
+            'top:6px','right:0',
+            'width:160px','height:100px',
             'z-index:10',
-            'background:transparent',
+            'background:#0a0f1e',   // matches video-area bg — hides Drive icon underneath
             'pointer-events:all',
             'cursor:default',
           ].join(';');
