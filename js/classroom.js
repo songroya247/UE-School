@@ -763,6 +763,53 @@ window.CLASSROOM = (function () {
              Any breakage in that chain produces an empty src, which will
              result in a blank video area (no iframe injected).
       ──────────────────────────────────────────────────────────────── */
+
+      /* ── _showDriveFallback(src, videoArea) ──────────────────────────
+         Called when the Drive /preview iframe is blocked by the browser
+         (X-Frame-Options: SAMEORIGIN or CSP).  Replaces the dead iframe
+         with a branded fallback panel that lets the student open the
+         video directly in a new tab.
+      ──────────────────────────────────────────────────────────────── */
+      function _showDriveFallback(src, area) {
+        // Remove the broken iframe and overlays
+        area.querySelectorAll('iframe, #video-arrow-blocker, #video-watermark, #video-skeleton')
+            .forEach(el => { try { el.src = ''; } catch(_){} el.remove(); });
+
+        // Build a Drive file URL (swap /preview → /view) for direct opening
+        const viewUrl = src.replace(/\/preview(\?.*)?$/, '/view');
+
+        const fb = document.createElement('div');
+        fb.id = 'video-drive-fallback';
+        fb.style.cssText = [
+          'position:absolute','inset:0',
+          'z-index:20',
+          'display:flex','flex-direction:column',
+          'align-items:center','justify-content:center','gap:14px',
+          'background:#0a0f1e',
+          'border-radius:inherit',
+          'padding:24px',
+          'text-align:center',
+        ].join(';');
+        fb.innerHTML = `
+          <div style="font-size:2rem;opacity:.5">▶</div>
+          <p style="color:rgba(255,255,255,.75);font-size:.9rem;max-width:260px;line-height:1.5;margin:0;font-family:'DM Sans',system-ui,sans-serif;">
+            Video preview is blocked by your browser.<br>Open it directly on Google Drive.
+          </p>
+          <a href="${viewUrl}" target="_blank" rel="noopener"
+             style="display:inline-flex;align-items:center;gap:8px;
+                    background:linear-gradient(135deg,rgba(79,142,255,.9),rgba(99,102,241,.8));
+                    color:#fff;font-size:.85rem;font-weight:700;
+                    padding:10px 22px;border-radius:10px;text-decoration:none;
+                    font-family:'DM Sans',system-ui,sans-serif;letter-spacing:.02em;
+                    box-shadow:0 4px 18px rgba(79,142,255,.35);">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 12L12 2M12 2H6M12 2V8" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Watch on Google Drive
+          </a>`;
+        area.appendChild(fb);
+      }
+
       function injectIframe(src, isYouTube) {
         // Cancel any pending skeleton-hide from a previous video load
         if (skeletonTimeoutId) { clearTimeout(skeletonTimeoutId); skeletonTimeoutId = null; }
@@ -796,20 +843,47 @@ window.CLASSROOM = (function () {
         videoArea.appendChild(iframe);
 
         // ── Arrow blocker — sits ABOVE the iframe ──
-        // Covers the top-right corner where Drive/YouTube puts the external link icon
+        // Covers the top-right corner where Drive puts the external link icon.
+        // Width/height are intentionally generous (120×80) to account for
+        // Drive moving/resizing the icon across different viewport scales.
         if (!isYouTube) {
           const cover = document.createElement('div');
           cover.id = 'video-arrow-blocker';
           cover.style.cssText = [
             'position:absolute',
             'top:0','right:0',
-            'width:80px','height:60px',
+            'width:120px','height:80px',
             'z-index:10',
             'background:transparent',
             'pointer-events:all',
             'cursor:default',
           ].join(';');
           videoArea.appendChild(cover);
+
+          // ── Embed-block detection ──
+          // Some browsers / network configs block Drive /preview iframes
+          // (X-Frame-Options: SAMEORIGIN).  We detect this by trying to read
+          // iframe.contentDocument after load — a cross-origin block throws,
+          // and a same-origin error page is also detectable.  On block we swap
+          // the player for a friendly "Watch on Drive" fallback button.
+          iframe.addEventListener('load', function onDriveLoad() {
+            iframe.removeEventListener('load', onDriveLoad);
+            try {
+              // Cross-origin success: contentDocument is null (not accessible)
+              // but NO SecurityError is thrown — this is fine, video is playing.
+              // A redirected-to-error page (Drive's own block page) will have
+              // contentDocument.location.href === 'about:blank' or throw.
+              const doc = iframe.contentDocument || iframe.contentWindow.document;
+              // If we can read the doc without throwing, Drive served an error
+              // page (same-origin) — treat it as blocked.
+              if (doc && doc.title !== undefined) {
+                _showDriveFallback(src, videoArea);
+              }
+            } catch (e) {
+              // SecurityError → cross-origin iframe loaded successfully (expected).
+              // Do nothing — video is playing normally.
+            }
+          });
         }
 
         // ── Watermark overlay ──
