@@ -148,15 +148,21 @@ header{
 
 /* ── State machine: hide everything, then selectively show ── */
 #vp-empty,
-#vp-spin,
-#vp > iframe{
+#vp-spin{
   position:absolute;inset:0;width:100%;height:100%;
+}
+
+/* iframe shifted up so Drive control bar isn't clipped at bottom */
+#vp > iframe{
+  position:absolute;
+  top:-40px;left:0;right:0;
+  width:100%;height:calc(100% + 40px);
+  border:none;display:none;
 }
 
 /* Default: hide all children */
 #vp-empty { display:none; }
 #vp-spin  { display:none; }
-#vp > iframe { display:none; border:none; height:calc(100% + 40px); }
 
 /* State overrides */
 #vp[data-state="empty"]   #vp-empty { display:flex; }
