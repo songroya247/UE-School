@@ -125,6 +125,13 @@ window.CLASSROOM = (function () {
     const vp = document.getElementById('vp');
     if (!vp) return;
 
+    // Ensure Drive /preview URLs always use rm=minimal so the player
+    // doesn't reserve a toolbar at the top and push video content down
+    if (isDrive && src && src.includes('drive.google.com')) {
+      src = src.includes('?') ? src.replace(/[?&]rm=[^&]*/,'') + '&rm=minimal'
+                               : src + '?rm=minimal';
+    }
+
     // Clear any previous iframe
     vp.querySelectorAll('iframe').forEach(f => { f.src = ''; f.remove(); });
 
