@@ -142,9 +142,8 @@ header{
   aspect-ratio:16/9;   /* same for all sources: YT + Drive */
   background:#050c1e;
   position:relative;
-  overflow:visible;
+  overflow:hidden;
   display:block;
-  padding-bottom:40px;
 }
 
 /* ── State machine: hide everything, then selectively show ── */
@@ -157,7 +156,7 @@ header{
 /* Default: hide all children */
 #vp-empty { display:none; }
 #vp-spin  { display:none; }
-#vp > iframe { display:none; border:none; }
+#vp > iframe { display:none; border:none; height:calc(100% + 40px); }
 
 /* State overrides */
 #vp[data-state="empty"]   #vp-empty { display:flex; }
