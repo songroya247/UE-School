@@ -152,12 +152,9 @@ window.CLASSROOM = (function () {
     // #vp-spin via display:none, and shows the iframe via display:block.
     iframe.style.cssText = [
       'position:absolute',
-      'top:-40px',
-      'left:0',
-      'right:0',
-      'bottom:0',
+      'inset:0',
       'width:100%',
-      'height:calc(100% + 40px)',
+      'height:100%',
       'border:none',
     ].join(';');
 
@@ -230,7 +227,7 @@ window.CLASSROOM = (function () {
         if (v && v.url) return v.url;
       }
     }
-    if (topic.driveId) return `https://drive.google.com/file/d/${topic.driveId}/preview`;
+    if (topic.driveId) return `https://drive.google.com/file/d/${topic.driveId}/preview?rm=minimal`;
     if (topic.driveUrl && window.GDRIVE_VIDEO) return GDRIVE_VIDEO.embedUrl(topic.driveUrl) || '';
     return '';
   }
