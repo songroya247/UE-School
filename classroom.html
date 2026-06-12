@@ -120,10 +120,24 @@ header{
    data-state="loading" → #vp-spin shows  (spinner)
    data-state="playing" → iframe shows    (actual video)
 
-   Both YouTube and Google Drive use the same aspect-ratio:16/9
-   container. Drive's controls overlay the video (like YouTube).
-   This is simpler and more reliable than height:0 + padding-bottom
-   (which breaks with box-sizing:border-box in some browsers).
+   SIZING — YOUTUBE vs GOOGLE DRIVE
+   ──────────────────────────────────
+   Both sources use the same aspect-ratio:16/9 container.
+
+   YouTube: iframe fills the container with position:absolute;
+   inset:0;width:100%;height:100%. YouTube's player keeps its
+   controls at the bottom even at narrow mobile widths.
+
+   Google Drive (/preview?rm=minimal): On mobile the iframe renders
+   at ~360×202 px, which triggers Drive's "compact" layout —
+   progress bar moves to the top, bottom controls are clipped.
+   Fix (in classroom.js → injectIframe): the Drive iframe is
+   rendered at a fixed 1280×720 logical size and CSS-scaled down
+   via transform:scale() to fill the container. Drive sees a
+   desktop viewport and uses its full-size control layout.
+   A ResizeObserver recalculates the scale on orientation change.
+   ?rm=minimal strips Drive's top chrome bar so the full height
+   is used for the video and controls.
    ═══════════════════════════════════════════════════════════ */
 
 .vp-outer{position:sticky;top:0;z-index:40;background:var(--bg)}
@@ -139,7 +153,7 @@ header{
 /* ── The video box ── */
 #vp{
   width:100%;
-  aspect-ratio:16/9;
+  aspect-ratio:16/9;   /* same for all sources: YT + Drive */
   background:#050c1e;
   position:relative;
   overflow:hidden;
@@ -148,7 +162,8 @@ header{
 
 /* ── State machine: hide everything, then selectively show ── */
 #vp-empty,
-#vp-spin{
+#vp-spin,
+#vp > iframe{
   position:absolute;inset:0;width:100%;height:100%;
 }
 
@@ -341,7 +356,13 @@ header{
           "empty"   → placeholder
           "loading" → spinner
           "playing" → iframe
+
         Exactly ONE child is visible at a time — no overlapping possible.
+
+        Drive mobile fix: classroom.js renders the Drive iframe at
+        1280×720 and CSS-scales it down so Drive uses its full desktop
+        control layout. See injectIframe() / applyDriveScale() in
+        classroom.js for implementation details.
       -->
       <div id="vp" data-state="empty">
 
