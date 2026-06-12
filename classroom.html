@@ -1,517 +1,510 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  var L='login.html',page=window.location.pathname.split('/').pop()||'';
+  var h=window.location.hash||'',s=window.location.search||'';
+  if(h.indexOf('access_token=')>-1||h.indexOf('type=')>-1||/[?&](code|token_hash|token)=/.test(s))return;
+  var ok=false;
+  try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('sb-')===0&&k.indexOf('-auth-token')>-1){var v=localStorage.getItem(k);if(v&&v.length>10){ok=true;break;}}}}catch(e){}
+  if(!ok)window.location.replace(L+'?next='+encodeURIComponent(page));
+})();
+</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UE School &mdash; Ace Your JAMB, WAEC &amp; NECO Exams</title>
-
-<!-- ── Early DNS/connection hints ─────────────────────────────────
-     Resolved before any script runs so CDN fetches are faster.
-     jsDelivr hosts the Supabase SDK; paystack hosts the payment SDK.
-──────────────────────────────────────────────────────────────── -->
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Classroom &mdash; UE School</title>
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js?v=3"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="dns-prefetch" href="https://js.paystack.co">
-
-<!-- Google Fonts — display=swap prevents render-blocking -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
 <style>
-/* ══════════════════════════════════════════════════════
-   MOBILE NAV &mdash; Professional slide-down panel
-   Extends main.css. Does NOT redefine span animation.
-══════════════════════════════════════════════════════ */
-.nav-hamburger {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  width: 40px;
-  height: 40px;
-  padding: 8px;
-  background: rgba(26,86,255,.06);
-  border: 1.5px solid var(--border2);
-  border-radius: 9px;
-  cursor: pointer;
-  margin-left: auto;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 210;
-  transition: background .2s, border-color .2s;
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f7fc;--surf:#fff;--surf2:#eef3ff;
+  --bdr:#e4eaf6;--bdr2:#c9d8f8;
+  --accent:#2563eb;--adim:rgba(37,99,235,.09);--amid:rgba(37,99,235,.22);
+  --txt:#0b1730;--txt2:#374265;--muted:#6b7696;
+  --r:10px;--rlg:15px;--sw:270px;--hh:56px;
 }
-.nav-hamburger:hover { background: rgba(26,86,255,.12); border-color: var(--accent); }
-.nav-hamburger span {
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-  transition: transform .3s ease, opacity .3s ease;
-  transform-origin: center center;
-}
-.nav-mobile-open .nav-hamburger { background: rgba(26,86,255,.1); border-color: var(--accent); }
-.nav-mobile-open .nav-hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-.nav-mobile-open .nav-hamburger span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-.nav-mobile-open .nav-hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-
-@media (max-width: 768px) {
-  .ue-nav { height: auto; }
-  .ue-nav .container { flex-wrap: wrap; height: auto; padding: 0 16px; position: relative; }
-  .nav-logo { padding: 14px 0; flex: 1; }
-  .nav-hamburger { display: flex; }
-
-  /* Smooth slide-down panel */
-  .nav-links,
-  .nav-right {
-    display: flex !important;
-    flex-direction: column;
-    width: 100%;
-    overflow: hidden;
-    max-height: 0;
-    opacity: 0;
-    pointer-events: none;
-    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, padding .3s ease;
-  }
-  .nav-links { gap: 2px; padding: 0; order: 3; border-top: none; }
-  .nav-right  { gap: 8px; padding: 0; order: 4; border-top: 1px solid var(--border); }
-
-  /* Open state */
-  .nav-mobile-open .nav-links {
-    max-height: 300px; opacity: 1; pointer-events: auto;
-    padding: 8px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
-  }
-  .nav-mobile-open .nav-right {
-    max-height: 160px; opacity: 1; pointer-events: auto; padding: 12px 0 16px;
-  }
-
-  /* Nav link pills */
-  .nav-links a {
-    display: flex; align-items: center;
-    padding: 11px 14px; font-size: .92rem; font-weight: 600;
-    color: var(--text); border-radius: 9px;
-    transition: background .15s, color .15s;
-  }
-  .nav-links a:hover, .nav-links a.active { background: rgba(26,86,255,.07); color: var(--accent); }
-  .nav-links a.active { font-weight: 700; }
-  .nav-right .btn { width: 100%; justify-content: center; height: 44px; }
-
-  /* Hero */
-  .hero-grid { grid-template-columns: 1fr !important; }
-  .hero-cbt-card { display: none; }
-  .hero-headline { font-size: 1.65rem !important; }
-  .hero-ctas { flex-direction: column; gap: 12px; }
-  .hero-ctas .btn { width: 100%; text-align: center; }
-
-  /* Stats */
-  .stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
-  .stats-grid .stat-item:nth-child(4),
-  .stats-grid .stat-item:nth-child(5) { grid-column: span 1; }
-
-  /* Features / Subjects section header */
-  .section-slider-header { flex-direction: column !important; align-items: flex-start !important; gap: 12px; }
-  .section-slider-header > div:last-child { align-self: flex-end; }
-
-  /* Exam cards */
-  .exam-cards { grid-template-columns: 1fr !important; }
-
-  /* Classroom band */
-  .classroom-band-inner { flex-direction: column !important; gap: 24px; }
-  .classroom-band-inner h2 { font-size: 1.8rem !important; }
-  .classroom-video-mock { width: 100% !important; min-height: 160px; }
-  .topic-pills { flex-wrap: wrap; }
-
-  /* Pricing */
-  .pricing-grid { grid-template-columns: 1fr !important; max-width: 400px; margin: 0 auto; }
-
-  /* How it works &ndash; 4-col inline grid &rarr; 2-col &rarr; 1-col */
-  .how-it-works-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* Testimonials */
-  .testimonials-grid { grid-template-columns: 1fr !important; }
-
-  /* CTA band headline */
-  .cta-band h2 { font-size: 1.8rem !important; }
-
-  /* Footer */
-  .footer-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
-
-  /* General section padding */
-  .section-mobile-pad { padding: 48px 0 !important; }
+html{height:100%;font-size:15px}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);color:var(--txt);
+  height:100vh;display:flex;flex-direction:column;
+  overflow:hidden;-webkit-font-smoothing:antialiased;
 }
 
-@media (max-width: 480px) {
-  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .how-it-works-grid { grid-template-columns: 1fr !important; }
+/* ── Expired banner ── */
+#exp-banner{
+  background:linear-gradient(90deg,#7c2d12,#b45309);
+  color:#fef3c7;font-size:.74rem;font-weight:500;
+  text-align:center;padding:7px 16px;flex-shrink:0;display:none
 }
+#exp-banner a{color:#fde68a;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(253,230,138,.4);margin-left:6px}
+
+/* ── Header ── */
+header{
+  height:var(--hh);flex-shrink:0;
+  background:var(--surf);border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 14px;gap:9px;position:relative;z-index:50
+}
+.h-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;border-radius:8px;
+  background:var(--surf2);border:1px solid var(--bdr);
+  color:var(--txt2);font-size:1.2rem;text-decoration:none;
+  transition:background .15s;cursor:pointer;flex-shrink:0;font-family:inherit
+}
+.h-btn:hover{background:var(--bdr2)}
+.logo{font-size:.88rem;font-weight:800;letter-spacing:-.025em;text-decoration:none;flex-shrink:0;
+  background:linear-gradient(135deg,var(--txt) 30%,var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hsep{width:1px;height:18px;background:var(--bdr);flex-shrink:0}
+.tabs{display:flex;align-items:center;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{
+  font-family:inherit;font-size:.73rem;font-weight:500;
+  color:var(--muted);background:transparent;border:none;
+  padding:6px 12px;border-radius:7px;cursor:pointer;
+  white-space:nowrap;transition:all .15s;flex-shrink:0
+}
+.tab-btn:hover{color:var(--txt);background:var(--surf2)}
+.tab-btn.active{background:var(--accent);color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(37,99,235,.28)}
+#sb-tog{display:none}
+
+/* ── Layout ── */
+.layout{flex:1;display:grid;grid-template-columns:var(--sw) 1fr;overflow:hidden;min-height:0}
+
+/* ── Sidebar ── */
+.sidebar{background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.sb-hd{padding:14px 15px;border-bottom:1px solid var(--bdr);background:linear-gradient(160deg,#f7f9ff,#eef2ff)}
+.sb-subj{font-size:.97rem;font-weight:700;letter-spacing:-.02em;color:var(--txt);margin-bottom:3px}
+.sb-cnt{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+.sb-cnt::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
+#topic-list{flex:1;overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent}
+#topic-list::-webkit-scrollbar{width:3px}
+#topic-list::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+.ti{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:transparent;border:1px solid transparent;border-radius:8px;
+  padding:8px 10px;text-align:left;cursor:pointer;
+  color:var(--txt2);font-family:inherit;font-size:.79rem;font-weight:400;
+  margin-bottom:2px;position:relative;transition:all .15s
+}
+.ti:hover:not(.locked){background:var(--surf2);border-color:var(--bdr)}
+.ti.active{background:var(--adim);border-color:var(--amid);color:var(--accent);font-weight:600}
+.ti.active::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:3px;background:var(--accent);border-radius:0 3px 3px 0}
+.ti.locked{opacity:.42;cursor:not-allowed}
+.ti-n{font-size:.63rem;font-weight:700;color:var(--muted);min-width:22px;text-align:center;background:var(--surf2);border:1px solid var(--bdr);border-radius:5px;padding:1px 5px;flex-shrink:0}
+.ti.active .ti-n{background:var(--accent);border-color:var(--accent);color:#fff}
+.ti-t{flex:1;line-height:1.4}
+.ti-p{font-size:.64rem;color:var(--muted);margin-left:auto;flex-shrink:0}
+.sb-ov{display:none;position:fixed;inset:0;background:rgba(8,18,48,.32);backdrop-filter:blur(2px);z-index:100;opacity:0;transition:opacity .2s;pointer-events:none}
+.sb-ov.open{opacity:1;pointer-events:auto}
+
+/* ── Main ── */
+.main{overflow-y:auto;background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--bdr) transparent}
+.main::-webkit-scrollbar{width:5px}
+.main::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:4px}
+
+/* ═══════════════════════════════════════════════════════════
+   VIDEO PLAYER
+   ═══════════════════════════════════════════════════════════
+   DESIGN: data-state attribute controls which child is visible.
+   Only ONE child is ever shown at a time — impossible to overlap.
+
+   data-state="empty"   → #vp-empty shows  (placeholder UI)
+   data-state="loading" → #vp-spin shows  (spinner)
+   data-state="playing" → iframe shows    (actual video)
+
+   SIZING — YOUTUBE vs GOOGLE DRIVE
+   ──────────────────────────────────
+   Both sources use the same aspect-ratio:16/9 container.
+
+   YouTube: iframe fills the container with position:absolute;
+   inset:0;width:100%;height:100%. YouTube's player keeps its
+   controls at the bottom even at narrow mobile widths.
+
+   Google Drive (/preview?rm=minimal): On mobile the iframe renders
+   at ~360×202 px, which triggers Drive's "compact" layout —
+   progress bar moves to the top, bottom controls are clipped.
+   Fix (in classroom.js → injectIframe): the Drive iframe is
+   rendered at a fixed 1280×720 logical size and CSS-scaled down
+   via transform:scale() to fill the container. Drive sees a
+   desktop viewport and uses its full-size control layout.
+   A ResizeObserver recalculates the scale on orientation change.
+   ?rm=minimal strips Drive's top chrome bar so the full height
+   is used for the video and controls.
+   ═══════════════════════════════════════════════════════════ */
+
+.vp-outer{position:sticky;top:0;z-index:40;background:var(--bg)}
+
+/* Mini-player hint (when scrolled past video) */
+#vp-hint{
+  display:none;padding:7px 0;
+  text-align:center;font-size:.72rem;font-weight:500;
+  color:var(--accent);gap:6px;align-items:center;justify-content:center
+}
+#vp-hint.show{display:flex}
+
+/* ── The video box ── */
+#vp{
+  width:100%;
+  aspect-ratio:16/9;   /* same for all sources: YT + Drive */
+  background:#050c1e;
+  position:relative;
+  overflow:hidden;
+  display:block;
+}
+
+/* ── State machine: hide everything, then selectively show ── */
+#vp-empty,
+#vp-spin,
+#vp > iframe{
+  position:absolute;inset:0;width:100%;height:100%;
+}
+
+/* Default: hide all children */
+#vp-empty { display:none; }
+#vp-spin  { display:none; }
+#vp > iframe { display:none; border:none; }
+
+/* State overrides */
+#vp[data-state="empty"]   #vp-empty { display:flex; }
+#vp[data-state="loading"] #vp-spin  { display:flex; }
+#vp[data-state="playing"] > iframe  { display:block; }
+
+/* ── Empty (placeholder) ── */
+#vp-empty{
+  background:radial-gradient(ellipse 85% 70% at 50% 40%,#0f2050,#050c1e);
+  flex-direction:column;align-items:center;justify-content:center;gap:16px
+}
+.vp-ring{
+  width:68px;height:68px;border-radius:50%;cursor:pointer;
+  background:linear-gradient(135deg,rgba(91,138,255,.85),rgba(60,90,210,.75));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;color:#fff;padding-left:4px;
+  box-shadow:0 0 0 14px rgba(91,138,255,.1),0 8px 28px rgba(91,138,255,.4);
+  transition:transform .2s,box-shadow .2s
+}
+.vp-ring:hover{transform:scale(1.09)}
+.vp-hint-txt{font-size:.78rem;color:rgba(255,255,255,.28);letter-spacing:.04em}
+
+/* ── Loading spinner ── */
+#vp-spin{
+  background:#050c1e;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px
+}
+.vp-spinner{
+  width:40px;height:40px;border-radius:50%;
+  border:3px solid rgba(91,138,255,.15);
+  border-top-color:#5b8aff;
+  animation:spin .85s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vp-loading-txt{font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.07em}
+
+/* ── Floating mini-player ── */
+#vp.floating{
+  position:fixed !important;
+  bottom:18px !important;right:14px !important;
+  top:auto !important;left:auto !important;
+  width:270px !important;
+  aspect-ratio:16/9 !important;
+  z-index:9999 !important;
+  border-radius:13px !important;
+  overflow:hidden !important;
+  box-shadow:0 10px 50px rgba(0,0,0,.65),0 0 0 1px rgba(100,140,255,.2) !important
+}
+#vp-float-bar{
+  display:none;position:absolute;
+  top:0;left:0;right:0;height:28px;z-index:5;
+  background:linear-gradient(180deg,rgba(5,12,30,.88),transparent);
+  border-radius:13px 13px 0 0;
+  align-items:center;justify-content:space-between;padding:0 9px
+}
+#vp.floating #vp-float-bar{display:flex}
+.fp-close{background:none;border:none;color:rgba(255,255,255,.55);font-size:.8rem;cursor:pointer;padding:2px 5px;border-radius:4px;line-height:1;font-family:inherit}
+.fp-close:hover{color:#fff;background:rgba(255,255,255,.1)}
+.fp-lbl{font-size:.56rem;color:rgba(255,255,255,.28);letter-spacing:.08em;text-transform:uppercase}
+
+/* Overlays inside video (z-index above iframe) */
+#vp-wm,#vp-blk{position:absolute;z-index:4;pointer-events:none}
+#vp-wm{inset:0;overflow:hidden}
+#vp-blk{top:0;right:0;width:80px;height:52px;background:transparent;pointer-events:all;cursor:default}
+
+/* Tier badge */
+#vp-badge{
+  display:none;position:absolute;bottom:11px;left:11px;z-index:4;pointer-events:none;
+  font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;backdrop-filter:blur(8px)
+}
+#vp-badge.foundation{background:rgba(251,146,60,.2);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
+#vp-badge.standard  {background:rgba(91,138,255,.2);color:#5b8aff;border:1px solid rgba(91,138,255,.3)}
+#vp-badge.mastery   {background:rgba(167,139,250,.2);color:#a78bfa;border:1px solid rgba(167,139,250,.3)}
+
+/* ── Lesson panel ── */
+.panel{max-width:740px;margin:0 auto;padding:20px 24px 44px}
+.tier-row{display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tier-pill{
+  font-family:inherit;font-size:.71rem;font-weight:600;
+  padding:5px 14px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--bdr2);background:var(--surf);color:var(--txt2);transition:all .15s
+}
+.tier-pill:hover{border-color:var(--accent);color:var(--accent);background:var(--adim)}
+.tier-pill.active.foundation{background:rgba(251,146,60,.1);color:#c2410c;border-color:rgba(251,146,60,.35)}
+.tier-pill.active.standard  {background:var(--adim);color:var(--accent);border-color:var(--amid)}
+.tier-pill.active.mastery   {background:rgba(139,92,246,.1);color:#6d28d9;border-color:rgba(139,92,246,.3)}
+.tier-tag{font-size:.71rem;color:var(--muted);margin-left:2px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.topic-chip{background:var(--adim);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid var(--amid)}
+.dur-chip{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.dur-chip::before{content:'◷';font-size:.8rem}
+.lesson-title{font-size:1.45rem;font-weight:800;letter-spacing:-.03em;color:var(--txt);line-height:1.2;margin-bottom:17px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--bdr);margin-bottom:22px}
+.btn{font-family:inherit;font-size:.8rem;font-weight:600;border:none;border-radius:9px;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;text-decoration:none;padding:9px 18px}
+.btn-p{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 3px 14px rgba(79,130,255,.24)}
+.btn-p:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.btn-g{background:var(--surf);color:var(--txt2);border:1px solid var(--bdr2)}
+.btn-g:hover{background:var(--surf2);color:var(--txt)}
+#lesson-content p{font-size:.93rem;line-height:1.85;color:var(--txt2);margin-bottom:17px}
+#lesson-content h3{font-size:1rem;font-weight:700;letter-spacing:-.02em;color:var(--txt);margin:6px 0 11px}
+#lesson-content ul{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:22px}
+#lesson-content ul li{display:flex;gap:10px;align-items:flex-start;background:var(--surf);border:1px solid var(--bdr);border-radius:9px;padding:10px 13px;color:var(--txt2);font-size:.87rem;line-height:1.6;transition:border-color .15s}
+#lesson-content ul li:hover{border-color:var(--bdr2)}
+#lesson-content ul li .blt{color:var(--accent);font-size:1rem;margin-top:1px;flex-shrink:0}
+.fbox{background:linear-gradient(135deg,rgba(219,234,254,.85),rgba(191,219,254,.55));border:1px solid rgba(37,99,235,.16);border-radius:var(--rlg);padding:16px 18px;margin-bottom:22px;position:relative;overflow:hidden}
+.fbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.fbox-lbl{font-size:.62rem;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.fbox-lbl::before{content:'f(x)';background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.18);color:var(--accent);font-family:'DM Mono','Courier New',monospace;font-size:.66rem;padding:1px 6px;border-radius:4px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.fitem{background:rgba(255,255,255,.7);border:1px solid rgba(37,99,235,.1);border-radius:8px;padding:10px 13px;font-size:.88rem;color:var(--txt);font-family:'DM Mono','Courier New',monospace}
+#quiz-section{padding-top:24px;border-top:1px solid var(--bdr)}
+.qh{font-size:1.04rem;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+.qcard{background:var(--surf);border:1px solid var(--bdr2);border-radius:var(--rlg);padding:19px;box-shadow:0 2px 14px rgba(37,99,235,.05)}
+.qmeta{font-size:.67rem;font-weight:700;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em}
+.qdots{display:flex;gap:5px}
+.qdot{width:7px;height:7px;border-radius:50%;background:var(--surf2);border:1px solid var(--bdr2);transition:all .3s}
+.qdot.done{background:var(--accent);border-color:var(--accent)}
+.qdot.active{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px var(--accent)}
+#quiz-q{font-size:.97rem;font-weight:700;margin-bottom:15px;color:var(--txt);line-height:1.55;letter-spacing:-.01em}
+#quiz-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{background:var(--surf2);border:1px solid var(--bdr2);border-radius:9px;padding:10px 12px;text-align:left;cursor:pointer;font-family:inherit;font-size:.83rem;color:var(--txt2);transition:all .15s;display:flex;align-items:center;gap:8px}
+.opt:hover{background:var(--surf);border-color:var(--amid);color:var(--txt);transform:translateY(-1px)}
+.opt.sel{border-color:var(--accent);background:var(--adim);color:var(--accent)}
+.opt-l{font-size:.66rem;font-weight:700;color:var(--muted);background:var(--surf);border:1px solid var(--bdr);border-radius:5px;padding:1px 6px;flex-shrink:0}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(11,23,48,.92);backdrop-filter:blur(14px);border:1px solid rgba(100,140,255,.18);color:#fff;font-family:inherit;font-size:.8rem;font-weight:500;padding:11px 20px;border-radius:28px;box-shadow:0 6px 28px rgba(37,99,235,.18);opacity:0;pointer-events:none;transition:opacity .28s,transform .28s;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Responsive ── */
+@media(max-width:700px){
+  body{height:auto !important;overflow:visible !important;overflow-x:hidden}
+  .layout{grid-template-columns:1fr;overflow:visible !important}
+  .main{overflow-y:visible !important}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:272px;z-index:110;transform:translateX(-100%);transition:transform .26s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 32px rgba(37,99,235,.1)}
+  .sidebar.open{transform:translateX(0)}
+  .sb-ov{display:block}
+  #sb-tog{display:flex !important}
+  .panel{padding:16px 15px 44px}
+  .fgrid{grid-template-columns:1fr}
+  #quiz-opts{grid-template-columns:1fr}
+  .btn-row{flex-wrap:wrap;gap:8px}
+  .lesson-title{font-size:1.2rem}
+  #vp.floating{width:245px !important;bottom:62px !important;right:10px !important}
+}
+@media(max-width:400px){.tab-btn{padding:5px 8px;font-size:.69rem}}
 </style>
 </head>
-<body>
+<body style="visibility:hidden">
+<noscript><div style="padding:40px;text-align:center;font-family:system-ui"><h2>JavaScript Required</h2><p>Enable JS to use UE School. <a href="login.html">Log in</a>.</p></div></noscript>
 
-<!-- defaulter-banner intentionally absent on public page -->
+<div id="exp-banner">Your subscription has expired. <a href="pricing.html">Renew Now &rarr;</a></div>
 
-<nav class="ue-nav">
-  <div class="container">
-    <a href="index.html" class="nav-logo">UE School</a>
-    <div class="nav-links">
-      <a href="classroom.html">Classroom</a>
-      <a href="cbt.html">Practice (CBT)</a>
-      <a href="dashboard.html">Dashboard</a>
-      <a href="pricing.html">Pricing</a>
-    </div>
-    <button class="nav-hamburger" id="nav-toggle" aria-label="Toggle menu" onclick="this.closest('.ue-nav').classList.toggle('nav-mobile-open')">
-      <span></span><span></span><span></span>
-    </button>
-    <div class="nav-right" id="nav-right">
-      <a href="login.html" class="btn btn-primary" id="nav-cta-btn">Login / Sign Up</a>
-    </div>
+<header>
+  <button id="sb-tog" class="h-btn" onclick="CLASSROOM.toggleSidebar()">&#9776;</button>
+  <a href="dashboard.html" class="h-btn" onclick="try{sessionStorage.setItem('ue_from_classroom','1')}catch(e){}">&#8249;</a>
+  <a href="index.html" class="logo">UE School</a>
+  <div class="hsep"></div>
+  <div class="tabs" id="subject-tabs">
+    <button class="tab-btn active" data-subject="mathematics" onclick="CLASSROOM.switchSubject('mathematics',this)">Mathematics</button>
   </div>
-</nav>
+</header>
 
-<!-- HERO -->
-<section class="hero-section">
-  <div class="container">
-    <div class="hero-grid">
-      <div>
-        <h1 class="hero-headline">ACE YOUR JAMB, WAEC &amp; NECO EXAMS</h1>
-        <p class="hero-sub">Master every topic with adaptive CBT prep, expert video lessons, and AI-powered score predictions.</p>
-        <div class="hero-ctas">
-          <a href="login.html" class="btn btn-primary btn-lg">Start Free Today</a>
-          <a href="daily-quiz.html" class="btn btn-outline btn-lg">&#x26A1; Free Daily Quiz</a>
-        </div>
-      </div>
-      <div class="hero-cbt-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-          <span class="hero-timer">Time Left: 01:45:20</span>
-          <span class="hero-jamb-badge">Predicted JAMB: 285</span>
-        </div>
-        <div class="hero-question">If <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-family:var(--font-mono)">x² - 5x + 6 = 0</code>, what are the values of x?</div>
-        <div class="hero-opts">
-          <div class="hero-opt selected">A. x = 2 or x = 3</div>
-          <div class="hero-opt">B. x = -2 or x = -3</div>
-          <div class="hero-opt">C. x = 1 or x = 6</div>
-          <div class="hero-opt">D. x = -1 or x = -6</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+<div class="layout">
 
-<!-- STATS STRIP -->
-<section class="stats-strip">
-  <div class="container">
-    <div class="stats-grid">
-      <div class="stat-item"><div class="stat-value">7</div><div class="stat-label">Subjects Covered</div></div>
-      <div class="stat-item"><div class="stat-value">100+</div><div class="stat-label">Practice Questions</div></div>
-      <div class="stat-item"><div class="stat-value">JAMB</div><div class="stat-label">WAEC &amp; NECO</div></div>
-      <div class="stat-item"><div class="stat-value">3</div><div class="stat-label">Skill Levels</div></div>
-      <div class="stat-item"><div class="stat-value">&#x20A6;1,500</div><div class="stat-label">/month</div></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-hd">
+      <div class="sb-subj" id="sb-subj">Mathematics</div>
+      <div class="sb-cnt"  id="sb-cnt">Loading&hellip;</div>
     </div>
-  </div>
-</section>
+    <div id="topic-list">
+      <div style="padding:22px 14px;text-align:center;color:var(--muted);font-size:.81rem">Loading&hellip;</div>
+    </div>
+  </aside>
 
-<!-- FEATURES SLIDER -->
-<section style="padding:72px 0;background:rgba(240,244,255,.5);">
-  <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;" class="section-slider-header">
-      <div>
-        <h2 class="section-title">Why UE School?</h2>
-        <p class="section-sub">Everything you need to succeed, all in one place.</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn-icon" id="feat-prev">&#8249;</button>
-        <button class="btn-icon" id="feat-next">&#8250;</button>
-      </div>
-    </div>
-    <div class="slider-wrap">
-      <div class="slider-track" id="feat-track">
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">&#x1F3AF;</div><div class="feature-title">Smart Score Prediction</div><div class="feature-desc">Know your JAMB range before exam day</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">📹</div><div class="feature-title">200+ Video Masterclasses</div><div class="feature-desc">Full curriculum covered topic by topic</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">🧠</div><div class="feature-title">Adaptive Practice</div><div class="feature-desc">Questions adjust to your level automatically</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">&#x2691;</div><div class="feature-title">Real CBT Experience</div><div class="feature-desc">Timer, question map, flag &amp; review &mdash; just like the real exam</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">&#x1F4CA;</div><div class="feature-title">Weakness Tracker</div><div class="feature-desc">Instantly see which topics need the most attention</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">🚀</div><div class="feature-title">SmartPath™ Engine</div><div class="feature-desc">AI-powered recommendations after every session</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">&#x1F4C5;</div><div class="feature-title">Daily Free Quiz</div><div class="feature-desc">10 exam questions every day. See your weak spots instantly &mdash; free, forever.</div></div></div>
-        <div class="feature-slide"><div class="feature-card"><div class="feature-icon">💰</div><div class="feature-title">From &#x20A6;1,500/month</div><div class="feature-desc">Less than a data bundle. No &#x20A6;50,000 coaching fees.</div></div></div>
-      </div>
-    </div>
-  </div>
-</section>
+  <main class="main">
 
-<!-- SUBJECTS SLIDER -->
-<section style="padding:72px 0;">
-  <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;" class="section-slider-header">
-      <div>
-        <h2 class="section-title">Master Every Subject</h2>
-        <p class="section-sub">Comprehensive coverage for science, arts, and commercial students.</p>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn-icon" id="subj-prev">&#8249;</button>
-        <button class="btn-icon" id="subj-next">&#8250;</button>
-      </div>
-    </div>
-    <div class="slider-wrap">
-      <div class="slider-track" id="subj-track">
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#dbeafe;color:#1d4ed8">📐</div><div class="subject-name">Mathematics</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#d1fae5;color:#065f46">📖</div><div class="subject-name">English</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#ede9fe;color:#5b21b6">⚛️</div><div class="subject-name">Physics</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#ffedd5;color:#c2410c">🧪</div><div class="subject-name">Chemistry</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#ccfbf1;color:#0f766e">🌿</div><div class="subject-name">Biology</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#fef3c7;color:#b45309">&#x1F4C8;</div><div class="subject-name">Economics</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#e0e7ff;color:#3730a3">🏛️</div><div class="subject-name">Government</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#fce7f3;color:#9d174d">📚</div><div class="subject-name">Literature</div></a></div>
-        <div class="subj-slide" style="flex:0 0 180px"><a href="classroom.html" class="subject-card"><div class="subject-icon" style="background:#d1fae5;color:#065f46">🌍</div><div class="subject-name">Geography</div></a></div>
-      </div>
-    </div>
-  </div>
-</section>
+    <!-- ═══ VIDEO PLAYER ═══════════════════════════════════════════ -->
+    <div class="vp-outer" id="vp-outer">
+      <div id="vp-hint">&#9654;&nbsp;Video is playing below &mdash; scroll up to see it</div>
 
-<!-- EXAM COVERAGE -->
-<section style="padding:72px 0;background:rgba(240,244,255,.5);">
-  <div class="container">
-    <div class="section-header" style="text-align:center">
-      <h2 class="section-title">Full Exam Coverage</h2>
-      <p class="section-sub">We prepare you for every major exam in Nigeria</p>
-    </div>
-    <div class="exam-cards">
-      <div class="exam-card">
-        <div class="exam-card-icon">🎓</div>
-        <div class="exam-card-title">JAMB / UTME</div>
-        <div class="exam-card-desc">Complete preparation for the Joint Admissions and Matriculation Board exam. 40 subject questions, 1h40m &mdash; we cover all of it.</div>
-      </div>
-      <div class="exam-card">
-        <div class="exam-card-icon">📝</div>
-        <div class="exam-card-title">WAEC / GCE</div>
-        <div class="exam-card-desc">West Africa Senior School Certificate Examination preparation across all science, arts, and commercial subjects.</div>
-      </div>
-      <div class="exam-card">
-        <div class="exam-card-icon">🏫</div>
-        <div class="exam-card-title">NECO / Post-UTME</div>
-        <div class="exam-card-desc">National Examinations Council and university screening preparation. Subject-specific, past question powered practice.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CLASSROOM BAND -->
-<section class="classroom-band">
-  <div class="container">
-    <div class="classroom-band-inner">
-      <div>
-        <div class="topic-pills">
-          <span class="topic-pill">Quadratics</span>
-          <span class="topic-pill">Indices</span>
-          <span class="topic-pill">Logarithms</span>
-          <span class="topic-pill">Calculus</span>
-        </div>
-        <h2 style="font-family:var(--font-head);font-size:clamp(1.6rem,5vw,2.8rem);color:#fff;margin-bottom:16px">Enter the Classroom</h2>
-        <p style="color:rgba(255,255,255,.6);margin-bottom:28px;max-width:400px;line-height:1.7">Expert-taught video lessons for every topic on your exam syllabus. Adaptive content that matches your skill level.</p>
-        <a href="classroom.html" class="btn btn-primary btn-lg">Start Learning</a>
-      </div>
       <!--
-        .classroom-video-mock — Drive iframe is injected here by
-        home-video-preview.js only when this section scrolls into
-        view (IntersectionObserver lazy load). The placeholder below
-        stays visible until the iframe is ready.
-        data-vp-placeholder marks it so the script can fade it out.
+        #vp uses data-state to control which child is visible:
+          "empty"   → placeholder
+          "loading" → spinner
+          "playing" → iframe
+
+        Exactly ONE child is visible at a time — no overlapping possible.
+
+        Drive mobile fix: classroom.js renders the Drive iframe at
+        1280×720 and CSS-scales it down so Drive uses its full desktop
+        control layout. See injectIframe() / applyDriveScale() in
+        classroom.js for implementation details.
       -->
-      <div class="classroom-video-mock">
-        <div data-vp-placeholder style="text-align:center;color:rgba(255,255,255,.25)">
-          <div style="font-size:3.5rem;margin-bottom:8px">&#x25B6;</div>
-          <div style="font-size:.85rem;font-weight:600">Sample Lesson Preview</div>
+      <div id="vp" data-state="empty">
+
+        <!-- Float bar (mini-player controls) -->
+        <div id="vp-float-bar">
+          <span class="fp-lbl">Now Playing</span>
+          <button class="fp-close" onclick="CLASSROOM.stopFloat()">&#x2715;</button>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- PRICING &mdash; rendered by PAYMENT.renderPricingSection() so
-     Basic/Pro/Elite features stay in sync with payment.js PLANS -->
-<section id="pricing" style="padding:80px 0;">
-  <div class="container">
-    <div class="section-header" style="text-align:center">
-      <h2 class="section-title">Invest in Your Future</h2>
-      <p class="section-sub">Less than the cost of a data bundle. No expensive coaching fees.</p>
-    </div>
-    <div class="pricing-grid" id="index-pricing-grid">
-      <!-- Populated by PAYMENT.renderPricingSection() on DOMContentLoaded -->
-      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading plans&hellip;</div>
-    </div>
-    <p style="text-align:center;margin-top:20px;font-size:.82rem;color:var(--muted)">
-      &#x1F512; Secured by Paystack &nbsp;&middot;&nbsp; Instant activation &nbsp;&middot;&nbsp;
-      <a href="pricing.html" style="color:var(--accent);font-weight:600">Full pricing FAQ &rarr;</a>
-    </p>
-  </div>
-</section>
+        <!-- State: empty ────────────────────────────── -->
+        <div id="vp-empty">
+          <div class="vp-ring" onclick="CLASSROOM.playVideo(null)">&#9654;</div>
+          <div class="vp-hint-txt">Select a topic to begin</div>
+        </div>
 
-<!-- HOW IT WORKS -->
-<section style="padding:72px 0;background:rgba(240,244,255,.5);">
-  <div class="container">
-    <div class="section-header" style="text-align:center">
-      <h2 class="section-title">How It Works</h2>
-      <p class="section-sub">From signup to exam success in 4 simple steps</p>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:40px;" class="how-it-works-grid">
-      <div style="text-align:center;padding:24px;">
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;font-family:var(--font-head)">1</div>
-        <div style="font-weight:700;margin-bottom:8px">Sign Up Free</div>
-        <div style="font-size:.88rem;color:var(--muted)">Create your account and select your subjects and exam type</div>
-      </div>
-      <div style="text-align:center;padding:24px;">
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;font-family:var(--font-head)">2</div>
-        <div style="font-weight:700;margin-bottom:8px">Watch Lessons</div>
-        <div style="font-size:.88rem;color:var(--muted)">Study topic-by-topic video masterclasses at your own pace</div>
-      </div>
-      <div style="text-align:center;padding:24px;">
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;font-family:var(--font-head)">3</div>
-        <div style="font-weight:700;margin-bottom:8px">Practise CBT</div>
-        <div style="font-size:.88rem;color:var(--muted)">Take adaptive mock exams with real timers and question maps</div>
-      </div>
-      <div style="text-align:center;padding:24px;">
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;font-family:var(--font-head)">4</div>
-        <div style="font-weight:700;margin-bottom:8px">Track &amp; Improve</div>
-        <div style="font-size:.88rem;color:var(--muted)">Monitor your JAMB score prediction and follow SmartPath guidance</div>
-      </div>
-    </div>
-  </div>
-</section>
+        <!-- State: loading ──────────────────────────── -->
+        <div id="vp-spin">
+          <div class="vp-spinner"></div>
+          <div class="vp-loading-txt">Loading video&hellip;</div>
+        </div>
 
-<!-- TESTIMONIALS -->
-<section style="padding:72px 0;">
-  <div class="container">
-    <div class="section-header" style="text-align:center">
-      <h2 class="section-title">Student Success Stories</h2>
-    </div>
-    <!-- Early launch &mdash; replace with real student testimonials as they come in -->
-    <div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border:1.5px solid var(--border2);border-radius:16px;padding:40px 32px;text-align:center;max-width:640px;margin:0 auto">
-      <div style="font-size:2.5rem;margin-bottom:14px">&#x1F393;</div>
-      <h3 style="font-family:var(--font-head);font-size:1.6rem;margin-bottom:10px">Be Among Our First Success Stories</h3>
-      <p style="color:var(--muted);font-size:.95rem;line-height:1.7;margin-bottom:24px">
-        UE School is newly launched and growing fast. Join now at our founding price of <strong>&#x20A6;1,500/month</strong> &mdash; 
-        lock in this rate before it goes up, and help shape the platform as an early member.
-      </p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-        <a href="login.html" class="btn btn-primary btn-lg">Start Free Today</a>
-        <a href="daily-quiz.html" class="btn btn-outline btn-lg">Try Daily Quiz First</a>
-      </div>
-      <p style="font-size:.78rem;color:var(--muted2);margin-top:14px">No credit card needed to sign up. Premium from &#x20A6;1,500/month.</p>
-    </div>
-  </div>
-</section>
+        <!-- State: playing ──────────────────────────── -->
+        <!-- iframe injected/removed here by JS         -->
 
-<!-- CTA BAND -->
-<section style="background:var(--accent);padding:72px 0;text-align:center;" class="cta-band">
-  <div class="container">
-    <h2 style="font-family:var(--font-head);font-size:clamp(1.6rem,5vw,2.8rem);color:#fff;margin-bottom:16px" class="cta-band-h2">Ready to Start Your Journey?</h2>
-    <p style="color:rgba(255,255,255,.75);font-size:1.05rem;margin-bottom:32px;">Join 12,000+ students already preparing smarter with UE School.</p>
-    <a href="login.html" class="btn btn-lg" style="background:#fff;color:var(--accent);font-weight:700">Start Free Today</a>
-  </div>
-</section>
+        <!-- Overlays (always above iframe, z-index:4) -->
+        <div id="vp-wm"></div>      <!-- watermark -->
+        <div id="vp-blk"></div>     <!-- GDrive arrow blocker -->
+        <div id="vp-badge"></div>   <!-- tier badge -->
 
-<footer class="site-footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div>
-        <div class="footer-logo">UE School</div>
-        <div class="footer-tagline">The cockpit for your exam preparation. Pass your JAMB, WAEC, and NECO exams with confidence.</div>
-      </div>
-      <div>
-        <div class="footer-heading">Platform</div>
-        <ul class="footer-links">
-          <li><a href="classroom.html">Classroom</a></li>
-          <li><a href="cbt.html">Practice CBT</a></li>
-          <li><a href="dashboard.html">Dashboard</a></li>
-        </ul>
-      </div>
-      <div>
-        <div class="footer-heading">Company</div>
-        <ul class="footer-links">
-          <li><a href="about.html">About Us</a></li>
-          <li><a href="contact.html">Contact Us</a></li>
-          <li><a href="terms.html">Terms of Service</a></li>
-          <li><a href="privacy.html">Privacy Policy</a></li>
-        </ul>
-      </div>
+      </div><!-- /#vp -->
     </div>
-    <div class="footer-divider">&copy; 2026 UE School. All rights reserved.</div>
-  </div>
-</footer>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <div class="panel">
+
+      <div class="tier-row" id="tier-row" style="display:none">
+        <button class="tier-pill foundation" data-tier="foundation" onclick="CLASSROOM.selectTier('foundation')">Foundation</button>
+        <button class="tier-pill standard active" data-tier="standard" onclick="CLASSROOM.selectTier('standard')">Standard</button>
+        <button class="tier-pill mastery" data-tier="mastery" onclick="CLASSROOM.selectTier('mastery')">Mastery</button>
+        <span class="tier-tag" id="tier-tag"></span>
+      </div>
+
+      <div class="meta-row">
+        <span class="topic-chip" id="topic-chip">Topic</span>
+        <span class="dur-chip"   id="dur-chip">&mdash;</span>
+      </div>
+      <h1 class="lesson-title" id="lesson-title">Select a topic</h1>
+
+      <div class="btn-row">
+        <a href="cbt.html" class="btn btn-p" id="practice-btn">&#128221;&nbsp;Practice Questions</a>
+        <button class="btn btn-g" onclick="CLASSROOM.nextLesson()">Next &rarr;</button>
+        <button class="btn btn-g" onclick="CLASSROOM.prevLesson()" style="padding:9px 12px">&larr; Prev</button>
+      </div>
+
+      <div id="lesson-content">
+        <p style="color:var(--muted)">Select a topic from the sidebar to begin.</p>
+      </div>
+
+      <div id="quiz-section" style="display:none">
+        <h2 class="qh">Quick Check</h2>
+        <div class="qcard">
+          <div class="qmeta">
+            <span>Q&nbsp;<span id="q-num">1</span>&nbsp;/&nbsp;<span id="q-tot">3</span></span>
+            <div class="qdots" id="q-dots"></div>
+          </div>
+          <h3 id="quiz-q"></h3>
+          <div id="quiz-opts"></div>
+        </div>
+        <div id="quiz-fb" style="display:none"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
 
 <div id="toast"></div>
+<div class="sb-ov" id="sb-ov" onclick="CLASSROOM.closeSidebar()"></div>
+
+<link rel="stylesheet" href="css/skill_chamber.css">
 
 <!--
-  ── SCRIPT LOADING STRATEGY ────────────────────────────────────────
-  All external scripts use defer. This means:
-    • The browser downloads them in parallel without blocking HTML parsing.
-    • They execute in document order after parsing is complete.
-    • DOMContentLoaded fires after all deferred scripts have run,
-      so the inline DOMContentLoaded callback below is safe.
-
-  Previous behaviour (no defer): the Supabase SDK (~200 KB) and
-  Paystack script were both parser-blocking, delaying First Contentful
-  Paint and Time to Interactive on every page load.
-
-  Paystack is loaded lazily here with defer. payment.js detects whether
-  PaystackPop is available and initiates payment only after it is.
-  ── ────────────────────────────────────────────────────────────────
+  CRITICAL LOAD ORDER — DO NOT REORDER
+  1. supabase       → window.supabase
+  2. auth.js        → window.sb
+  3. auth-guard.js  → AUTH_GUARD
+  4-7. Skill Chamber deps (storage, skill_questions, curriculum, intervention_modal)
+  8. gdrive-video.js  MUST be before gsheet-curriculum
+  9. gsheet-curriculum.js → GSHEET_CURRICULUM
+  10. classroom.js  → CLASSROOM  (this file)
+  11. skill_chamber.js → monkey-patches CLASSROOM.loadTopic
 -->
-<script src="js/config.js" defer></script>
-<script src="js/gdrive-video.js" defer></script>
-<script src="js/home-video-preview.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-<script src="js/supabase.js" defer></script>
-<script src="https://js.paystack.co/v1/inline.js" defer></script>
-<script src="js/app.js" defer></script>
-<script src="js/auth-guard.js" defer></script>
-<script src="js/payment.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js?v=3"></script>
+<script src="js/storage.js"></script>
+<script src="js/skill_questions.js"></script>
+<script src="js/curriculum.js"></script>
+<script src="js/intervention_modal.js"></script>
+<script src="js/gdrive-video.js"></script>
+<script src="js/gsheet-curriculum.js"></script>
+<script src="js/classroom.js"></script>
+<script src="js/skill_chamber.js"></script>
+
 <script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    // ── Sliders ──────────────────────────────────────────────────
-    initSlider('feat-track', 'feat-prev', 'feat-next');
-    initSlider('subj-track', 'subj-prev', 'subj-next');
+function toast(msg, dur) {
+  dur = dur || 2800;
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, dur);
+}
 
-    // ── Render pricing cards (tiered: Basic / Pro / Elite) ───────
-    PAYMENT.renderPricingSection('index-pricing-grid');
+document.addEventListener('DOMContentLoaded', async function() {
+  var results = await Promise.all([
+    AUTH_GUARD.init(),
+    (async function(){
+      if (!window.GSHEET_CURRICULUM || !GSHEET_CURRICULUM.isEnabled()) return;
+      try { await GSHEET_CURRICULUM.init(); }
+      catch(e) { console.error('[classroom] sheet init threw:', e); }
+    })()
+  ]);
 
-    // ── Public-page auth-aware nav ────────────────────────────────
-    // window.sb is already set by supabase.js shim (loaded above).
-    // No credentials here — all config lives in js/config.js.
-    const { data: { session } } = await window.sb.auth.getSession();
+  var authData = results[0];
+  if (!authData) return;
 
-    if (session) {
-      const navRight = document.getElementById('nav-right');
-      if (navRight) {
-        const { data: profile } = await window.sb
-          .from('profiles')
-          .select('full_name, is_premium, subscription_expiry')
-          .eq('id', session.user.id)
-          .single();
+  CLASSROOM.mergeSheetIntoCurriculum();
+  window._ueProfile = authData.profile;
+  await CLASSROOM.init(authData);
 
-        const initials = (profile?.full_name || 'U')
-          .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-        const firstName = (profile?.full_name || '').split(' ')[0];
-
-        navRight.innerHTML = `
-          <div class="nav-user-pill">
-            <div class="nav-avatar">${initials}</div>
-            <span style="font-weight:700;font-size:.9rem">${firstName}</span>
-          </div>
-          <a href="dashboard.html" class="btn btn-primary" style="margin-left:8px">My Dashboard</a>
-          <button class="btn btn-outline btn-sm"
-            onclick="window.sb.auth.signOut().then(()=>location.reload())"
-            style="margin-left:4px">Logout</button>
-        `;
-      }
-
-      // Auto-open checkout if user was sent here with a pending plan
-      PAYMENT.checkPendingPlan();
-    }
-    // Defaulter banner is intentionally absent on index.html (prospective customers page)
-  });
+  /* Mini-player: activates when #vp-outer scrolls out of view */
+  var outer = document.getElementById('vp-outer');
+  if (outer && window.IntersectionObserver) {
+    new IntersectionObserver(function(entries) {
+      var vp   = document.getElementById('vp');
+      var hint = document.getElementById('vp-hint');
+      var playing = vp && vp.dataset.state === 'playing';
+      if (!playing) return;
+      var gone = !entries[0].isIntersecting;
+      if (gone) { vp.classList.add('floating'); if(hint) hint.classList.add('show'); }
+      else       { vp.classList.remove('floating'); if(hint) hint.classList.remove('show'); }
+    }, { threshold: 0, rootMargin: '-56px 0px 0px 0px' }).observe(outer);
+  }
+});
 </script>
 </body>
 </html>
