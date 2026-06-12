@@ -3,12 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UE School &mdash; Ace Your JAMB, WAEC & NECO Exams</title>
+<title>UE School &mdash; Ace Your JAMB, WAEC &amp; NECO Exams</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="css/main.css">
+<!-- ── Early DNS/connection hints ─────────────────────────────────
+     Resolved before any script runs so CDN fetches are faster.
+     jsDelivr hosts the Supabase SDK; paystack hosts the payment SDK.
+──────────────────────────────────────────────────────────────── -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://js.paystack.co">
+
+<!-- Google Fonts — display=swap prevents render-blocking -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/main.css">
 <style>
 /* ══════════════════════════════════════════════════════
    MOBILE NAV &mdash; Professional slide-down panel
@@ -304,8 +312,15 @@
         <p style="color:rgba(255,255,255,.6);margin-bottom:28px;max-width:400px;line-height:1.7">Expert-taught video lessons for every topic on your exam syllabus. Adaptive content that matches your skill level.</p>
         <a href="classroom.html" class="btn btn-primary btn-lg">Start Learning</a>
       </div>
+      <!--
+        .classroom-video-mock — Drive iframe is injected here by
+        home-video-preview.js only when this section scrolls into
+        view (IntersectionObserver lazy load). The placeholder below
+        stays visible until the iframe is ready.
+        data-vp-placeholder marks it so the script can fade it out.
+      -->
       <div class="classroom-video-mock">
-        <div style="text-align:center;color:rgba(255,255,255,.25)">
+        <div data-vp-placeholder style="text-align:center;color:rgba(255,255,255,.25)">
           <div style="font-size:3.5rem;margin-bottom:8px">&#x25B6;</div>
           <div style="font-size:.85rem;font-weight:600">Sample Lesson Preview</div>
         </div>
@@ -324,10 +339,10 @@
     </div>
     <div class="pricing-grid" id="index-pricing-grid">
       <!-- Populated by PAYMENT.renderPricingSection() on DOMContentLoaded -->
-      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading plans…</div>
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading plans&hellip;</div>
     </div>
     <p style="text-align:center;margin-top:20px;font-size:.82rem;color:var(--muted)">
-      &#x1F512; Secured by Paystack &nbsp;·&nbsp; Instant activation &nbsp;·&nbsp;
+      &#x1F512; Secured by Paystack &nbsp;&middot;&nbsp; Instant activation &nbsp;&middot;&nbsp;
       <a href="pricing.html" style="color:var(--accent);font-weight:600">Full pricing FAQ &rarr;</a>
     </p>
   </div>
@@ -358,7 +373,7 @@
       </div>
       <div style="text-align:center;padding:24px;">
         <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;font-family:var(--font-head)">4</div>
-        <div style="font-weight:700;margin-bottom:8px">Track & Improve</div>
+        <div style="font-weight:700;margin-bottom:8px">Track &amp; Improve</div>
         <div style="font-size:.88rem;color:var(--muted)">Monitor your JAMB score prediction and follow SmartPath guidance</div>
       </div>
     </div>
@@ -427,15 +442,32 @@
 </footer>
 
 <div id="toast"></div>
-<script src="js/config.js"></script>
-<script src="js/gdrive-video.js"></script>
-<script src="js/home-video-preview.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/supabase.js"></script>
-<script src="https://js.paystack.co/v1/inline.js"></script>
-<script src="js/app.js"></script>
-<script src="js/auth-guard.js"></script>
-<script src="js/payment.js"></script>
+
+<!--
+  ── SCRIPT LOADING STRATEGY ────────────────────────────────────────
+  All external scripts use defer. This means:
+    • The browser downloads them in parallel without blocking HTML parsing.
+    • They execute in document order after parsing is complete.
+    • DOMContentLoaded fires after all deferred scripts have run,
+      so the inline DOMContentLoaded callback below is safe.
+
+  Previous behaviour (no defer): the Supabase SDK (~200 KB) and
+  Paystack script were both parser-blocking, delaying First Contentful
+  Paint and Time to Interactive on every page load.
+
+  Paystack is loaded lazily here with defer. payment.js detects whether
+  PaystackPop is available and initiates payment only after it is.
+  ── ────────────────────────────────────────────────────────────────
+-->
+<script src="js/config.js" defer></script>
+<script src="js/gdrive-video.js" defer></script>
+<script src="js/home-video-preview.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+<script src="js/supabase.js" defer></script>
+<script src="https://js.paystack.co/v1/inline.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/auth-guard.js" defer></script>
+<script src="js/payment.js" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
     // ── Sliders ──────────────────────────────────────────────────
@@ -447,7 +479,7 @@
 
     // ── Public-page auth-aware nav ────────────────────────────────
     // window.sb is already set by supabase.js shim (loaded above).
-    // No credentials here \u2014 all config lives in js/config.js.
+    // No credentials here — all config lives in js/config.js.
     const { data: { session } } = await window.sb.auth.getSession();
 
     if (session) {
