@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   UE School — js/classroom.js  (v5 — clean video state machine)
+   UE School — js/classroom.js  (v6 — Drive mobile fix)
    ───────────────────────────────────────────────────────────────────
 
    VIDEO PLAYER — HOW IT WORKS
@@ -14,12 +14,26 @@
    default and selectively shows exactly one based on data-state. This
    makes it physically impossible for multiple elements to overlap.
 
-   VIDEO SIZING
-   ─────────────
-   Both YouTube and Google Drive use aspect-ratio:16/9.
-   Google Drive's /preview player renders its controls INSIDE the
-   iframe (overlaying the video), exactly like YouTube. No extra height
-   is needed. The aspect-ratio:16/9 container fits both sources cleanly.
+   VIDEO SIZING — YOUTUBE vs GOOGLE DRIVE
+   ────────────────────────────────────────
+   YouTube: simple absolute fill (position:absolute;inset:0;width:100%;
+   height:100%). YouTube's compact player keeps controls at the bottom
+   even at narrow widths, so no special treatment is needed.
+
+   Google Drive /preview: Drive detects the iframe's rendered pixel
+   dimensions and switches to a "compact" layout when the iframe is
+   narrower than ~480 px (typical on mobile). In compact mode the
+   progress bar moves to the top and bottom controls are clipped by the
+   container's overflow:hidden.
+
+   Fix: render the Drive iframe at a fixed large logical size (1280×720)
+   and CSS-scale it down to fill the container. Drive sees a desktop-
+   sized viewport and keeps its full-size control layout. A ResizeObserver
+   recalculates the scale on orientation change or split-screen resize.
+
+   ?rm=minimal is also appended to Drive URLs to strip the top chrome
+   bar (file title + "Open in Drive" button), freeing the full height
+   for the video and controls.
 
    PUBLIC API (stable — skill_chamber.js monkey-patches loadTopic)
    ─────────────────────────────────────────────────────────────────
@@ -111,29 +125,62 @@ window.CLASSROOM = (function () {
     if (vp) vp.dataset.state = state;
   }
 
+  /* ── Drive iframe scale helper ───────────────────────────────
+     Google Drive's /preview player switches to a compact layout
+     (progress bar at top, bottom controls clipped) when the
+     rendered iframe width is below ~480 px — typical on mobile.
+
+     Fix: render the iframe at DRIVE_LOGICAL_W × DRIVE_LOGICAL_H
+     and CSS-scale it down to fill the container. Drive sees a
+     desktop viewport and renders its full-size control layout.
+
+     Called once on inject and again via ResizeObserver on resize.
+  ──────────────────────────────────────────────────────────────── */
+  const DRIVE_LOGICAL_W = 1280;
+  const DRIVE_LOGICAL_H = 720;
+
+  function applyDriveScale(iframe, container) {
+    var cw = container.offsetWidth;
+    var ch = container.offsetHeight;
+    if (!cw || !ch) return;
+
+    var scale = Math.min(cw / DRIVE_LOGICAL_W, ch / DRIVE_LOGICAL_H);
+    var left  = (cw - DRIVE_LOGICAL_W * scale) / 2;
+    var top   = (ch - DRIVE_LOGICAL_H * scale) / 2;
+
+    iframe.style.cssText = [
+      'position:absolute',
+      'border:none',
+      'width:'  + DRIVE_LOGICAL_W + 'px',
+      'height:' + DRIVE_LOGICAL_H + 'px',
+      'left:'   + left  + 'px',
+      'top:'    + top   + 'px',
+      'transform:scale(' + scale + ')',
+      'transform-origin:top left',
+    ].join(';');
+  }
+
   /* ── injectIframe ────────────────────────────────────────────
      The single point of iframe injection. Cleans up previous
      iframe, creates a new one, transitions through loading→playing.
 
-     Both YouTube and Google Drive get the SAME treatment:
-       • aspect-ratio:16/9 container (set in CSS on #vp)
-       • iframe position:absolute inset:0 width:100% height:100%
-     Drive's controls overlay the video, same as YouTube — no
-     special height adjustment needed.
+     YouTube: simple absolute fill — compact layout keeps controls
+     at the bottom even on narrow screens, no special handling needed.
+
+     Google Drive: uses applyDriveScale() to render at a large
+     logical size and CSS-scale down, preventing Drive's compact
+     mobile layout. A ResizeObserver keeps the scale correct on
+     orientation change or split-screen resize.
   ──────────────────────────────────────────────────────────────── */
   function injectIframe(src, isDrive) {
     const vp = document.getElementById('vp');
     if (!vp) return;
 
-    // Ensure Drive /preview URLs always use rm=minimal so the player
-    // doesn't reserve a toolbar at the top and push video content down
-    if (isDrive && src && src.includes('drive.google.com')) {
-      src = src.includes('?') ? src.replace(/[?&]rm=[^&]*/,'') + '&rm=minimal'
-                               : src + '?rm=minimal';
-    }
-
-    // Clear any previous iframe
-    vp.querySelectorAll('iframe').forEach(f => { f.src = ''; f.remove(); });
+    // Clear any previous iframe (and its ResizeObserver if Drive)
+    vp.querySelectorAll('iframe').forEach(function(f) {
+      if (f._driveRO) { f._driveRO.disconnect(); f._driveRO = null; }
+      f.src = ''; f.remove();
+    });
 
     // Clear previous overlays
     const wm  = document.getElementById('vp-wm');
@@ -154,16 +201,29 @@ window.CLASSROOM = (function () {
     iframe.allowFullscreen = true;
     iframe.setAttribute('loading', 'lazy');
 
-    // Inline styles: fills the container absolutely.
-    // No z-index needed — CSS data-state already hides #vp-empty and
-    // #vp-spin via display:none, and shows the iframe via display:block.
-    iframe.style.cssText = [
-      'position:absolute',
-      'inset:0',
-      'width:100%',
-      'height:100%',
-      'border:none',
-    ].join(';');
+    if (isDrive) {
+      // ── Google Drive: scale trick for mobile ──────────────────
+      // Render at a large logical size so Drive uses its full-size
+      // control layout, then CSS-scale down to fit the container.
+      applyDriveScale(iframe, vp);
+
+      // Re-apply whenever the container resizes (orientation change,
+      // split-screen, etc.)
+      if (typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(function() { applyDriveScale(iframe, vp); });
+        ro.observe(vp);
+        iframe._driveRO = ro;   // stored so clearVideo() can disconnect it
+      }
+    } else {
+      // ── YouTube / other: simple absolute fill ─────────────────
+      iframe.style.cssText = [
+        'position:absolute',
+        'inset:0',
+        'width:100%',
+        'height:100%',
+        'border:none',
+      ].join(';');
+    }
 
     // Insert iframe BEFORE overlays so overlays stay on top
     const wm2 = document.getElementById('vp-wm');
@@ -213,7 +273,14 @@ window.CLASSROOM = (function () {
     const wm  = document.getElementById('vp-wm');
     const blk = document.getElementById('vp-blk');
     const bdg = document.getElementById('vp-badge');
-    if (vp)  { vp.querySelectorAll('iframe').forEach(f => { f.src=''; f.remove(); }); vp.classList.remove('floating'); }
+    if (vp)  {
+      vp.querySelectorAll('iframe').forEach(function(f) {
+        // Disconnect Drive ResizeObserver before removing the iframe
+        if (f._driveRO) { f._driveRO.disconnect(); f._driveRO = null; }
+        f.src=''; f.remove();
+      });
+      vp.classList.remove('floating');
+    }
     if (wm)  { wm.innerHTML = ''; }
     if (blk) { blk.style.pointerEvents = 'none'; }
     if (bdg) { bdg.style.display = 'none'; }
@@ -234,6 +301,8 @@ window.CLASSROOM = (function () {
         if (v && v.url) return v.url;
       }
     }
+    // ?rm=minimal strips Drive's top chrome bar (file title + open-in-Drive
+    // button), freeing the full iframe height for the video and controls.
     if (topic.driveId) return `https://drive.google.com/file/d/${topic.driveId}/preview?rm=minimal`;
     if (topic.driveUrl && window.GDRIVE_VIDEO) return GDRIVE_VIDEO.embedUrl(topic.driveUrl) || '';
     return '';
@@ -477,7 +546,7 @@ window.CLASSROOM = (function () {
       injectIframe(`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`, false);
     } else if (url) {
       showTierBadge(tier);
-      injectIframe(url, true); // isDrive=true → activates arrow blocker
+      injectIframe(url, true); // isDrive=true → scale trick + arrow blocker
     } else {
       clearVideo();
     }
