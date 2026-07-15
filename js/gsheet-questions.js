@@ -28,7 +28,8 @@ window.GSHEET_QUESTIONS = (function () {
 
   const cfg         = window.UE_CONFIG || {};
   const SINGLE_URL  = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
-  const SUBJECT_MAP = cfg.GOOGLE_SHEET_SUBJECT_URLS      || {};
+  // Matches the key name used in config.js: SUBJECT_SHEET_URLS
+  const SUBJECT_MAP = cfg.SUBJECT_SHEET_URLS || cfg.GOOGLE_SHEET_SUBJECT_URLS || {};
   const CACHE_MS    = (cfg.GS_QUESTIONS_CACHE_MIN || 30) * 60 * 1000;
 
   // Per-URL cache: { [url]: { rows:[], at: number } }
