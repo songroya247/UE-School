@@ -1,28 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-(function(){
-  var LOGIN = 'login.html';
-  var page  = window.location.pathname.split('/').pop() || '';
-  var h = window.location.hash || '', s = window.location.search || '';
-  if (h.indexOf('access_token=') !== -1 || h.indexOf('type=') !== -1 ||
-      /[?&](code|token_hash|token)=/.test(s)) return;
-  var hasSession = false;
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
-        var val = localStorage.getItem(k);
-        if (val && val.length > 10) { hasSession = true; break; }
-      }
-    }
-  } catch(e) {}
-  if (!hasSession) {
-    window.location.replace(LOGIN + '?next=' + encodeURIComponent(page));
-  }
-})();
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CBT Practice &mdash; UE School</title>
@@ -30,12 +8,8 @@
 <!-- ╔══════════════════════════════════════════════════════╗
      ║  SECURITY BLOCK &mdash; must be first in <head>           ║
      ╚══════════════════════════════════════════════════════╝ -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
-  onload="window._katexReady=true;if(window._katexQueue)window._katexQueue.forEach(function(fn){fn();})"></script>
 <script src="js/config.js"></script>
-<script src="js/head-gatekeeper.js?v=3"></script>
+<script src="js/head-gatekeeper.js"></script>
 <!-- END SECURITY BLOCK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -73,7 +47,8 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 .exam-logo-pill{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#93c5fd;background:rgba(147,197,253,.1);border:1px solid rgba(147,197,253,.2);padding:4px 10px;border-radius:6px}
 #exam-title{font-size:1rem;font-weight:700;color:#fff}
 .exam-header-right{display:flex;align-items:center;gap:12px}
-
+.jamb-pred-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;font-size:.78rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:6px}
+.jamb-pred-pill span{font-weight:800;font-size:.95rem;color:#fbbf24}
 .timer-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 14px;font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.04em;color:#fff;min-width:90px;text-align:center;transition:background .4s,border-color .4s}
 .timer-box.warning{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.5);color:#fca5a5}
 .timer-box.critical{background:rgba(239,68,68,.5);border-color:#ef4444;color:#fff;animation:tpulse .5s ease infinite alternate}
@@ -91,12 +66,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 .q-card{background:#fff;border:1.5px solid rgba(37,99,235,.1);border-radius:14px;padding:28px;margin-bottom:20px;box-shadow:0 2px 16px rgba(26,86,255,.06)}
 .q-number-badge{display:inline-flex;align-items:center;justify-content:center;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:14px}
 #q-text{font-size:1.1rem;font-weight:600;color:#0f1c3f;line-height:1.65}
-/* ══ QUESTION DIAGRAM ══ */
-#q-diagram-wrap{display:none;margin:16px 0 4px;text-align:center}
-#q-diagram-wrap.show{display:block}
-#q-diagram{max-width:100%;max-height:300px;border-radius:10px;border:1.5px solid rgba(37,99,235,.12);background:#f8faff;object-fit:contain;box-shadow:0 2px 12px rgba(26,86,255,.07)}
-.diagram-loading{display:flex;align-items:center;justify-content:center;height:120px;background:#f8faff;border-radius:10px;border:1.5px solid rgba(37,99,235,.12);color:#9ca3af;font-size:.85rem;gap:8px}
-.diagram-loading .loading-spinner{border-color:rgba(37,99,235,.2);border-top-color:#2563eb}
 #q-options{display:flex;flex-direction:column;gap:10px;margin-top:20px}
 .drill-option{width:100%;display:flex;align-items:center;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:500;color:#1e3a8a;text-align:left;transition:all .18s;overflow:hidden}
 .drill-option:hover{border-color:#93c5fd;background:#f0f9ff}
@@ -145,82 +114,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 /* ══ MODAL ══ */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:24px}
 .modal-backdrop.open{display:flex}
-
-/* ══ SCIENTIFIC CALCULATOR ══ */
-#calc-toggle-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
-#calc-toggle-btn:hover{background:rgba(255,255,255,.18)}
-#calc-toggle-btn.active{background:rgba(37,99,235,.5);border-color:rgba(147,197,253,.5)}
-#sci-calculator{display:none;position:fixed;bottom:80px;right:20px;width:300px;background:#0f1c3f;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.5);z-index:300;user-select:none;overflow:hidden;border:1px solid rgba(147,197,253,.2)}
-#sci-calculator.open{display:block}
-#calc-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.07);cursor:grab}
-#calc-header:active{cursor:grabbing}
-#calc-header-title{font-size:.72rem;font-weight:700;color:#93c5fd;letter-spacing:.08em;text-transform:uppercase}
-#calc-close{background:none;border:none;color:rgba(255,255,255,.5);font-size:1.1rem;cursor:pointer;padding:0 4px;line-height:1}
-#calc-close:hover{color:#fff}
-#calc-display{padding:10px 14px 8px;text-align:right;background:#06101f}
-#calc-expr{font-size:.72rem;color:rgba(255,255,255,.45);min-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#calc-result{font-size:1.7rem;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#calc-result.error{font-size:1rem;color:#f87171}
-.calc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px}
-.calc-btn{padding:0;height:44px;border:none;border-radius:9px;font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;line-height:1}
-.calc-btn:active{transform:scale(.93)}
-.cb-num{background:rgba(255,255,255,.1);color:#fff}
-.cb-num:hover{background:rgba(255,255,255,.18)}
-.cb-op{background:rgba(37,99,235,.35);color:#93c5fd}
-.cb-op:hover{background:rgba(37,99,235,.55)}
-.cb-fn{background:rgba(255,255,255,.06);color:#c4b5fd;font-size:.74rem}
-.cb-fn:hover{background:rgba(139,92,246,.3)}
-.cb-eq{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.4)}
-.cb-eq:hover{filter:brightness(1.1)}
-.cb-clear{background:rgba(239,68,68,.25);color:#fca5a5}
-.cb-clear:hover{background:rgba(239,68,68,.45)}
-.cb-ac{background:rgba(239,68,68,.4);color:#fff}
-.cb-ac:hover{background:rgba(239,68,68,.65)}
-.cb-span2{grid-column:span 2}
-@media(max-width:600px){
-  /* Header button: icon only on very small screens */
-  #calc-toggle-btn .calc-btn-label{display:none}
-  #calc-toggle-btn{padding:6px 10px;font-size:.85rem}
-
-  /* Bottom sheet: slides up from bottom, full width */
-  #sci-calculator{
-    position:fixed;
-    bottom:0;left:0;right:0;
-    width:100%;
-    max-height:85vh;
-    border-radius:18px 18px 0 0;
-    box-shadow:0 -8px 40px rgba(0,0,0,.5);
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-  }
-  #sci-calculator.open{display:flex;flex-direction:column}
-
-  /* Drag handle pill at top */
-  #calc-header{
-    cursor:default;
-    justify-content:center;
-    padding:8px 14px 6px;
-    position:relative;
-  }
-  #calc-header::before{
-    content:'';
-    position:absolute;
-    top:6px;left:50%;transform:translateX(-50%);
-    width:36px;height:4px;
-    border-radius:2px;
-    background:rgba(255,255,255,.25);
-  }
-  #calc-header-title{font-size:.75rem}
-  #calc-close{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:1.3rem;padding:4px 8px}
-
-  /* Bigger display */
-  #calc-result{font-size:2rem}
-
-  /* Bigger tap targets */
-  .calc-grid{gap:8px;padding:12px 10px 20px}
-  .calc-btn{height:52px;font-size:.88rem;border-radius:10px}
-  .calc-btn:active{transform:scale(.9)}
-}
 .modal-card{background:#fff;border-radius:16px;padding:32px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
 .modal-card h3{font-size:1.25rem;font-weight:800;margin-bottom:10px}
 .modal-card p{font-size:.9rem;color:#6b7280;margin-bottom:24px;line-height:1.6}
@@ -258,7 +151,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 #saving-overlay.show{display:flex}
 
 /* ══ TOAST ══ */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(15,28,63,.92);color:#fff;padding:12px 20px;border-radius:16px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(37,99,235,.2);opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;white-space:normal;max-width:calc(100vw - 32px);width:max-content;text-align:center;line-height:1.5}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(15,28,63,.92);color:#fff;padding:11px 22px;border-radius:30px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(37,99,235,.2);opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ══ DEFAULTER ══ */
@@ -272,6 +165,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
   .exam-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
   #exam-title{font-size:.9rem}
   .timer-box{font-size:.85rem;padding:5px 10px}
+  .jamb-pred-pill{font-size:.72rem;padding:4px 8px}
   #map-toggle-btn{display:inline-flex}
   .exam-body{flex-direction:column;overflow:visible}
   .exam-main{overflow-y:visible;padding:16px}
@@ -292,7 +186,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 }
 </style>
 </head>
-<body style="visibility:hidden">
+<body>
 <noscript>
   <div style="padding:40px;text-align:center;font-family:system-ui">
     <h2>JavaScript is required</h2>
@@ -323,7 +217,31 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <div class="form-group">
       <label class="form-label">Subject</label>
       <select class="form-select" id="sel-subject" onchange="onSubjectChange()">
-        <option value="">Loading subjects…</option>
+        <option value="mathematics">Mathematics</option>
+        <option value="english">English Language</option>
+        <option value="physics">Physics</option>
+        <option value="chemistry">Chemistry</option>
+        <option value="biology">Biology</option>
+        <option value="economics">Economics</option>
+        <option value="government">Government</option>
+        <option value="agric">Agricultural Science</option>
+        <option value="crs">Christian Religious Studies</option>
+        <option value="commerce">Commerce</option>
+        <option value="computer">Computer Studies</option>
+        <option value="phe">Physical Health Education</option>
+        <option value="literature">Literature in English</option>
+        <option value="history">History</option>
+        <option value="fineart">Fine Arts</option>
+        <option value="accounting">Principles of Accounting</option>
+        <option value="french">French</option>
+        <option value="irs">Islamic Religious Studies</option>
+        <option value="music">Music</option>
+        <option value="arabic">Arabic</option>
+        <option value="geography">Geography</option>
+        <option value="homeeconomics">Home Economics</option>
+        <option value="yoruba">Yoruba</option>
+        <option value="igbo">Igbo</option>
+        <option value="hausa">Hausa</option>
       </select>
     </div>
 
@@ -338,21 +256,10 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 
     <div class="form-group">
       <label class="form-label">Exam Type</label>
-      <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
-        <option value="">All Exam Types</option>
-        <option value="WAEC">WAEC / GCE</option>
+      <select class="form-select" id="sel-examtype">
         <option value="JAMB">JAMB / UTME</option>
+        <option value="WAEC">WAEC / GCE</option>
         <option value="NECO">NECO</option>
-        <option value="Post-UTME">Post-UTME</option>
-      </select>
-    </div>
-
-    <div class="form-group" id="university-group" style="display:none">
-      <label class="form-label">University
-        <span style="font-weight:400;text-transform:none;font-size:.78rem;color:#6b7280">(Post-UTME only)</span>
-      </label>
-      <select class="form-select" id="sel-university">
-        <option value="">All universities (general post-UTME)</option>
       </select>
     </div>
 
@@ -363,7 +270,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     </div>
 
     <button class="btn-start" id="btn-start" onclick="startExam()">&#x25B6; Start Session</button>
-    <a href="dashboard.html" class="setup-back" onclick="try{sessionStorage.setItem('ue_from_cbt','1')}catch(e){}">&larr; Back to Dashboard</a>
+    <a href="dashboard.html" class="setup-back">&larr; Back to Dashboard</a>
   </div>
 </div>
 
@@ -380,7 +287,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
                  this.textContent=document.getElementById('exam-aside').classList.contains('open')?'&#x2715; Hide Map':'&#x25A6; Question Map'">
         &#x25A6; Question Map
       </button>
-      <button id="calc-toggle-btn" onclick="toggleCalculator()" title="Scientific Calculator">&#x1F5A9;<span class="calc-btn-label"> Calculator</span></button>
+      <div class="jamb-pred-pill">Pred. JAMB: <span id="jamb-pred">&mdash;</span></div>
       <div class="timer-box" id="timer-display">20:00</div>
     </div>
   </header>
@@ -394,12 +301,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       <div class="q-card">
         <div class="q-number-badge" id="q-number-badge">Question 1</div>
         <div id="q-text"></div>
-        <div id="q-diagram-wrap">
-          <div class="diagram-loading" id="q-diagram-loading">
-            <span class="loading-spinner"></span> Loading diagram…
-          </div>
-          <img id="q-diagram" src="" alt="Question diagram" style="display:none">
-        </div>
         <div id="q-options"></div>
         <div class="explanation-box" id="explanation-box"></div>
       </div>
@@ -424,61 +325,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
         <button class="btn-submit" onclick="promptSubmit()">Submit Exam &#x2713;</button>
       </div>
     </aside>
-  </div>
-</div>
-
-
-<!-- Scientific Calculator -->
-<div id="sci-calculator">
-  <div id="calc-header">
-    <span id="calc-header-title">&#x1F9EE; Scientific Calculator</span>
-    <button id="calc-close" onclick="toggleCalculator()" title="Close">&times;</button>
-  </div>
-  <div id="calc-display">
-    <div id="calc-expr"></div>
-    <div id="calc-result">0</div>
-  </div>
-  <div class="calc-grid">
-    <!-- Row 1: sci functions -->
-    <button class="calc-btn cb-fn" onclick="calcFn('sin(')">sin</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('cos(')">cos</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('tan(')">tan</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('log(')">log</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('ln(')">ln</button>
-    <!-- Row 2: more sci -->
-    <button class="calc-btn cb-fn" onclick="calcFn('sqrt(')">&#x221A;</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('^')">x&#xFE0E;&#xFE0F;&#xFE0F;y</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('pi')">&pi;</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('e')">e</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('(')">(  )</button>
-    <!-- Row 3: clear + nums -->
-    <button class="calc-btn cb-ac" onclick="calcAC()">AC</button>
-    <button class="calc-btn cb-clear" onclick="calcDel()">&#x232B;</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('%')">%</button>
-    <button class="calc-btn cb-op" onclick="calcFn('/')">&#xF7;</button>
-    <button class="calc-btn cb-op" onclick="calcFn('*')">&times;</button>
-    <!-- Row 4 -->
-    <button class="calc-btn cb-num" onclick="calcIn('7')">7</button>
-    <button class="calc-btn cb-num" onclick="calcIn('8')">8</button>
-    <button class="calc-btn cb-num" onclick="calcIn('9')">9</button>
-    <button class="calc-btn cb-op" onclick="calcFn('-')">&#x2212;</button>
-    <button class="calc-btn cb-op" onclick="calcFn('+')">+</button>
-    <!-- Row 5 -->
-    <button class="calc-btn cb-num" onclick="calcIn('4')">4</button>
-    <button class="calc-btn cb-num" onclick="calcIn('5')">5</button>
-    <button class="calc-btn cb-num" onclick="calcIn('6')">6</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('!')">n!</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('1/')">1/x</button>
-    <!-- Row 6 -->
-    <button class="calc-btn cb-num" onclick="calcIn('1')">1</button>
-    <button class="calc-btn cb-num" onclick="calcIn('2')">2</button>
-    <button class="calc-btn cb-num" onclick="calcIn('3')">3</button>
-    <button class="calc-btn cb-num cb-span2" onclick="calcIn('0')">0</button>
-    <!-- Row 7 -->
-    <button class="calc-btn cb-num" onclick="calcIn('.')">.</button>
-    <button class="calc-btn cb-fn" onclick="calcFn('+/-')">&plusmn;</button>
-    <button class="calc-btn cb-fn" onclick="calcFn(')')" >)</button>
-    <button class="calc-btn cb-eq cb-span2" onclick="calcEq()">=</button>
   </div>
 </div>
 
@@ -515,7 +361,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <div class="results-actions">
       <button class="btn-results-outline" onclick="retryExam()">🔁 Retry Session</button>
       <button class="btn-results-outline" onclick="reviewAnswers()">&#x1F4CB; Review Answers</button>
-      <a href="dashboard.html" class="btn-results-primary" onclick="try{sessionStorage.setItem('ue_from_cbt','1')}catch(e){}">Dashboard &rarr;</a>
+      <a href="dashboard.html" class="btn-results-primary">Dashboard &rarr;</a>
     </div>
   </div>
 </div>
@@ -524,84 +370,12 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/auth-guard.js?v=3"></script>
-<script src="https://js.paystack.co/v1/inline.js"></script>
-<script src="js/payment.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/gdrive-video.js"></script>
 <script src="js/gsheet-questions.js"></script>
 <script src="js/questions.js"></script>
 <script src="js/grading.js"></script>
 <script>
-// ════════════ MATH FORMATTER ════════════
-// Character scanner — String.fromCharCode(92) = backslash, avoids all escaping layers.
-
-var MATH_CMDS={'angle':'\u2220','circ':'\u00B0','times':'\u00D7','div':'\u00F7',
-  'leq':'\u2264','geq':'\u2265','neq':'\u2260','approx':'\u2248','infty':'\u221E',
-  'sqrt':'\u221A','pm':'\u00B1','cdot':'\u00B7','pi':'\u03C0','theta':'\u03B8',
-  'alpha':'\u03B1','beta':'\u03B2','gamma':'\u03B3','delta':'\u03B4',
-  'sigma':'\u03C3','mu':'\u03BC','phi':'\u03C6','lambda':'\u03BB','omega':'\u03C9',
-  'rightarrow':'\u2192','leftarrow':'\u2190','Rightarrow':'\u21D2'};
-var _SUP={'0':'\u2070','1':'\u00B9','2':'\u00B2','3':'\u00B3','4':'\u2074',
-          '5':'\u2075','6':'\u2076','7':'\u2077','8':'\u2078','9':'\u2079'};
-var _SUB={'0':'\u2080','1':'\u2081','2':'\u2082','3':'\u2083','4':'\u2084',
-          '5':'\u2085','6':'\u2086','7':'\u2087','8':'\u2088','9':'\u2089'};
-var _BS = String.fromCharCode(92); // = '\' backslash character
-
-function formatMath(text) {
-  if (!text) return '';
-  var s = String(text), out = '', i = 0;
-  while (i < s.length) {
-    var c = s[i];
-    // Backslash command
-    if (c === _BS) {
-      if (s[i+1] === _BS) { i++; } // skip double-backslash prefix
-      var j = i+1;
-      while (j < s.length && /[a-zA-Z]/.test(s[j])) j++;
-      var cmd = s.slice(i+1, j), sym = MATH_CMDS[cmd];
-      if (sym) {
-        if (cmd==='circ' && out.length>0 && out[out.length-1]==='^') out=out.slice(0,-1);
-        out += sym; i = j; continue;
-      }
-      if (cmd) { out += cmd; i = j; continue; }
-      i++; continue; // lone backslash — skip
-    }
-    // Caret superscript
-    if (c === '^') {
-      var nx = s[i+1];
-      if (nx && _SUP[nx]) { out += _SUP[nx]; i+=2; continue; }
-      if (nx === '{') {
-        var ke = s.indexOf('}', i+2);
-        if (ke>0) {
-          var inn=s.slice(i+2,ke);
-          out += _SUP[inn] || (inn==='circ'?'\u00B0':'<sup>'+inn+'</sup>');
-          i=ke+1; continue;
-        }
-      }
-      if (nx===_BS) { out+=c; i++; continue; }
-      out+=c; i++; continue;
-    }
-    // Underscore subscript
-    if (c === '_') {
-      var nx2=s[i+1];
-      if (nx2 && _SUB[nx2]) { out+=_SUB[nx2]; i+=2; continue; }
-      if (nx2==='{') {
-        var ke2=s.indexOf('}',i+2);
-        if (ke2>0) { out+='<sub>'+s.slice(i+2,ke2)+'</sub>'; i=ke2+1; continue; }
-      }
-      out+=c; i++; continue;
-    }
-    // Parallel ||
-    if (c==='|' && s[i+1]==='|') { out+='\u2225'; i+=2; continue; }
-    out+=c; i++;
-  }
-  return out;
-}
-
-function setMathText(el, text) {
-  if (!el) return;
-  el.innerHTML = formatMath(text);
-}
-
-
 // ════════════ STATE ════════════
 let QUESTIONS=[], currentQ=0, answers={}, flags=new Set(), timings={};
 let qStartTime=null, timeLeft=1200, totalTime=1200;
@@ -614,102 +388,45 @@ const URL_PARAMS=new URLSearchParams(window.location.search);
 // window.sb is initialised by auth-guard.js using UE_CONFIG \u2014 no credentials here.
 
 document.addEventListener('DOMContentLoaded', async ()=>{
+  // AUTH_GUARD.init() boots window.sb from UE_CONFIG, validates session,
+  // checks premium gate (cbt.html is in PREMIUM_PAGES), renders nav + defaulter banner.
   const result=await AUTH_GUARD.init();
-  if(!result) return;
+  if(!result) return; // redirect in progress
 
-  // ── Populate subject dropdown dynamically from Sheet ─────────────
-  await populateSubjects();
-
-  // ── Restore URL params after subjects are loaded ──────────────────
+  // Pre-fill from URL
   const urlSubj=URL_PARAMS.get('subject');
   const urlTopic=URL_PARAMS.get('topic');
   if(urlSubj){
     const s=document.getElementById('sel-subject');
     for(const o of s.options) if(o.value===urlSubj){s.value=urlSubj;break;}
   }
-
-  // Populate topics for the selected subject (now async)
-  await onSubjectChange();
-
+  onSubjectChange();
   if(urlTopic){
     const ts=document.getElementById('sel-topic');
     for(const o of ts.options) if(o.value===urlTopic||o.text===urlTopic){ts.value=o.value;break;}
     document.getElementById('sel-mode').value='topic';
   }
-  if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||document.getElementById('sel-subject').value||'mathematics');
+  if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||'mathematics');
   updateSessionBadges();
 });
 
 // ════════════ SETUP HELPERS ════════════
 function onModeChange(){ updateSessionBadges(); }
 
-// Friendly display labels for subject keys from the Sheet
-const SUBJECT_LABELS = {
-  'mathematics':                 'Mathematics',
-  'english language':            'English Language',
-  'physics':                     'Physics',
-  'chemistry':                   'Chemistry',
-  'biology':                     'Biology',
-  'economics':                   'Economics',
-  'government':                  'Government',
-  'literature':                  'Literature in English',
-  'commerce':                    'Commerce',
-  'accounting':                  'Financial Accounting',
-  'geography':                   'Geography',
-  'history':                     'History',
-  'civic':                       'Civic Education',
-  'yoruba':                      'Yoruba',
-  'igbo':                        'Igbo',
-  'hausa':                       'Hausa',
-  'christian religious studies': 'Christian Religious Studies',
-  'agricultural science':        'Agricultural Science',
-  'computer studies':            'Computer Studies',
-};
-
-// Populate the subject dropdown from the Sheet — runs once on page load.
-// New subjects appear automatically when their sheet URL is added to config.js.
-async function populateSubjects(){
-  const sel=document.getElementById('sel-subject');
-  sel.innerHTML='<option value="">Loading…</option>';
-  sel.disabled=true;
-  try{
-    const subjects=await QUESTION_BANK.getSubjects();
-    if(!subjects.length){
-      sel.innerHTML='<option value="">No subjects found — check config.js</option>';
-      return;
-    }
-    sel.innerHTML=subjects.map(s=>{
-      const label=SUBJECT_LABELS[s]||(s.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' '));
-      return `<option value="${s}">${label}</option>`;
-    }).join('');
-  }catch(e){
-    sel.innerHTML='<option value="">Error loading subjects</option>';
-    console.error('[CBT] populateSubjects failed:',e);
-  }finally{
-    sel.disabled=false;
-  }
-}
-
-async function onSubjectChange(){
+function onSubjectChange(){
   const subj=document.getElementById('sel-subject').value;
   const ts=document.getElementById('sel-topic');
-  ts.innerHTML='<option value="">All Topics</option>';
-  if(subj){
-    try{
-      const topics=await QUESTION_BANK.getTopics(subj);
-      ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
-    }catch(e){console.warn('getTopics failed:',e);}
-  }
+  const topics=QUESTION_BANK.getTopics(subj);
+  ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
   updateSessionBadges();
 }
 
-async function updateSessionBadges(){
+function updateSessionBadges(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value;
   const cfg=getModeConfig(mode);
-  let avail=0;
-  try{ avail=await QUESTION_BANK.countFor(subj,topic||null); }catch(_){}
+  const avail=QUESTION_BANK.countFor(subj,topic||null);
   document.getElementById('q-count-badge').textContent=`${Math.min(cfg.count,avail)||cfg.count} Questions`;
   document.getElementById('time-badge').textContent=`⏱ ${Math.round(cfg.seconds/60)} min`;
   document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
@@ -721,69 +438,20 @@ function getModeConfig(mode){
 
 async function loadGradeLevel(userId,subject){
   const{data}=await window.sb.from('topic_mastery').select('grade_level').eq('user_id',userId).ilike('topic_id',subject+'.%').order('last_studied',{ascending:false}).limit(1);
-  currentGradeLevel=(data&&data.length>0&&data[0].grade_level)?data[0].grade_level:3;
+  if(data&&data.length>0) currentGradeLevel=data[0].grade_level;
   updateSessionBadges();
 }
 
 // ════════════ START ════════════
-function onExamTypeChange(){
-  const t=document.getElementById('sel-examtype').value;
-  const grp=document.getElementById('university-group');
-  if(!grp) return;
-  if(t==='Post-UTME'){
-    const sel=document.getElementById('sel-university');
-    if(sel && sel.options.length<=1){
-      const list=(window.UE_CONFIG&&window.UE_CONFIG.POST_UTME_UNIVERSITIES)||[];
-      list.forEach(u=>{
-        const o=document.createElement('option');
-        o.value=u; o.textContent=u;
-        sel.appendChild(o);
-      });
-    }
-    grp.style.display='';
-  } else {
-    grp.style.display='none';
-  }
-}
-
-async function startExam(){
-  // ── Free-tier sample gate ─────────────────────────────────────
-  if (window.AUTH_GUARD && !AUTH_GUARD.canSampleFeature('cbt')) {
-    AUTH_GUARD.bouncePremium(
-      'You\'ve used your free CBT session. Upgrade to UE Premium to take unlimited mock exams.'
-    );
-    return;
-  }
-
-  const btn=document.getElementById('btn-start');
-  btn.disabled=true;
-  btn.innerHTML='<span class="loading-spinner"></span> Loading questions…';
-
+function startExam(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
   const examType=document.getElementById('sel-examtype').value;
-  const universityEl=document.getElementById('sel-university');
-  const university=(examType==='Post-UTME' && universityEl) ? (universityEl.value||null) : null;
   const cfg=getModeConfig(mode);
 
-  try {
-    QUESTIONS = await QUESTION_BANK.getQuestions({subject:subj,topic,examType,university,gradeLevel:currentGradeLevel,count:cfg.count});
-  } catch(e) {
-    console.error('[CBT] getQuestions failed:',e);
-    QUESTIONS = [];
-  }
-
-  btn.disabled=false;
-  btn.innerHTML='&#x25B6; Start Session';
-
-  if(!QUESTIONS||!QUESTIONS.length){
-    toast('No questions available for this selection. Try another topic or exam type.');
-    return;
-  }
-
-  // Spend the sample credit only after confirming session can start
-  if (window.AUTH_GUARD) AUTH_GUARD.recordSampleUse('cbt');
+  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
   totalTime=cfg.seconds; timeLeft=cfg.seconds;
@@ -832,29 +500,7 @@ function renderQ(){
 
   document.getElementById('q-counter').textContent=`Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
-  setMathText(document.getElementById('q-text'), q.text);
-
-  // ── Diagram rendering ────────────────────────────────────────────
-  const wrap=document.getElementById('q-diagram-wrap');
-  const img=document.getElementById('q-diagram');
-  const loader=document.getElementById('q-diagram-loading');
-  if(q.image){
-    wrap.classList.add('show');
-    img.style.display='none';
-    loader.style.display='flex';
-    loader.innerHTML='<span class="loading-spinner"></span> Loading diagram…';
-
-    img.onload=()=>{loader.style.display='none';img.style.display='';};
-    img.onerror=()=>{
-      loader.innerHTML='<span style="color:#ef4444;font-size:.8rem">⚠ Diagram unavailable — check Drive sharing is set to <strong>Anyone with the link</strong></span>';
-    };
-    img.src=q.image;
-  } else {
-    wrap.classList.remove('show');
-    img.src=''; img.style.display='none';
-    loader.style.display='none';
-  }
-  // ── End diagram rendering ───────────────────────────────────────
+  document.getElementById('q-text').textContent=q.text;
 
   const fb=document.getElementById('flag-btn');
   fb.classList.toggle('flagged',flags.has(currentQ));
@@ -864,7 +510,7 @@ function renderQ(){
   q.opts.forEach((opt,i)=>{
     const btn=document.createElement('button');
     btn.className='drill-option'+(answers[currentQ]===i?' selected':'');
-    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${formatMath(opt)}</span>`;
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
     btn.onclick=()=>selectAnswer(i);
     oc.appendChild(btn);
   });
@@ -883,6 +529,7 @@ function renderQ(){
   const done=Object.keys(answers).length;
   if(done>0){
     const corr=QUESTIONS.filter((qq,i)=>answers[i]===qq.ans).length;
+    document.getElementById('jamb-pred').textContent=Math.round(120+(corr/done)*260);
   }
 }
 
@@ -938,16 +585,11 @@ async function submitExam(){
   document.getElementById('saving-overlay').classList.add('show');
   let gradingResult=null;
   try{
-    console.log('[CBT] submitExam — questions:', QUESTIONS.length, 'user:', window.UE_USER_ID);
     gradingResult=await GRADING.processSession({
       questions:QUESTIONS,answers,timings,
       meta:{userId:window.UE_USER_ID,subject:sessionConfig.subject,topic:sessionConfig.topic,examType:sessionConfig.examType,gradeLevel:sessionConfig.gradeLevel}
     });
-    console.log('[CBT] gradingResult:', gradingResult);
-  } catch(err){
-    console.error('[CBT] Grading error:', err);
-    toast('Grading error: ' + err.message);
-  }
+  } catch(err){console.error('Grading error:',err);}
   document.getElementById('saving-overlay').classList.remove('show');
   showResults(gradingResult);
 }
@@ -958,6 +600,7 @@ function showResults(gr){
   const total=QUESTIONS.length, pct=Math.round(correct/total*100);
   const timeSpent=totalTime-timeLeft;
   const mins=Math.floor(timeSpent/60),secs=timeSpent%60;
+  const jambPred=Math.round(120+(correct/total)*260);
 
   const icon=document.getElementById('results-icon');
   const title=document.getElementById('results-title');
@@ -972,6 +615,7 @@ function showResults(gr){
     <div class="result-stat"><div class="result-stat-label">Score</div><div class="result-stat-val">${correct}/${total}</div></div>
     <div class="result-stat accent"><div class="result-stat-label">Accuracy</div><div class="result-stat-val">${pct}%</div></div>
     <div class="result-stat"><div class="result-stat-label">Time</div><div class="result-stat-val">${pad(mins)}:${pad(secs)}</div></div>
+    <div class="result-stat accent"><div class="result-stat-label">Pred. JAMB</div><div class="result-stat-val">${jambPred}</div></div>
   `;
 
   if(gr){
@@ -1017,28 +661,7 @@ function renderReviewQ(){
   const q=QUESTIONS[currentQ], sel=answers[currentQ], isC=sel===q.ans;
   document.getElementById('q-counter').textContent=`Review \u2014 Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
-  setMathText(document.getElementById('q-text'), q.text);
-
-  // ── Diagram rendering (review mode) ─────────────────────────────
-  const wrap=document.getElementById('q-diagram-wrap');
-  const img=document.getElementById('q-diagram');
-  const loader=document.getElementById('q-diagram-loading');
-  if(q.image){
-    wrap.classList.add('show');
-    img.style.display='none';
-    loader.style.display='flex';
-    loader.innerHTML='<span class="loading-spinner"></span> Loading diagram…';
-
-    img.onload=()=>{loader.style.display='none';img.style.display='';};
-    img.onerror=()=>{
-      loader.innerHTML='<span style="color:#ef4444;font-size:.8rem">⚠ Diagram unavailable — check Drive sharing is set to <strong>Anyone with the link</strong></span>';
-    };
-    img.src=q.image;
-  } else {
-    wrap.classList.remove('show');
-    img.src=''; img.style.display='none'; loader.style.display='none';
-  }
-  // ── End diagram rendering ───────────────────────────────────────
+  document.getElementById('q-text').textContent=q.text;
 
   const oc=document.getElementById('q-options'); oc.innerHTML='';
   q.opts.forEach((opt,i)=>{
@@ -1047,12 +670,12 @@ function renderReviewQ(){
     if(i===q.ans) cls+=' correct';
     if(i===sel&&!isC) cls+=' wrong';
     btn.className=cls;
-    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${formatMath(opt)}</span>`;
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
     oc.appendChild(btn);
   });
 
   const eb=document.getElementById('explanation-box');
-  if(q.explanation){eb.innerHTML=`<strong>Explanation:</strong> ${formatMath(q.explanation)}`;eb.classList.add('show');}
+  if(q.explanation){eb.innerHTML=`<strong>Explanation:</strong> ${q.explanation}`;eb.classList.add('show');}
   else eb.classList.remove('show');
 
   document.getElementById('prev-btn').disabled=currentQ===0;
@@ -1072,155 +695,6 @@ function retryExam(){
   document.getElementById('setup-screen').style.display='flex';
   document.getElementById('flag-btn').style.display='';
 }
-
-
-// ════════════ SCIENTIFIC CALCULATOR ════════════
-(function(){
-  let expr = '';
-
-  function display(result, isErr) {
-    const rd = document.getElementById('calc-result');
-    const ed = document.getElementById('calc-expr');
-    rd.textContent = result;
-    rd.className = isErr ? 'error' : '';
-    ed.textContent = expr;
-  }
-
-  function update() { display(expr || '0'); }
-
-  window.toggleCalculator = function(forceClose) {
-    const calc = document.getElementById('sci-calculator');
-    const btn  = document.getElementById('calc-toggle-btn');
-    const isOpen = calc.classList.contains('open');
-    if (forceClose || isOpen) {
-      calc.classList.remove('open');
-      btn.classList.remove('active');
-      if (overlay) { overlay.remove(); overlay = null; }
-    } else {
-      calc.classList.add('open');
-      btn.classList.add('active');
-      // On mobile add a tap-outside overlay to close
-      if (window.innerWidth <= 600) {
-        overlay = document.createElement('div');
-        overlay.style.cssText='position:fixed;inset:0;z-index:299;background:rgba(0,0,0,.35)';
-        overlay.addEventListener('click', () => toggleCalculator(true));
-        document.body.insertBefore(overlay, calc);
-      }
-    }
-  };
-  let overlay = null;
-
-  window.calcIn = function(ch) { expr += ch; update(); };
-
-  window.calcFn = function(fn) {
-    if (fn === '+/-') {
-      if (expr.startsWith('-')) expr = expr.slice(1);
-      else expr = '-' + expr;
-    } else if (fn === '1/') {
-      expr = '1/(' + expr + ')';
-    } else if (fn === '(  )') {
-      // smart paren: count open vs close
-      const opens  = (expr.match(/\(/g)||[]).length;
-      const closes = (expr.match(/\)/g)||[]).length;
-      expr += opens > closes ? ')' : '(';
-    } else {
-      expr += fn;
-    }
-    update();
-  };
-
-  window.calcDel = function() {
-    expr = expr.slice(0, -1);
-    update();
-  };
-
-  window.calcAC = function() {
-    expr = '';
-    display('0');
-  };
-
-  window.calcEq = function() {
-    if (!expr) return;
-    try {
-      const result = evalExpr(expr);
-      display(result, false);
-      document.getElementById('calc-expr').textContent = expr + ' =';
-      expr = String(result);
-    } catch(e) {
-      display('Error', true);
-      expr = '';
-    }
-  };
-
-  function evalExpr(raw) {
-    // replace math tokens
-    let s = raw
-      .replace(/pi/g,   '(' + Math.PI + ')')
-      .replace(/e/g, '(' + Math.E  + ')')
-      .replace(/\^/g,   '**')
-      .replace(/sin\(/g,   '_sin(')
-      .replace(/cos\(/g,   '_cos(')
-      .replace(/tan\(/g,   '_tan(')
-      .replace(/log\(/g,   '_log10(')
-      .replace(/ln\(/g,    '_ln(')
-      .replace(/sqrt\(/g,  '_sqrt(')
-      .replace(/(\d+)!/g,  '_fact($1)');
-
-    // whitelist check — only allow safe chars
-    if (/[^0-9+\-*/().%_a-zA-Z ]/.test(s)) throw new Error('unsafe');
-
-    /* eslint-disable no-new-func */
-    return new Function(
-      '_sin','_cos','_tan','_log10','_ln','_sqrt','_fact',
-      '"use strict"; return ' + s + ';'
-    )(
-      x => Math.sin(toRad(x)),
-      x => Math.cos(toRad(x)),
-      x => Math.tan(toRad(x)),
-      x => Math.log10(x),
-      x => Math.log(x),
-      x => Math.sqrt(x),
-      x => factorial(x)
-    );
-  }
-
-  // degrees mode (standard for WAEC/JAMB trig questions)
-  function toRad(deg) { return deg * Math.PI / 180; }
-
-  function factorial(n) {
-    n = Math.round(n);
-    if (n < 0 || n > 170) throw new Error('range');
-    if (n <= 1) return 1;
-    let r = 1;
-    for (let i = 2; i <= n; i++) r *= i;
-    return r;
-  }
-
-  // Make calculator draggable on desktop
-  (function makeDraggable() {
-    const el = document.getElementById('sci-calculator');
-    const hd = document.getElementById('calc-header');
-    if (!el || !hd) return;
-    let ox=0,oy=0,mx=0,my=0;
-    hd.addEventListener('mousedown', e => {
-      e.preventDefault();
-      ox = el.offsetLeft - e.clientX;
-      oy = el.offsetTop  - e.clientY;
-      document.addEventListener('mousemove', drag);
-      document.addEventListener('mouseup',  stop);
-    });
-    function drag(e) {
-      el.style.right = 'auto';
-      el.style.bottom = 'auto';
-      el.style.left = Math.max(0, e.clientX + ox) + 'px';
-      el.style.top  = Math.max(0, e.clientY + oy) + 'px';
-    }
-    function stop() {
-      document.removeEventListener('mousemove', drag);
-      document.removeEventListener('mouseup',  stop);
-    }
-  })();
-})();
 
 // ════════════ TOAST ════════════
 function toast(msg,dur=2800){
