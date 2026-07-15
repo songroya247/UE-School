@@ -1,111 +1,218 @@
 /* ═══════════════════════════════════════════════════════════════════
-   UE School — js/config.js  (v3 — Admin + Google Drive/Sheets)
-   Single source of truth for all environment-level constants.
-   Frozen at runtime — no script may overwrite these values.
+   UE School — js/gsheet-questions.js  (v2 — per-subject sheets)
+
+   Supports two config modes (set in js/config.js):
+
+   OPTION A — single sheet (all subjects in one tab):
+     UE_CONFIG.GOOGLE_SHEET_QUESTIONS_CSV_URL = '<csv-url>'
+
+   OPTION B — per-subject sheets (one tab per subject):
+     UE_CONFIG.GOOGLE_SHEET_SUBJECT_URLS = {
+       'mathematics': '<csv-url>',
+       'english':     '<csv-url>',
+       ...
+     }
+   Option B is preferred: the app only fetches the sheet(s) it needs,
+   making single-subject CBT sessions much faster.
+
+   Question shape (same as questions.js):
+     { id, subject, topic, examType, year, text,
+       opts:[a,b,c,d], ans, explanation, image }
+
+   Cache: each sheet URL is cached independently for
+   UE_CONFIG.GS_QUESTIONS_CACHE_MIN minutes (default 30).
 ═══════════════════════════════════════════════════════════════════ */
 
-(function () {
+window.GSHEET_QUESTIONS = (function () {
   'use strict';
 
-  if (window.UE_CONFIG) return;
+  const cfg         = window.UE_CONFIG || {};
+  const SINGLE_URL  = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
+  const SUBJECT_MAP = cfg.GOOGLE_SHEET_SUBJECT_URLS      || {};
+  const CACHE_MS    = (cfg.GS_QUESTIONS_CACHE_MIN || 30) * 60 * 1000;
 
-  const _config = {
-    // ── Supabase ──────────────────────────────────────────────────
-    SUPABASE_URL:  'https://nmkuujtupgcgxzxbenti.supabase.co',
-    SUPABASE_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ta3V1anR1cGdjZ3h6eGJlbnRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njg2NDYsImV4cCI6MjA5MjQ0NDY0Nn0.89PvF3HdNL5FPwsyQoZQrmeQxwgpmDCFBjqVA_lBY_w',
+  // Per-URL cache: { [url]: { rows:[], at: number } }
+  const _cache     = {};
+  // Per-URL in-flight promises
+  const _inflight  = {};
 
-    // ── App ───────────────────────────────────────────────────────
-    APP_NAME:      'UE School',
-    LOGIN_PAGE:    'login.html',
-    PRICING_PAGE:  'pricing.html',
+  function isEnabled() {
+    return !!SINGLE_URL || Object.keys(SUBJECT_MAP).length > 0;
+  }
 
-    PROTECTED_PAGES: [
-      'dashboard.html', 'classroom.html', 'cbt.html', 'report.html',
-      'admin-dashboard.html', 'admin-actions.html'
-    ],
-    PREMIUM_PAGES:    ['classroom.html', 'cbt.html'],
-    ADMIN_ONLY_PAGES: ['admin-dashboard.html', 'admin-actions.html'],
+  // ── Minimal RFC-4180-ish CSV parser (handles quotes + escapes) ──
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], n = text[i + 1];
+      if (inQ) {
+        if (c === '"' && n === '"') { cell += '"'; i++; }
+        else if (c === '"')         { inQ = false; }
+        else                        { cell += c; }
+      } else {
+        if (c === '"')              { inQ = true; }
+        else if (c === ',')         { row.push(cell); cell = ''; }
+        else if (c === '\r')        { /* skip */ }
+        else if (c === '\n')        { row.push(cell); rows.push(row); row = []; cell = ''; }
+        else                        { cell += c; }
+      }
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(r => r.length && r.some(v => v && v.trim().length));
+  }
 
-    // ── Admin pass-through ────────────────────────────────────────
-    // Any account whose `is_admin` column is TRUE in `profiles` is
-    // automatically treated as PREMIUM by auth-guard.js — no separate
-    // login, no duplicate account. They sign up like a normal user
-    // and then a single SQL UPDATE flips the flag.
-    //
-    // The list below is an OPTIONAL fallback "allow-list" by email
-    // for the very first bootstrap, before the column exists in
-    // their profile row. Leave empty in production.
-    ADMIN_EMAILS: [
-      // 'founder@ueschool.com',
-    ],
+  function norm(s) { return (s || '').toString().trim(); }
 
-    // ── Google Drive — videos ─────────────────────────────────────
-    // Each lesson topic in classroom.js can already declare a
-    //   { driveId: 'FILE_ID' }
-    // and the player auto-embeds:
-    //   https://drive.google.com/file/d/FILE_ID/preview
-    //
-    // To use a SHARED FOLDER as your video library, drop the folder
-    // ID here and use GDRIVE_VIDEO.embedUrl(fileId) helper.
-    // Make every video file "Anyone with the link → Viewer".
-    GOOGLE_DRIVE_VIDEO_FOLDER_ID: '',  // e.g. '1AbCdEfGhIjKlMnOpQrStUvWxYz'
-
-    // ── Google Sheets — questions bank ────────────────────────────
-    // 1. Build a Google Sheet with these columns (header row required):
-    //      id | subject | topic | exam_type | year | text | opt_a | opt_b | opt_c | opt_d | ans | explanation | image_url
-    //    `ans` is 0..3 (index of the correct option). `image_url`
-    //    is OPTIONAL — paste a public Drive image URL or any https
-    //    image; the CBT player will render it above the question.
-    // 2. File → Share → "Anyone with the link" → Viewer.
-    // 3. File → Publish to web → Sheet1 → CSV → copy the URL.
-    // 4. Paste that CSV URL below.
-    //
-    // Leaving this blank disables the Sheets path; questions.js then
-    // falls back to the Supabase RPC + local bank as before.
-    GOOGLE_SHEET_QUESTIONS_CSV_URL: '',
-
-    // ── Google Sheets — questions bank (PER-SUBJECT tabs) ─────────
-    // The CBT question bank lives as separate tabs (gid=) of one
-    // Google Sheet, each published to web as its own CSV. Map each
-    // subject key (must match the `value` used in cbt.html's subject
-    // <select>) to its published CSV URL below. gsheet-questions.js
-    // fetches/caches each subject's sheet independently.
-    SUBJECT_SHEET_URLS: {
-      mathematics:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=0&single=true&output=csv',
-      english:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1658933018&single=true&output=csv',
-      biology:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=249163164&single=true&output=csv',
-      agric:        'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1606390188&single=true&output=csv',
-      chemistry:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1758913667&single=true&output=csv',
-      crs:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1557227201&single=true&output=csv',
-      commerce:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=906700658&single=true&output=csv',
-      computer:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=392494980&single=true&output=csv',
-      economics:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=39501907&single=true&output=csv',
-      physics:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1954223493&single=true&output=csv',
-      phe:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=2099233715&single=true&output=csv',
-      literature:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1135539231&single=true&output=csv',
-      government:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1070093724&single=true&output=csv',
-      history:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=683065308&single=true&output=csv',
-      fineart:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=895577052&single=true&output=csv',
-      accounting:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=2097289299&single=true&output=csv',
-      french:       'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1337647868&single=true&output=csv',
-      irs:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=592461938&single=true&output=csv',
-      music:        'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=972413627&single=true&output=csv',
-      arabic:       'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1685044296&single=true&output=csv',
-      geography:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=240277282&single=true&output=csv',
-      homeeconomics:'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=118667393&single=true&output=csv',
-      yoruba:       'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=2022769992&single=true&output=csv',
-      igbo:         'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=914056802&single=true&output=csv',
-      hausa:        'https://docs.google.com/spreadsheets/d/e/2PACX-1vT53h7VABgCjHRjkGoKMaV2jPKiwHlNfqj2ut8mNseJQxJ0Fd-zBBJMY96dbvmWqUFXNjO9GfLO2P5Z/pub?gid=1356784415&single=true&output=csv',
-    },
-
-    // Cache the parsed sheet in memory for this many minutes
-    GS_QUESTIONS_CACHE_MIN: 30,
+  // Map header names → canonical keys
+  const HEADER_MAP = {
+    id:          ['id', 'question_id', 'qid'],
+    subject:     ['subject'],
+    topic:       ['topic'],
+    examType:    ['exam_type', 'examtype', 'exam'],
+    year:        ['year'],
+    text:        ['text', 'question', 'prompt'],
+    opt_a:       ['opt_a', 'option_a', 'a'],
+    opt_b:       ['opt_b', 'option_b', 'b'],
+    opt_c:       ['opt_c', 'option_c', 'c'],
+    opt_d:       ['opt_d', 'option_d', 'd'],
+    ans:         ['ans', 'answer', 'correct'],
+    explanation: ['explanation', 'reason', 'why'],
+    image:       ['image_url', 'image', 'img', 'picture'],
   };
 
-  Object.defineProperty(window, 'UE_CONFIG', {
-    value:        Object.freeze(_config),
-    writable:     false,
-    configurable: false,
-    enumerable:   true,
-  });
+  function buildIndex(headerRow) {
+    const idx = {};
+    const lc  = headerRow.map(h => norm(h).toLowerCase());
+    for (const key of Object.keys(HEADER_MAP)) {
+      const aliases = HEADER_MAP[key];
+      const found = lc.findIndex(h => aliases.includes(h));
+      idx[key] = found;
+    }
+    return idx;
+  }
+
+  function answerToIndex(raw, opts) {
+    const v = norm(raw);
+    if (!v) return -1;
+    if (/^[0-3]$/.test(v))    return parseInt(v, 10);
+    if (/^[A-Da-d]$/.test(v)) return v.toUpperCase().charCodeAt(0) - 65;
+    const i = opts.findIndex(o => o && o.toLowerCase() === v.toLowerCase());
+    return i >= 0 ? i : -1;
+  }
+
+  function normaliseImage(raw) {
+    const v = norm(raw);
+    if (!v) return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    if (window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.imageUrl(v);
+    return v;
+  }
+
+  function rowToQuestion(row, idx, lineNo) {
+    const opts = [
+      norm(row[idx.opt_a]), norm(row[idx.opt_b]),
+      norm(row[idx.opt_c]), norm(row[idx.opt_d]),
+    ].filter(Boolean);
+    const ans = answerToIndex(row[idx.ans], opts);
+    if (!norm(row[idx.text]) || opts.length < 2 || ans < 0) return null;
+
+    return {
+      id:          norm(row[idx.id]) || ('gs' + String(lineNo).padStart(4, '0')),
+      subject:     norm(row[idx.subject]).toLowerCase() || 'general',
+      topic:       norm(row[idx.topic]) || 'General',
+      examType:    norm(row[idx.examType]).toUpperCase() || 'JAMB',
+      year:        parseInt(norm(row[idx.year]), 10) || null,
+      text:        norm(row[idx.text]),
+      opts,
+      ans,
+      explanation: norm(row[idx.explanation]),
+      image:       idx.image >= 0 ? normaliseImage(row[idx.image]) : '',
+      _source:     'gsheet',
+    };
+  }
+
+  // ── Fetch and parse a single CSV URL (with per-URL cache) ────────
+  async function _fetchUrl(url, force) {
+    const now = Date.now();
+    if (!force && _cache[url] && (now - _cache[url].at) < CACHE_MS) {
+      return _cache[url].rows;
+    }
+    if (_inflight[url]) return _inflight[url];
+
+    _inflight[url] = (async () => {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const rows = parseCSV(text);
+        if (rows.length < 2) return [];
+        const idx = buildIndex(rows[0]);
+        const out = [];
+        for (let i = 1; i < rows.length; i++) {
+          const q = rowToQuestion(rows[i], idx, i);
+          if (q) out.push(q);
+        }
+        _cache[url] = { rows: out, at: now };
+        return out;
+      } catch (e) {
+        console.warn('[GSHEET_QUESTIONS] fetch failed (' + url + '):', e.message);
+        return _cache[url] ? _cache[url].rows : [];
+      } finally {
+        delete _inflight[url];
+      }
+    })();
+
+    return _inflight[url];
+  }
+
+  // ── Fetch all questions (all subjects) ───────────────────────────
+  async function fetchAll(force) {
+    if (!isEnabled()) return [];
+
+    // Option A: single URL
+    if (SINGLE_URL) return _fetchUrl(SINGLE_URL, force);
+
+    // Option B: fetch all subject sheets in parallel
+    const urls   = Object.values(SUBJECT_MAP);
+    const arrays = await Promise.all(urls.map(u => _fetchUrl(u, force)));
+    return [].concat(...arrays);
+  }
+
+  // ── Fetch questions for one subject only ─────────────────────────
+  async function _fetchForSubject(subjectKey, force) {
+    // Option B: direct per-subject URL
+    const url = SUBJECT_MAP[subjectKey];
+    if (url) return _fetchUrl(url, force);
+
+    // Option A fallback: load everything and filter
+    const all = await _fetchUrl(SINGLE_URL, force);
+    return all.filter(q => q.subject === subjectKey);
+  }
+
+  // ── Public: filter + sample (same signature as v1) ───────────────
+  async function getQuestions({ subject, topic, examType, count = 10 } = {}) {
+    if (!isEnabled()) return [];
+
+    let bank;
+    const subjectKey = subject ? String(subject).toLowerCase() : null;
+
+    if (subjectKey) {
+      bank = await _fetchForSubject(subjectKey, false);
+    } else {
+      bank = await fetchAll(false);
+    }
+
+    if (topic)    bank = bank.filter(q => q.topic    === topic);
+    if (examType) bank = bank.filter(q => q.examType === String(examType).toUpperCase());
+
+    bank = bank.sort(() => Math.random() - 0.5).slice(0, Math.min(count, bank.length));
+    return bank;
+  }
+
+  function clearCache() {
+    Object.keys(_cache).forEach(k => delete _cache[k]);
+  }
+
+  return { isEnabled, fetchAll, getQuestions, clearCache };
 })();
