@@ -222,23 +222,23 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
         <option value="physics">Physics</option>
         <option value="chemistry">Chemistry</option>
         <option value="biology">Biology</option>
+        <option value="agric">Agricultural Science</option>
         <option value="economics">Economics</option>
         <option value="government">Government</option>
-        <option value="agric">Agricultural Science</option>
-        <option value="crs">Christian Religious Studies</option>
-        <option value="commerce">Commerce</option>
-        <option value="computer">Computer Studies</option>
-        <option value="phe">Physical Health Education</option>
         <option value="literature">Literature in English</option>
-        <option value="history">History</option>
-        <option value="fineart">Fine Arts</option>
-        <option value="accounting">Principles of Accounting</option>
-        <option value="french">French</option>
+        <option value="commerce">Commerce</option>
+        <option value="accounting">Accounting</option>
+        <option value="crs">Christian Religious Studies</option>
         <option value="irs">Islamic Religious Studies</option>
-        <option value="music">Music</option>
-        <option value="arabic">Arabic</option>
+        <option value="history">History</option>
         <option value="geography">Geography</option>
+        <option value="computer">Computer Studies</option>
+        <option value="phe">Physical &amp; Health Education</option>
+        <option value="fineart">Fine Art</option>
+        <option value="music">Music</option>
         <option value="homeeconomics">Home Economics</option>
+        <option value="french">French</option>
+        <option value="arabic">Arabic</option>
         <option value="yoruba">Yoruba</option>
         <option value="igbo">Igbo</option>
         <option value="hausa">Hausa</option>
@@ -413,12 +413,28 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 // ════════════ SETUP HELPERS ════════════
 function onModeChange(){ updateSessionBadges(); }
 
-function onSubjectChange(){
+async function onSubjectChange(){
   const subj=document.getElementById('sel-subject').value;
   const ts=document.getElementById('sel-topic');
-  const topics=QUESTION_BANK.getTopics(subj);
+  // Immediately populate with local-bank topics (fast, sync)
+  let topics=QUESTION_BANK.getTopics(subj);
   ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
   updateSessionBadges();
+  // Then enrich from Google Sheet (async — replaces the list when ready)
+  if(window.GSHEET_QUESTIONS && window.GSHEET_QUESTIONS.isEnabled()){
+    try{
+      const rows=await window.GSHEET_QUESTIONS.getQuestions({subject:subj,count:200});
+      if(rows && rows.length){
+        const sheetTopics=[...new Set(rows.map(q=>q.topic).filter(Boolean))].sort();
+        if(sheetTopics.length){
+          // Merge: sheet topics take priority; keep local ones too
+          const merged=[...new Set([...sheetTopics,...topics])];
+          ts.innerHTML='<option value="">All Topics</option>'+merged.map(t=>`<option value="${t}">${t}</option>`).join('');
+          updateSessionBadges();
+        }
+      }
+    }catch(e){/* silently keep local topics */}
+  }
 }
 
 function updateSessionBadges(){
@@ -443,14 +459,14 @@ async function loadGradeLevel(userId,subject){
 }
 
 // ════════════ START ════════════
-async function startExam(){
+function startExam(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
   const examType=document.getElementById('sel-examtype').value;
   const cfg=getModeConfig(mode);
 
-  QUESTIONS=await QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
   if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
