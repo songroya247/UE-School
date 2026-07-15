@@ -443,14 +443,14 @@ async function loadGradeLevel(userId,subject){
 }
 
 // ════════════ START ════════════
-function startExam(){
+async function startExam(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
   const examType=document.getElementById('sel-examtype').value;
   const cfg=getModeConfig(mode);
 
-  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  QUESTIONS=await QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
   if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
