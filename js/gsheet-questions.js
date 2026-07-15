@@ -1,62 +1,48 @@
 /* ═══════════════════════════════════════════════════════════════════
-   UE School — js/gsheet-questions.js  (v2 — grade_level + diagram)
-
+   UE School — js/gsheet-questions.js
    Fetches the published Google Sheets CSV from
-   UE_CONFIG.GOOGLE_SHEET_QUESTIONS_CSV_URL / QUESTION_SUBJECT_URLS
-   and converts each row into the question shape the app uses:
-     { id, subject, topic, examType, year, grade_level, text,
-       opts:[a,b,c,d], ans, explanation, image, diagram_type }
+   UE_CONFIG.GOOGLE_SHEET_QUESTIONS_CSV_URL and converts each row
+   into the same question shape the rest of the app already uses:
+     { id, subject, topic, examType, year, text,
+       opts:[a,b,c,d], ans, explanation, image }
 
-   DEPENDENCIES: none. This file is fully self-contained.
-   It does NOT depend on gdrive-video.js, supabase.js, or any other
-   UE School module. Drive File IDs are converted to display URLs
-   inline — see normaliseImage() below.
+   It also handles questions WITH IMAGES — Google Sheets cannot
+   display images inline in CSV, but it can hold an image URL in a
+   plain text column. The CBT player renders that image above the
+   question text. For Drive-hosted images, paste either the share
+   URL or the FILE_ID; gdrive-video.js normalises it.
 
-   GRADE LEVEL FILTERING:
-   ──────────────────────
-   Each row carries a `grade_level` column (1=Advanced,
-   2=Intermediate, 3=Foundation). getQuestions() filters so harder
-   questions are only served to students who have earned them via
-   the grading algorithm. Missing/blank defaults to 3 (Foundation).
-
-   DIAGRAM SUPPORT:
-   ────────────────
-   Questions with diagrams store a Google Drive File ID (or full
-   public URL) in the `image_url` column. The CBT player renders
-   it above the question text. `diagram_type` is optional:
-   geometry | graph | table | photo.
-
-   CACHING:
-   ────────
-   Parsed rows are kept in memory per URL for
-   UE_CONFIG.GS_QUESTIONS_CACHE_MIN minutes (default 30).
-   Per-subject sheets are cached independently so fetching maths
-   does not evict physics from cache.
+   Cache: parsed rows are kept in memory for
+   UE_CONFIG.GS_QUESTIONS_CACHE_MIN minutes (default 30) so a
+   200-question CBT session is one network round-trip, not 200.
 ═══════════════════════════════════════════════════════════════════ */
 
 window.GSHEET_QUESTIONS = (function () {
   'use strict';
 
-  const cfg            = window.UE_CONFIG || {};
-  const FALLBACK_URL   = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
-  const SUBJECT_URLS   = cfg.QUESTION_SUBJECT_URLS || {};
-  const CACHE_MS       = (cfg.GS_QUESTIONS_CACHE_MIN || 30) * 60 * 1000;
-  const CACHE_VERSION  = 'v4'; // bump this whenever normaliseImage logic changes
+  const cfg = window.UE_CONFIG || {};
+  const SHEET_URL   = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
+  const SUBJ_URLS   = cfg.SUBJECT_SHEET_URLS || {};
+  const CACHE_MS    = (cfg.GS_QUESTIONS_CACHE_MIN || 30) * 60 * 1000;
 
-  // Per-URL cache keyed by version so stale entries are auto-discarded
-  const _caches   = {};
-  const _inflight = {};
+  let _cache    = null; // { rows:[], at: number }  (legacy single-sheet cache)
+  let _inflight = null;
 
-  function isEnabled() {
-    return !!FALLBACK_URL || Object.keys(SUBJECT_URLS).length > 0;
+  // Per-subject cache: subjectKey -> { rows:[], at: number }
+  const _subjCache    = {};
+  const _subjInflight = {};
+
+  function urlForSubject(subject) {
+    const key = (subject || '').toString().trim().toLowerCase();
+    return SUBJ_URLS[key] || '';
   }
 
-  // Resolve the best URL for a given subject (may be null)
-  function _urlFor(subject) {
-    if (subject && SUBJECT_URLS[String(subject).toLowerCase()]) {
-      return SUBJECT_URLS[String(subject).toLowerCase()];
-    }
-    return FALLBACK_URL || null;
+  // isEnabled(subject?) — with a subject, checks that subject's own sheet
+  // (or the legacy single sheet as a fallback); without one, reports
+  // whether the Sheets path is configured at all.
+  function isEnabled(subject) {
+    if (subject) return !!(urlForSubject(subject) || SHEET_URL);
+    return !!(SHEET_URL || Object.keys(SUBJ_URLS).length);
   }
 
   // ── Minimal RFC-4180-ish CSV parser (handles quotes + escapes) ──
@@ -85,21 +71,19 @@ window.GSHEET_QUESTIONS = (function () {
 
   // Map header names → canonical keys we care about
   const HEADER_MAP = {
-    id:           ['id', 'question_id', 'qid'],
-    subject:      ['subject'],
-    topic:        ['topic'],
-    examType:     ['exam_type', 'examtype', 'exam'],
-    year:         ['year'],
-    grade_level:  ['grade_level', 'grade', 'difficulty', 'level'],
-    text:         ['text', 'question', 'prompt'],
-    opt_a:        ['opt_a', 'option_a', 'a'],
-    opt_b:        ['opt_b', 'option_b', 'b'],
-    opt_c:        ['opt_c', 'option_c', 'c'],
-    opt_d:        ['opt_d', 'option_d', 'd'],
-    ans:          ['ans', 'answer', 'correct'],
-    explanation:  ['explanation', 'reason', 'why'],
-    image:        ['image_url', 'image', 'img', 'picture'],
-    diagram_type: ['diagram_type', 'diagram', 'image_type'],
+    id:          ['id', 'question_id', 'qid'],
+    subject:     ['subject'],
+    topic:       ['topic'],
+    examType:    ['exam_type', 'examtype', 'exam'],
+    year:        ['year'],
+    text:        ['text', 'question', 'prompt'],
+    opt_a:       ['opt_a', 'option_a', 'a'],
+    opt_b:       ['opt_b', 'option_b', 'b'],
+    opt_c:       ['opt_c', 'option_c', 'c'],
+    opt_d:       ['opt_d', 'option_d', 'd'],
+    ans:         ['ans', 'answer', 'correct'],
+    explanation: ['explanation', 'reason', 'why'],
+    image:       ['image_url', 'image', 'img', 'picture'],
   };
 
   function buildIndex(headerRow) {
@@ -123,39 +107,13 @@ window.GSHEET_QUESTIONS = (function () {
     return i >= 0 ? i : -1;
   }
 
-  function driveImgUrl(fileId) {
-    // thumbnail endpoint works publicly without Google login
-    // sz=w800 gives up to 800px wide — sufficient for exam diagrams
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
-  }
-
   function normaliseImage(raw) {
     const v = norm(raw);
     if (!v) return '';
-
-    // Reject Drive folder URLs — they are never images
-    if (/\/drive\/folders\//i.test(v)) {
-      console.warn('[GSHEET_QUESTIONS] image_url is a Drive folder URL, not a file:', v);
-      return '';
-    }
-
-    // Extract File ID from any Drive file URL format
-    const fileMatch = v.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-    if (fileMatch) return driveImgUrl(fileMatch[1]);
-
-    // Drive open?id= or uc?id= or thumbnail?id= formats
-    const idMatch = v.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-    if (idMatch) return driveImgUrl(idMatch[1]);
-
-    // Direct image URL (Imgur, Cloudinary, S3, etc.)
-    if (/^https?:\/\/.+\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(v)) return v;
-
-    // Bare Drive File ID — 25–44 alphanumeric/dash/underscore chars
-    if (/^[a-zA-Z0-9_-]{25,44}$/.test(v)) return driveImgUrl(v);
-
-    // Anything else — unrecognised, skip
-    console.warn('[GSHEET_QUESTIONS] Unrecognised or invalid image_url (ignored):', v);
-    return '';
+    if (/^https?:\/\//i.test(v)) return v;
+    // Looks like a Drive file ID
+    if (window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.imageUrl(v);
+    return v;
   }
 
   function rowToQuestion(row, idx, lineNo) {
@@ -166,121 +124,109 @@ window.GSHEET_QUESTIONS = (function () {
     const ans = answerToIndex(row[idx.ans], opts);
     if (!norm(row[idx.text]) || opts.length < 2 || ans < 0) return null;
 
-    // grade_level: 1=Advanced, 2=Intermediate, 3=Foundation (default)
-    const rawGrade = parseInt(norm(row[idx.grade_level]), 10);
-    const grade_level = (rawGrade >= 1 && rawGrade <= 3) ? rawGrade : 3;
-
     return {
-      id:           norm(row[idx.id]) || ('gs' + String(lineNo).padStart(4, '0')),
-      subject:      norm(row[idx.subject]).toLowerCase() || 'general',
-      topic:        norm(row[idx.topic]) || 'General',
-      examType:     norm(row[idx.examType]).toUpperCase() || 'JAMB',
-      year:         parseInt(norm(row[idx.year]), 10) || null,
-      grade_level,
-      text:         norm(row[idx.text]),
+      id:          norm(row[idx.id]) || ('gs' + String(lineNo).padStart(4, '0')),
+      subject:     norm(row[idx.subject]).toLowerCase() || 'general',
+      topic:       norm(row[idx.topic]) || 'General',
+      examType:    norm(row[idx.examType]).toUpperCase() || 'JAMB',
+      year:        parseInt(norm(row[idx.year]), 10) || null,
+      text:        norm(row[idx.text]),
       opts,
       ans,
-      explanation:  norm(row[idx.explanation]),
-      image:        normaliseImage(idx.image >= 0 ? row[idx.image] : ''),
-      diagram_type: idx.diagram_type >= 0 ? norm(row[idx.diagram_type]).toLowerCase() : '',
-      _source:      'gsheet',
+      explanation: norm(row[idx.explanation]),
+      image:       idx.image >= 0 ? normaliseImage(row[idx.image]) : '',
+      _source:     'gsheet',
     };
   }
 
-  async function _fetchUrl(url, force = false) {
-    if (!url) return [];
-    const cacheKey = `${CACHE_VERSION}:${url}`;
-    const now = Date.now();
-    if (!force && _caches[cacheKey] && (now - _caches[cacheKey].at) < CACHE_MS) return _caches[cacheKey].rows;
-    if (_inflight[cacheKey]) return _inflight[cacheKey];
+  // Shared fetch+parse: pulls one published CSV URL into question rows.
+  async function _fetchCsv(url, fallbackSubject) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) return [];
+    const idx = buildIndex(rows[0]);
+    const out = [];
+    for (let i = 1; i < rows.length; i++) {
+      const q = rowToQuestion(rows[i], idx, i);
+      if (!q) continue;
+      // A per-subject sheet may omit the `subject` column entirely —
+      // fall back to the subject key the sheet is mapped under.
+      if (q.subject === 'general' && fallbackSubject) q.subject = fallbackSubject;
+      out.push(q);
+    }
+    return out;
+  }
 
-    _inflight[cacheKey] = (async () => {
+  async function fetchAll(force = false) {
+    if (!SHEET_URL) return [];
+    const now = Date.now();
+    if (!force && _cache && (now - _cache.at) < CACHE_MS) return _cache.rows;
+    if (_inflight) return _inflight;
+
+    _inflight = (async () => {
       try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const text = await res.text();
-        const rows = parseCSV(text);
-        if (rows.length < 2) return [];
-        const idx = buildIndex(rows[0]);
-        const out = [];
-        for (let i = 1; i < rows.length; i++) {
-          const q = rowToQuestion(rows[i], idx, i);
-          if (q) out.push(q);
-        }
-        _caches[cacheKey] = { rows: out, at: now };
-        console.log(`[GSHEET_QUESTIONS] Loaded ${out.length} questions from sheet.`);
+        const out = await _fetchCsv(SHEET_URL);
+        _cache = { rows: out, at: now };
         return out;
       } catch (e) {
-        console.warn('[GSHEET_QUESTIONS] fetch failed:', url, e.message);
-        return _caches[cacheKey] ? _caches[cacheKey].rows : [];
+        console.warn('[GSHEET_QUESTIONS] fetch failed:', e.message);
+        return _cache ? _cache.rows : [];
       } finally {
-        delete _inflight[cacheKey];
+        _inflight = null;
       }
     })();
 
-    return _inflight[cacheKey];
+    return _inflight;
   }
 
-  // fetchAll: loads the correct sheet for a subject, or the fallback sheet
-  async function fetchAll(subject, force = false) {
-    const url = _urlFor(subject);
+  // Fetch (with per-subject caching) the sheet mapped to one subject key.
+  async function fetchSubject(subject, force = false) {
+    const key = (subject || '').toString().trim().toLowerCase();
+    const url = urlForSubject(key);
     if (!url) return [];
-    return _fetchUrl(url, force);
+
+    const now = Date.now();
+    const cached = _subjCache[key];
+    if (!force && cached && (now - cached.at) < CACHE_MS) return cached.rows;
+    if (_subjInflight[key]) return _subjInflight[key];
+
+    _subjInflight[key] = (async () => {
+      try {
+        const out = await _fetchCsv(url, key);
+        _subjCache[key] = { rows: out, at: now };
+        return out;
+      } catch (e) {
+        console.warn('[GSHEET_QUESTIONS] fetch failed for "' + key + '":', e.message);
+        return cached ? cached.rows : [];
+      } finally {
+        delete _subjInflight[key];
+      }
+    })();
+
+    return _subjInflight[key];
   }
 
   // Public: filter + sample using the same shape as questions.js
-  async function getQuestions({ subject, topic, examType, gradeLevel, university, count = 10 } = {}) {
-    // Fetch from the subject-specific sheet if available, else fallback sheet
-    let bank = await fetchAll(subject);
+  async function getQuestions({ subject, topic, examType, count = 10 } = {}) {
+    // Prefer the subject's own published sheet; fall back to the
+    // legacy single combined sheet if no per-subject mapping exists.
+    let bank = subject && urlForSubject(subject)
+      ? await fetchSubject(subject)
+      : await fetchAll();
 
-    if (subject)              bank = bank.filter(q => q.subject  === String(subject).toLowerCase());
-    if (topic)                bank = bank.filter(q => q.topic    === topic);
-    if (examType && examType !== '') bank = bank.filter(q => q.examType === String(examType).toUpperCase());
-    if (university) {
-      const u = String(university).toLowerCase();
-      bank = bank.filter(q => !q.university || String(q.university).toLowerCase() === u);
-    }
-
-    // Grade level filter:
-    // Students start at grade 3 (Foundation) and progress toward grade 1 (Advanced)
-    // as mastery improves. Serve questions AT or BELOW the student's current level.
-    // grade 3 student → sees grades 1, 2, 3 (all questions)
-    // grade 2 student → sees grades 1, 2
-    // grade 1 student → sees grade 1 only (hardest)
-    // Rule: q.grade_level <= gradeLevel
-    if (gradeLevel) {
-      bank = bank.filter(q => (q.grade_level || 3) <= gradeLevel);
-    }
-
-    // Shuffle and cap
+    if (subject)  bank = bank.filter(q => q.subject  === String(subject).toLowerCase());
+    if (topic)    bank = bank.filter(q => q.topic    === topic);
+    if (examType) bank = bank.filter(q => q.examType === String(examType).toUpperCase());
     bank = bank.sort(() => Math.random() - 0.5).slice(0, Math.min(count, bank.length));
     return bank;
   }
 
-  // Public: list unique topics for a subject (mirrors questions.js API)
-  async function getTopics(subject) {
-    const bank = await fetchAll(subject);
-    const filtered = subject ? bank.filter(q => q.subject === String(subject).toLowerCase()) : bank;
-    return [...new Set(filtered.map(q => q.topic))].filter(Boolean).sort();
+  function clearCache() {
+    _cache = null;
+    for (const k of Object.keys(_subjCache)) delete _subjCache[k];
   }
 
-  // Public: count available questions for a subject+topic combo
-  async function countFor(subject, topic) {
-    let bank = await fetchAll(subject);
-    if (subject) bank = bank.filter(q => q.subject === String(subject).toLowerCase());
-    if (topic)   bank = bank.filter(q => q.topic   === topic);
-    return bank.length;
-  }
-
-  // Clear one subject's cache, or all caches if no subject given
-  function clearCache(subject) {
-    if (subject) {
-      const url = _urlFor(subject);
-      if (url) delete _caches[`${CACHE_VERSION}:${url}`];
-    } else {
-      Object.keys(_caches).forEach(k => delete _caches[k]);
-    }
-  }
-
-  return { isEnabled, fetchAll, getQuestions, getTopics, countFor, clearCache };
+  return { isEnabled, fetchAll, fetchSubject, getQuestions, clearCache };
 })();
