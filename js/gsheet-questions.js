@@ -1,48 +1,43 @@
 /* ═══════════════════════════════════════════════════════════════════
-   UE School — js/gsheet-questions.js
-   Fetches the published Google Sheets CSV from
-   UE_CONFIG.GOOGLE_SHEET_QUESTIONS_CSV_URL and converts each row
-   into the same question shape the rest of the app already uses:
+   UE School — js/gsheet-questions.js  (v2 — per-subject sheets)
+
+   Supports two config modes (set in js/config.js):
+
+   OPTION A — single sheet (all subjects in one tab):
+     UE_CONFIG.GOOGLE_SHEET_QUESTIONS_CSV_URL = '<csv-url>'
+
+   OPTION B — per-subject sheets (one tab per subject):
+     UE_CONFIG.GOOGLE_SHEET_SUBJECT_URLS = {
+       'mathematics': '<csv-url>',
+       'english':     '<csv-url>',
+       ...
+     }
+   Option B is preferred: the app only fetches the sheet(s) it needs,
+   making single-subject CBT sessions much faster.
+
+   Question shape (same as questions.js):
      { id, subject, topic, examType, year, text,
        opts:[a,b,c,d], ans, explanation, image }
 
-   It also handles questions WITH IMAGES — Google Sheets cannot
-   display images inline in CSV, but it can hold an image URL in a
-   plain text column. The CBT player renders that image above the
-   question text. For Drive-hosted images, paste either the share
-   URL or the FILE_ID; gdrive-video.js normalises it.
-
-   Cache: parsed rows are kept in memory for
-   UE_CONFIG.GS_QUESTIONS_CACHE_MIN minutes (default 30) so a
-   200-question CBT session is one network round-trip, not 200.
+   Cache: each sheet URL is cached independently for
+   UE_CONFIG.GS_QUESTIONS_CACHE_MIN minutes (default 30).
 ═══════════════════════════════════════════════════════════════════ */
 
 window.GSHEET_QUESTIONS = (function () {
   'use strict';
 
-  const cfg = window.UE_CONFIG || {};
-  const SHEET_URL   = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
-  const SUBJ_URLS   = cfg.SUBJECT_SHEET_URLS || {};
+  const cfg         = window.UE_CONFIG || {};
+  const SINGLE_URL  = cfg.GOOGLE_SHEET_QUESTIONS_CSV_URL || '';
+  const SUBJECT_MAP = cfg.GOOGLE_SHEET_SUBJECT_URLS      || {};
   const CACHE_MS    = (cfg.GS_QUESTIONS_CACHE_MIN || 30) * 60 * 1000;
 
-  let _cache    = null; // { rows:[], at: number }  (legacy single-sheet cache)
-  let _inflight = null;
+  // Per-URL cache: { [url]: { rows:[], at: number } }
+  const _cache     = {};
+  // Per-URL in-flight promises
+  const _inflight  = {};
 
-  // Per-subject cache: subjectKey -> { rows:[], at: number }
-  const _subjCache    = {};
-  const _subjInflight = {};
-
-  function urlForSubject(subject) {
-    const key = (subject || '').toString().trim().toLowerCase();
-    return SUBJ_URLS[key] || '';
-  }
-
-  // isEnabled(subject?) — with a subject, checks that subject's own sheet
-  // (or the legacy single sheet as a fallback); without one, reports
-  // whether the Sheets path is configured at all.
-  function isEnabled(subject) {
-    if (subject) return !!(urlForSubject(subject) || SHEET_URL);
-    return !!(SHEET_URL || Object.keys(SUBJ_URLS).length);
+  function isEnabled() {
+    return !!SINGLE_URL || Object.keys(SUBJECT_MAP).length > 0;
   }
 
   // ── Minimal RFC-4180-ish CSV parser (handles quotes + escapes) ──
@@ -69,7 +64,7 @@ window.GSHEET_QUESTIONS = (function () {
 
   function norm(s) { return (s || '').toString().trim(); }
 
-  // Map header names → canonical keys we care about
+  // Map header names → canonical keys
   const HEADER_MAP = {
     id:          ['id', 'question_id', 'qid'],
     subject:     ['subject'],
@@ -100,9 +95,8 @@ window.GSHEET_QUESTIONS = (function () {
   function answerToIndex(raw, opts) {
     const v = norm(raw);
     if (!v) return -1;
-    if (/^[0-3]$/.test(v))   return parseInt(v, 10);          // already an index
-    if (/^[A-Da-d]$/.test(v)) return v.toUpperCase().charCodeAt(0) - 65; // A..D
-    // Match by option text
+    if (/^[0-3]$/.test(v))    return parseInt(v, 10);
+    if (/^[A-Da-d]$/.test(v)) return v.toUpperCase().charCodeAt(0) - 65;
     const i = opts.findIndex(o => o && o.toLowerCase() === v.toLowerCase());
     return i >= 0 ? i : -1;
   }
@@ -111,7 +105,6 @@ window.GSHEET_QUESTIONS = (function () {
     const v = norm(raw);
     if (!v) return '';
     if (/^https?:\/\//i.test(v)) return v;
-    // Looks like a Drive file ID
     if (window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.imageUrl(v);
     return v;
   }
@@ -139,94 +132,87 @@ window.GSHEET_QUESTIONS = (function () {
     };
   }
 
-  // Shared fetch+parse: pulls one published CSV URL into question rows.
-  async function _fetchCsv(url, fallbackSubject) {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    const rows = parseCSV(text);
-    if (rows.length < 2) return [];
-    const idx = buildIndex(rows[0]);
-    const out = [];
-    for (let i = 1; i < rows.length; i++) {
-      const q = rowToQuestion(rows[i], idx, i);
-      if (!q) continue;
-      // A per-subject sheet may omit the `subject` column entirely —
-      // fall back to the subject key the sheet is mapped under.
-      if (q.subject === 'general' && fallbackSubject) q.subject = fallbackSubject;
-      out.push(q);
+  // ── Fetch and parse a single CSV URL (with per-URL cache) ────────
+  async function _fetchUrl(url, force) {
+    const now = Date.now();
+    if (!force && _cache[url] && (now - _cache[url].at) < CACHE_MS) {
+      return _cache[url].rows;
     }
-    return out;
-  }
+    if (_inflight[url]) return _inflight[url];
 
-  async function fetchAll(force = false) {
-    if (!SHEET_URL) return [];
-    const now = Date.now();
-    if (!force && _cache && (now - _cache.at) < CACHE_MS) return _cache.rows;
-    if (_inflight) return _inflight;
-
-    _inflight = (async () => {
+    _inflight[url] = (async () => {
       try {
-        const out = await _fetchCsv(SHEET_URL);
-        _cache = { rows: out, at: now };
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const rows = parseCSV(text);
+        if (rows.length < 2) return [];
+        const idx = buildIndex(rows[0]);
+        const out = [];
+        for (let i = 1; i < rows.length; i++) {
+          const q = rowToQuestion(rows[i], idx, i);
+          if (q) out.push(q);
+        }
+        _cache[url] = { rows: out, at: now };
         return out;
       } catch (e) {
-        console.warn('[GSHEET_QUESTIONS] fetch failed:', e.message);
-        return _cache ? _cache.rows : [];
+        console.warn('[GSHEET_QUESTIONS] fetch failed (' + url + '):', e.message);
+        return _cache[url] ? _cache[url].rows : [];
       } finally {
-        _inflight = null;
+        delete _inflight[url];
       }
     })();
 
-    return _inflight;
+    return _inflight[url];
   }
 
-  // Fetch (with per-subject caching) the sheet mapped to one subject key.
-  async function fetchSubject(subject, force = false) {
-    const key = (subject || '').toString().trim().toLowerCase();
-    const url = urlForSubject(key);
-    if (!url) return [];
+  // ── Fetch all questions (all subjects) ───────────────────────────
+  async function fetchAll(force) {
+    if (!isEnabled()) return [];
 
-    const now = Date.now();
-    const cached = _subjCache[key];
-    if (!force && cached && (now - cached.at) < CACHE_MS) return cached.rows;
-    if (_subjInflight[key]) return _subjInflight[key];
+    // Option A: single URL
+    if (SINGLE_URL) return _fetchUrl(SINGLE_URL, force);
 
-    _subjInflight[key] = (async () => {
-      try {
-        const out = await _fetchCsv(url, key);
-        _subjCache[key] = { rows: out, at: now };
-        return out;
-      } catch (e) {
-        console.warn('[GSHEET_QUESTIONS] fetch failed for "' + key + '":', e.message);
-        return cached ? cached.rows : [];
-      } finally {
-        delete _subjInflight[key];
-      }
-    })();
-
-    return _subjInflight[key];
+    // Option B: fetch all subject sheets in parallel
+    const urls   = Object.values(SUBJECT_MAP);
+    const arrays = await Promise.all(urls.map(u => _fetchUrl(u, force)));
+    return [].concat(...arrays);
   }
 
-  // Public: filter + sample using the same shape as questions.js
+  // ── Fetch questions for one subject only ─────────────────────────
+  async function _fetchForSubject(subjectKey, force) {
+    // Option B: direct per-subject URL
+    const url = SUBJECT_MAP[subjectKey];
+    if (url) return _fetchUrl(url, force);
+
+    // Option A fallback: load everything and filter
+    const all = await _fetchUrl(SINGLE_URL, force);
+    return all.filter(q => q.subject === subjectKey);
+  }
+
+  // ── Public: filter + sample (same signature as v1) ───────────────
   async function getQuestions({ subject, topic, examType, count = 10 } = {}) {
-    // Prefer the subject's own published sheet; fall back to the
-    // legacy single combined sheet if no per-subject mapping exists.
-    let bank = subject && urlForSubject(subject)
-      ? await fetchSubject(subject)
-      : await fetchAll();
+    if (!isEnabled()) return [];
 
-    if (subject)  bank = bank.filter(q => q.subject  === String(subject).toLowerCase());
+    let bank;
+    const subjectKey = subject ? String(subject).toLowerCase() : null;
+
+    if (subjectKey) {
+      bank = await _fetchForSubject(subjectKey, false);
+    } else {
+      bank = await fetchAll(false);
+    }
+
     if (topic)    bank = bank.filter(q => q.topic    === topic);
     if (examType) bank = bank.filter(q => q.examType === String(examType).toUpperCase());
+
     bank = bank.sort(() => Math.random() - 0.5).slice(0, Math.min(count, bank.length));
     return bank;
   }
 
   function clearCache() {
-    _cache = null;
-    for (const k of Object.keys(_subjCache)) delete _subjCache[k];
+    Object.keys(_cache).forEach(k => delete _cache[k]);
   }
 
-  return { isEnabled, fetchAll, fetchSubject, getQuestions, clearCache };
+  return { isEnabled, fetchAll, getQuestions, clearCache };
 })();
