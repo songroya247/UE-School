@@ -424,25 +424,34 @@ async function onSubjectChange(){
   if(window.GSHEET_QUESTIONS && window.GSHEET_QUESTIONS.isEnabled()){
     try{
       const rows=await window.GSHEET_QUESTIONS.getQuestions({subject:subj,count:200});
+      sheetCountCache={subj,rows:rows||[]};
       if(rows && rows.length){
         const sheetTopics=[...new Set(rows.map(q=>q.topic).filter(Boolean))].sort();
         if(sheetTopics.length){
           // Merge: sheet topics take priority; keep local ones too
           const merged=[...new Set([...sheetTopics,...topics])];
           ts.innerHTML='<option value="">All Topics</option>'+merged.map(t=>`<option value="${t}">${t}</option>`).join('');
-          updateSessionBadges();
         }
       }
+      updateSessionBadges();
     }catch(e){/* silently keep local topics */}
   }
 }
+
+// Cache of the last Google Sheet fetch for the currently-selected subject,
+// so updateSessionBadges() can show an accurate count without re-fetching.
+let sheetCountCache={subj:null,rows:[]};
 
 function updateSessionBadges(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value;
   const cfg=getModeConfig(mode);
-  const avail=QUESTION_BANK.countFor(subj,topic||null);
+  let avail=QUESTION_BANK.countFor(subj,topic||null);
+  if(sheetCountCache.subj===subj && sheetCountCache.rows.length){
+    const sheetAvail=topic?sheetCountCache.rows.filter(q=>q.topic===topic).length:sheetCountCache.rows.length;
+    avail=Math.max(avail,sheetAvail);
+  }
   document.getElementById('q-count-badge').textContent=`${Math.min(cfg.count,avail)||cfg.count} Questions`;
   document.getElementById('time-badge').textContent=`⏱ ${Math.round(cfg.seconds/60)} min`;
   document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
@@ -459,15 +468,25 @@ async function loadGradeLevel(userId,subject){
 }
 
 // ════════════ START ════════════
-function startExam(){
+async function startExam(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
   const examType=document.getElementById('sel-examtype').value;
   const cfg=getModeConfig(mode);
 
-  QUESTIONS=QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
-  if(!QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
+  const startBtn=document.getElementById('btn-start');
+  if(startBtn){startBtn.disabled=true;startBtn.textContent='Loading questions…';}
+
+  try{
+    QUESTIONS=await QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  }catch(e){
+    console.warn('[CBT] getQuestions failed:',e.message);
+    QUESTIONS=[];
+  }finally{
+    if(startBtn){startBtn.disabled=false;startBtn.textContent='\u25B6 Start Session';}
+  }
+  if(!QUESTIONS || !QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
   totalTime=cfg.seconds; timeLeft=cfg.seconds;
