@@ -154,7 +154,12 @@ window.GDRIVE_VIDEO = (function () {
   ───────────────────────────────────────────────────────────────────── */
   function imageUrl(input) {
     const id = extractId(input);
-    return id ? `https://drive.google.com/uc?export=view&id=${id}` : input || '';
+    // NOTE: /uc?export=view is unreliable for hotlinked <img> tags — Google
+    // increasingly blocks/rate-limits it for cross-origin embedding even
+    // when the file is shared correctly. The googleusercontent CDN format
+    // below is the same one Google Photos/Docs use internally and is far
+    // more reliable for direct <img src> embedding.
+    return id ? `https://lh3.googleusercontent.com/d/${id}` : input || '';
   }
 
   /* ─────────────────────────────────────────────────────────────────
