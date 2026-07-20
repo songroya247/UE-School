@@ -256,7 +256,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 
     <div class="form-group">
       <label class="form-label">Exam Type</label>
-      <select class="form-select" id="sel-examtype">
+      <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
         <option value="JAMB">JAMB / UTME</option>
         <option value="WAEC">WAEC / GCE</option>
         <option value="NECO">NECO</option>
@@ -412,10 +412,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
 // ════════════ SETUP HELPERS ════════════
 function onModeChange(){ updateSessionBadges(); }
+function onExamTypeChange(){ onSubjectChange(); }
 
 async function onSubjectChange(){
   const subj=document.getElementById('sel-subject').value;
+  const examType=document.getElementById('sel-examtype').value;
   const ts=document.getElementById('sel-topic');
+  const prevSelection=ts.value;
   // Immediately populate with local-bank topics (fast, sync)
   let topics=QUESTION_BANK.getTopics(subj);
   ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
@@ -423,14 +426,19 @@ async function onSubjectChange(){
   // Then enrich from Google Sheet (async — replaces the list when ready)
   if(window.GSHEET_QUESTIONS && window.GSHEET_QUESTIONS.isEnabled()){
     try{
-      const rows=await window.GSHEET_QUESTIONS.getQuestions({subject:subj,count:200});
-      sheetCountCache={subj,rows:rows||[]};
+      // Filter by examType here too — a topic should only be listed if it
+      // actually has questions under the CURRENTLY SELECTED exam type,
+      // otherwise picking it later returns "No questions available".
+      const rows=await window.GSHEET_QUESTIONS.getQuestions({subject:subj,examType,count:2000});
+      sheetCountCache={subj,examType,rows:rows||[]};
       if(rows && rows.length){
         const sheetTopics=[...new Set(rows.map(q=>q.topic).filter(Boolean))].sort();
         if(sheetTopics.length){
-          // Merge: sheet topics take priority; keep local ones too
+          // Sheet topics take priority; keep local ones too (deduped, kept sorted)
           const merged=[...new Set([...sheetTopics,...topics])];
           ts.innerHTML='<option value="">All Topics</option>'+merged.map(t=>`<option value="${t}">${t}</option>`).join('');
+          // Restore the user's previous topic selection if it's still valid
+          if(prevSelection && [...ts.options].some(o=>o.value===prevSelection)) ts.value=prevSelection;
         }
       }
       updateSessionBadges();
@@ -438,17 +446,19 @@ async function onSubjectChange(){
   }
 }
 
-// Cache of the last Google Sheet fetch for the currently-selected subject,
-// so updateSessionBadges() can show an accurate count without re-fetching.
-let sheetCountCache={subj:null,rows:[]};
+// Cache of the last Google Sheet fetch for the currently-selected subject +
+// exam type, so updateSessionBadges() can show an accurate count without
+// re-fetching.
+let sheetCountCache={subj:null,examType:null,rows:[]};
 
 function updateSessionBadges(){
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value;
+  const examType=document.getElementById('sel-examtype').value;
   const cfg=getModeConfig(mode);
   let avail=QUESTION_BANK.countFor(subj,topic||null);
-  if(sheetCountCache.subj===subj && sheetCountCache.rows.length){
+  if(sheetCountCache.subj===subj && sheetCountCache.examType===examType && sheetCountCache.rows.length){
     const sheetAvail=topic?sheetCountCache.rows.filter(q=>q.topic===topic).length:sheetCountCache.rows.length;
     avail=Math.max(avail,sheetAvail);
   }
