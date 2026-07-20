@@ -55,6 +55,13 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 @keyframes tpulse{from{opacity:1}to{opacity:.6}}
 #map-toggle-btn{display:none;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
 #map-toggle-btn:hover{background:rgba(255,255,255,.18)}
+#calc-toggle-btn{align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
+#calc-toggle-btn:hover{background:rgba(255,255,255,.18)}
+.calc-key{padding:12px 0;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:1rem;font-weight:600;color:#0f1c3f;cursor:pointer;font-family:inherit}
+.calc-key:hover{background:#eef2ff}
+.calc-key.op{background:#eff6ff;color:#1d4ed8}
+.calc-key.eq{background:#2563eb;color:#fff;grid-column:span 2}
+.calc-key.clear{background:#fee2e2;color:#b91c1c}
 
 /* ══ EXAM BODY ══ */
 .exam-body{flex:1;display:flex;overflow:hidden}
@@ -206,9 +213,21 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <p>Configure your CBT practice session</p>
 
     <div class="form-group">
+      <label class="form-label">Exam Type
+        <span style="font-weight:400;text-transform:none;font-size:.78rem;color:#6b7280">(pick this first — it affects which topics & timing are available)</span>
+      </label>
+      <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
+        <option value="">All Exam Types</option>
+        <option value="JAMB">JAMB / UTME</option>
+        <option value="WAEC">WAEC / GCE</option>
+        <option value="NECO">NECO</option>
+      </select>
+    </div>
+
+    <div class="form-group">
       <label class="form-label">Exam Mode</label>
       <select class="form-select" id="sel-mode" onchange="onModeChange()">
-        <option value="mock">Full Mock Exam (40 questions, 2 hrs)</option>
+        <option value="mock">Full Mock Exam (realistic exam-length timing)</option>
         <option value="topic" selected>Topic Practice (10 questions, 20 min)</option>
         <option value="quick">Quick Drill (5 questions, 10 min)</option>
       </select>
@@ -254,14 +273,6 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       </select>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Exam Type</label>
-      <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
-        <option value="JAMB">JAMB / UTME</option>
-        <option value="WAEC">WAEC / GCE</option>
-        <option value="NECO">NECO</option>
-      </select>
-    </div>
 
     <div class="session-info-row">
       <span class="session-badge" id="q-count-badge">10 Questions</span>
@@ -282,6 +293,10 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       <div id="exam-title">Mathematics &mdash; Topic Practice</div>
     </div>
     <div class="exam-header-right">
+      <button id="calc-toggle-btn" style="display:none"
+        onclick="document.getElementById('calc-modal').style.display='flex'">
+        &#x1F5A9; Calculator
+      </button>
       <button id="map-toggle-btn"
         onclick="document.getElementById('exam-aside').classList.toggle('open');
                  this.textContent=document.getElementById('exam-aside').classList.contains('open')?'&#x2715; Hide Map':'&#x25A6; Question Map'">
@@ -291,6 +306,19 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       <div class="timer-box" id="timer-display">20:00</div>
     </div>
   </header>
+
+  <!-- ══ CALCULATOR MODAL (WAEC/NECO only — JAMB prohibits calculators) ══ -->
+  <div id="calc-modal" style="display:none;position:fixed;inset:0;background:rgba(15,28,63,.45);z-index:999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:16px;padding:18px;width:280px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong style="font-size:.85rem;color:#0f1c3f">Calculator</strong>
+        <button onclick="document.getElementById('calc-modal').style.display='none'" style="border:none;background:none;font-size:1.1rem;cursor:pointer;color:#6b7280">&#x2715;</button>
+      </div>
+      <input id="calc-display" readonly style="width:100%;box-sizing:border-box;text-align:right;font-size:1.4rem;padding:10px;border-radius:8px;border:1.5px solid #d1d5db;margin-bottom:8px;font-family:monospace" value="0" />
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="calc-keys"></div>
+      <p style="font-size:.7rem;color:#9ca3af;margin:10px 0 0">Not permitted in real JAMB UTME — practice mentally for JAMB mode.</p>
+    </div>
+  </div>
 
   <div class="exam-body">
     <main class="exam-main">
@@ -401,7 +429,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const s=document.getElementById('sel-subject');
     for(const o of s.options) if(o.value===urlSubj){s.value=urlSubj;break;}
   }
-  onSubjectChange();
+  const urlExamType=URL_PARAMS.get('examType');
+  if(urlExamType){
+    const es=document.getElementById('sel-examtype');
+    for(const o of es.options) if(o.value.toUpperCase()===urlExamType.toUpperCase()){es.value=o.value;break;}
+  }
+  // Await so the sheet-enriched topic list is fully in place before we
+  // try to pre-select urlTopic below — otherwise the async merge inside
+  // onSubjectChange can overwrite the selection right after it's made.
+  await onSubjectChange();
   if(urlTopic){
     const ts=document.getElementById('sel-topic');
     for(const o of ts.options) if(o.value===urlTopic||o.text===urlTopic){ts.value=o.value;break;}
@@ -457,7 +493,7 @@ function updateSessionBadges(){
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value;
   const examType=document.getElementById('sel-examtype').value;
-  const cfg=getModeConfig(mode);
+  const cfg=getModeConfig(mode,examType,subj);
   let avail=QUESTION_BANK.countFor(subj,topic||null);
   if(sheetCountCache.subj===subj && sheetCountCache.examType===examType && sheetCountCache.rows.length){
     const sheetAvail=topic?sheetCountCache.rows.filter(q=>q.topic===topic).length:sheetCountCache.rows.length;
@@ -468,8 +504,27 @@ function updateSessionBadges(){
   document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
 }
 
-function getModeConfig(mode){
-  return {mock:{count:40,seconds:7200},topic:{count:10,seconds:1200},quick:{count:5,seconds:600}}[mode]||{count:10,seconds:1200};
+// Realistic timing, modelled on actual exam-board structure:
+//  • JAMB: single continuous 180-question / 120-min CBT (60 English + 40 x 3
+//    others). There's no official per-subject sub-clock, but candidates are
+//    widely advised to budget ~40 min for English and ~27 min for each other
+//    subject — that's what we use for a single-subject JAMB mock here.
+//  • WAEC: objective (Paper 1) papers run ~50 questions / 60 minutes for
+//    most subjects.
+//  • NECO: objective papers are ~60 questions / 60 minutes.
+//  • "All Exam Types" / unspecified: falls back to the JAMB-style pacing
+//    since it's the most commonly practised format.
+function getModeConfig(mode, examType, subject){
+  if(mode==='quick') return {count:5,  seconds:600};   // 10 min
+  if(mode==='topic') return {count:10, seconds:1200};  // 20 min
+  // mode === 'mock' — realistic full-subject exam simulation
+  const isEnglish=subject==='english';
+  const REALISTIC={
+    JAMB: isEnglish ? {count:60,seconds:2400} : {count:40,seconds:1620}, // 40 min / 27 min
+    WAEC: {count:50,seconds:3600},  // 60 min
+    NECO: {count:60,seconds:3600},  // 60 min
+  };
+  return REALISTIC[examType] || REALISTIC.JAMB;
 }
 
 async function loadGradeLevel(userId,subject){
@@ -484,7 +539,13 @@ async function startExam(){
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
   const examType=document.getElementById('sel-examtype').value;
-  const cfg=getModeConfig(mode);
+  const cfg=getModeConfig(mode,examType,subj);
+
+  // Calculators are a banned item under JAMB rules — only offer the
+  // on-screen calculator for WAEC/NECO/unspecified practice sessions,
+  // so JAMB practice builds honest, calculator-free exam habits.
+  const calcBtn=document.getElementById('calc-toggle-btn');
+  if(calcBtn) calcBtn.style.display=(examType==='JAMB')?'none':'inline-flex';
 
   const startBtn=document.getElementById('btn-start');
   if(startBtn){startBtn.disabled=true;startBtn.textContent='Loading questions…';}
@@ -549,7 +610,7 @@ function renderQ(){
   document.getElementById('q-text').textContent=q.text;
 
   const qImg=document.getElementById('q-image');
-  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.onerror=()=>{qImg.style.display='none';}; }
+  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.dataset.fallback='0'; qImg.onerror=()=>{ if(qImg.dataset.fallback==='0' && /lh3\.googleusercontent\.com\/d\//.test(qImg.src)){ qImg.dataset.fallback='1'; const id=qImg.src.split('/d/')[1]; qImg.src='https://drive.google.com/thumbnail?id='+id+'&sz=w1000'; } else { qImg.style.display='none'; } }; }
   else { qImg.removeAttribute('src'); qImg.style.display='none'; }
 
   const fb=document.getElementById('flag-btn');
@@ -714,7 +775,7 @@ function renderReviewQ(){
   document.getElementById('q-text').textContent=q.text;
 
   const qImg=document.getElementById('q-image');
-  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.onerror=()=>{qImg.style.display='none';}; }
+  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.dataset.fallback='0'; qImg.onerror=()=>{ if(qImg.dataset.fallback==='0' && /lh3\.googleusercontent\.com\/d\//.test(qImg.src)){ qImg.dataset.fallback='1'; const id=qImg.src.split('/d/')[1]; qImg.src='https://drive.google.com/thumbnail?id='+id+'&sz=w1000'; } else { qImg.style.display='none'; } }; }
   else { qImg.removeAttribute('src'); qImg.style.display='none'; }
 
   const oc=document.getElementById('q-options'); oc.innerHTML='';
@@ -749,6 +810,44 @@ function retryExam(){
   document.getElementById('setup-screen').style.display='flex';
   document.getElementById('flag-btn').style.display='';
 }
+
+// ════════════ CALCULATOR (WAEC/NECO practice only) ════════════
+(function initCalculator(){
+  const keys=['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','C','+','='];
+  const grid=document.getElementById('calc-keys');
+  if(!grid) return;
+  let expr='';
+  const disp=document.getElementById('calc-display');
+  function render(){ disp.value = expr || '0'; }
+  function press(k){
+    if(k==='C'){ expr=''; render(); return; }
+    if(k==='='){
+      try{
+        const safe=expr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+        if(!/^[0-9+\-*/.()\s]+$/.test(safe)) throw new Error('bad');
+        // eslint-disable-next-line no-eval
+        const result=Function('"use strict";return ('+safe+')')();
+        expr=(Number.isFinite(result)?String(Math.round(result*1e8)/1e8):'Error');
+      }catch(e){ expr='Error'; }
+      render(); return;
+    }
+    if(expr==='Error') expr='';
+    expr+=k; render();
+  }
+  keys.forEach(k=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='calc-key'+(['÷','×','−','+'].includes(k)?' op':k==='='?' eq':k==='C'?' clear':'');
+    btn.textContent=k;
+    btn.onclick=()=>press(k);
+    grid.appendChild(btn);
+  });
+  render();
+  // Close modal when clicking the backdrop (outside the calculator card)
+  document.getElementById('calc-modal').addEventListener('click',(e)=>{
+    if(e.target.id==='calc-modal') e.currentTarget.style.display='none';
+  });
+})();
 
 // ════════════ TOAST ════════════
 function toast(msg,dur=2800){
