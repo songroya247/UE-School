@@ -670,7 +670,7 @@ const CLASSROOM = (function () {
     const practiceBtn = document.getElementById('practice-btn');
     if (practiceBtn) {
       const parts = topicId(topic);
-      practiceBtn.href = `cbt.html?subject=${parts.subj}&topic=${encodeURIComponent(parts.topic)}`;
+      practiceBtn.href = `cbt.html?subject=${parts.subj}&topic=${encodeURIComponent(topic.title || parts.topic)}&topicId=${encodeURIComponent(parts.topic)}`;
     }
 
     // Mark as studied in Supabase (fire-and-forget)
