@@ -193,6 +193,10 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 @media(max-width:420px){
   .exam-logo-pill{display:none}
   #exam-title{font-size:.85rem}
+  .exam-header-right{gap:6px}
+  .jamb-pred-pill{padding:4px 6px;font-size:.68rem}
+  .jamb-pred-pill .pred-label-full{display:none}
+  .timer-box{min-width:70px;padding:5px 8px;font-size:.8rem}
 }
 </style>
 </head>
@@ -303,7 +307,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       <button id="map-toggle-btn" onclick="toggleQuestionMap()">
         <span class="btn-icon" id="map-toggle-icon">&#x25A6;</span><span class="btn-label" id="map-toggle-label"> Question Map</span>
       </button>
-      <div class="jamb-pred-pill">Pred. JAMB: <span id="jamb-pred">&mdash;</span></div>
+      <div class="jamb-pred-pill"><span class="pred-label-full">Pred. </span>JAMB: <span id="jamb-pred">&mdash;</span></div>
       <div class="timer-box" id="timer-display">20:00</div>
     </div>
   </header>
@@ -435,18 +439,66 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const es=document.getElementById('sel-examtype');
     for(const o of es.options) if(o.value.toUpperCase()===urlExamType.toUpperCase()){es.value=o.value;break;}
   }
+  const urlTopicId=URL_PARAMS.get('topicId');
   // Await so the sheet-enriched topic list is fully in place before we
   // try to pre-select urlTopic below — otherwise the async merge inside
   // onSubjectChange can overwrite the selection right after it's made.
   await onSubjectChange();
   if(urlTopic){
+    const matchedValue=findTopicMatch(urlTopic,urlTopicId);
     const ts=document.getElementById('sel-topic');
-    for(const o of ts.options) if(o.value===urlTopic||o.text===urlTopic){ts.value=o.value;break;}
-    document.getElementById('sel-mode').value='topic';
+    if(matchedValue!==null){
+      ts.value=matchedValue;
+      document.getElementById('sel-mode').value='topic';
+    }else{
+      // Couldn't confidently match the classroom topic to a tagged topic
+      // in the question bank — fall back to "All Topics" for this subject
+      // rather than silently guessing, but tell the user why.
+      const subjLabel=document.getElementById('sel-subject').selectedOptions[0]?.text||'this subject';
+      toast(`Showing all ${subjLabel} topics — "${urlTopic.replace(/[_-]+/g,' ')}" isn't tagged yet in the question bank.`,4500);
+    }
   }
   if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||'mathematics');
   updateSessionBadges();
 });
+
+// Normalizes topic text/slugs for robust comparison: lowercases, converts
+// underscores/hyphens to spaces, strips punctuation, collapses whitespace.
+function normTopicKey(s){
+  return String(s||'').toLowerCase().replace(/[_\-]+/g,' ').replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
+
+// Finds the best-matching <option value> in #sel-topic for a topic coming
+// from an external page (e.g. classroom.js), trying progressively looser
+// matching so wording differences between the classroom curriculum and the
+// Google Sheet's topic column don't silently break the deep link.
+function findTopicMatch(urlTopic,urlTopicId){
+  const ts=document.getElementById('sel-topic');
+  const candidates=[urlTopic,urlTopicId].filter(Boolean);
+  // 1) Exact match against option value or visible text
+  for(const cand of candidates){
+    for(const o of ts.options) if(o.value===cand||o.text===cand) return o.value;
+  }
+  // 2) Normalized exact match
+  for(const cand of candidates){
+    const target=normTopicKey(cand);
+    if(!target) continue;
+    for(const o of ts.options){
+      if(normTopicKey(o.value||o.text)===target) return o.value;
+    }
+  }
+  // 3) Normalized substring match (covers minor wording differences,
+  //    e.g. "Quadratics" vs "Quadratic Equations")
+  for(const cand of candidates){
+    const target=normTopicKey(cand);
+    if(!target) continue;
+    for(const o of ts.options){
+      const norm=normTopicKey(o.value||o.text);
+      if(norm && (norm.includes(target)||target.includes(norm))) return o.value;
+    }
+  }
+  return null;
+}
 
 // ════════════ SETUP HELPERS ════════════
 function onModeChange(){ updateSessionBadges(); }
