@@ -300,6 +300,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       </div>
       <div class="q-card">
         <div class="q-number-badge" id="q-number-badge">Question 1</div>
+        <img id="q-image" alt="Question illustration" style="display:none;max-width:100%;border-radius:10px;margin:4px 0 16px;border:1px solid #e5e7eb" />
         <div id="q-text"></div>
         <div id="q-options"></div>
         <div class="explanation-box" id="explanation-box"></div>
@@ -547,6 +548,10 @@ function renderQ(){
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
   document.getElementById('q-text').textContent=q.text;
 
+  const qImg=document.getElementById('q-image');
+  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.onerror=()=>{qImg.style.display='none';}; }
+  else { qImg.removeAttribute('src'); qImg.style.display='none'; }
+
   const fb=document.getElementById('flag-btn');
   fb.classList.toggle('flagged',flags.has(currentQ));
   fb.textContent=flags.has(currentQ)?'\u2691 Flagged':'\u2691 Flag';
@@ -707,6 +712,10 @@ function renderReviewQ(){
   document.getElementById('q-counter').textContent=`Review \u2014 Question ${currentQ+1} of ${QUESTIONS.length}`;
   document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
   document.getElementById('q-text').textContent=q.text;
+
+  const qImg=document.getElementById('q-image');
+  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.onerror=()=>{qImg.style.display='none';}; }
+  else { qImg.removeAttribute('src'); qImg.style.display='none'; }
 
   const oc=document.getElementById('q-options'); oc.innerHTML='';
   q.opts.forEach((opt,i)=>{
