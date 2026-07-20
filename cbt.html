@@ -170,10 +170,13 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
   #setup-screen{padding:16px}
   .setup-card{padding:28px 20px}
   .exam-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .exam-header-right{flex-wrap:wrap;gap:8px;justify-content:flex-end}
   #exam-title{font-size:.9rem}
   .timer-box{font-size:.85rem;padding:5px 10px}
   .jamb-pred-pill{font-size:.72rem;padding:4px 8px}
   #map-toggle-btn{display:inline-flex}
+  #calc-toggle-btn .btn-label,#map-toggle-btn .btn-label{display:none}
+  #calc-toggle-btn,#map-toggle-btn{padding:6px 9px}
   .exam-body{flex-direction:column;overflow:visible}
   .exam-main{overflow-y:visible;padding:16px}
   #exam-aside{display:none;width:100%!important;border-left:none;border-top:1.5px solid rgba(37,99,235,.1);order:-1}
@@ -295,12 +298,10 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
     <div class="exam-header-right">
       <button id="calc-toggle-btn" style="display:none"
         onclick="document.getElementById('calc-modal').style.display='flex'">
-        &#x1F5A9; Calculator
+        <span class="btn-icon">&#x1F5A9;</span><span class="btn-label"> Calculator</span>
       </button>
-      <button id="map-toggle-btn"
-        onclick="document.getElementById('exam-aside').classList.toggle('open');
-                 this.textContent=document.getElementById('exam-aside').classList.contains('open')?'&#x2715; Hide Map':'&#x25A6; Question Map'">
-        &#x25A6; Question Map
+      <button id="map-toggle-btn" onclick="toggleQuestionMap()">
+        <span class="btn-icon" id="map-toggle-icon">&#x25A6;</span><span class="btn-label" id="map-toggle-label"> Question Map</span>
       </button>
       <div class="jamb-pred-pill">Pred. JAMB: <span id="jamb-pred">&mdash;</span></div>
       <div class="timer-box" id="timer-display">20:00</div>
@@ -450,6 +451,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 // ════════════ SETUP HELPERS ════════════
 function onModeChange(){ updateSessionBadges(); }
 function onExamTypeChange(){ onSubjectChange(); }
+function toggleQuestionMap(){
+  const aside=document.getElementById('exam-aside');
+  aside.classList.toggle('open');
+  const open=aside.classList.contains('open');
+  document.getElementById('map-toggle-icon').innerHTML=open?'&#x2715;':'&#x25A6;';
+  document.getElementById('map-toggle-label').textContent=open?' Hide Map':' Question Map';
+}
 
 async function onSubjectChange(){
   const subj=document.getElementById('sel-subject').value;
@@ -541,11 +549,12 @@ async function startExam(){
   const examType=document.getElementById('sel-examtype').value;
   const cfg=getModeConfig(mode,examType,subj);
 
-  // Calculators are a banned item under JAMB rules — only offer the
-  // on-screen calculator for WAEC/NECO/unspecified practice sessions,
-  // so JAMB practice builds honest, calculator-free exam habits.
+  // Calculators are a banned item under JAMB rules, and "All Exam Types"
+  // can't guarantee WAEC/NECO-style permission either — only show the
+  // on-screen calculator when the student has explicitly picked WAEC
+  // or NECO practice.
   const calcBtn=document.getElementById('calc-toggle-btn');
-  if(calcBtn) calcBtn.style.display=(examType==='JAMB')?'none':'inline-flex';
+  if(calcBtn) calcBtn.style.display=(examType==='WAEC'||examType==='NECO')?'inline-flex':'none';
 
   const startBtn=document.getElementById('btn-start');
   if(startBtn){startBtn.disabled=true;startBtn.textContent='Loading questions…';}
