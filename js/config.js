@@ -100,6 +100,36 @@
 
     // Cache the parsed sheet in memory for this many minutes
     GS_QUESTIONS_CACHE_MIN: 30,
+
+    // ── Google Sheets — CLASSROOM CURRICULUM / VIDEOS (separate sheet!) ──
+    // This is a DIFFERENT sheet from SUBJECT_SHEET_URLS above — that one
+    // is the CBT question bank. This one feeds classroom.js's video
+    // lessons via gsheet-curriculum.js.
+    //
+    // 1. Build a Google Sheet (per-subject tabs, like the questions bank)
+    //    with these columns (header row required):
+    //      topic_id | subject | title | duration | blurb | objectives |
+    //      formulas | video_foundation | video_standard | video_mastery |
+    //      tagline_foundation | tagline_standard | tagline_mastery |
+    //      duration_foundation | duration_standard | duration_mastery
+    //    Only `topic_id`, `subject` (or rely on the per-tab key below),
+    //    `title`, and at least one `video_*` column are required — the
+    //    rest are optional. video_* values can be a full Drive/YouTube
+    //    URL or just a bare Drive file ID.
+    // 2. File → Share → "Anyone with the link" → Viewer for each video.
+    // 3. File → Publish to web → [tab] → CSV → copy the URL.
+    // 4. Paste each subject's CSV URL below (same key names as
+    //    SUBJECT_SHEET_URLS above, e.g. mathematics, english, physics...).
+    //
+    // Leaving this empty means classroom.js shows "no sheet configured"
+    // for every subject and relies only on any hardcoded curriculum.js
+    // topics — no videos will load until this is filled in.
+    CURRICULUM_SHEET_URLS: {
+      // mathematics: 'https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv',
+    },
+
+    // Cache the parsed curriculum sheet in memory for this many minutes
+    GS_CURRICULUM_CACHE_MIN: 30,
   };
 
   Object.defineProperty(window, 'UE_CONFIG', {
