@@ -64,13 +64,31 @@ window.CLASSROOM = (function () {
      Topics are populated at runtime by mergeSheetIntoCurriculum().
   ─────────────────────────────────────────────────────────────── */
   const CURRICULUM = {
-    mathematics: { label:'Mathematics',      topics:[] },
-    english:     { label:'English Language', topics:[] },
-    physics:     { label:'Physics',          topics:[] },
-    chemistry:   { label:'Chemistry',        topics:[] },
-    biology:     { label:'Biology',          topics:[] },
-    economics:   { label:'Economics',        topics:[] },
-    government:  { label:'Government',       topics:[] },
+    mathematics:    { label:'Mathematics',                  topics:[] },
+    english:        { label:'English Language',             topics:[] },
+    physics:        { label:'Physics',                      topics:[] },
+    chemistry:      { label:'Chemistry',                    topics:[] },
+    biology:        { label:'Biology',                      topics:[] },
+    agric:          { label:'Agricultural Science',         topics:[] },
+    economics:      { label:'Economics',                    topics:[] },
+    government:     { label:'Government',                   topics:[] },
+    literature:     { label:'Literature in English',        topics:[] },
+    commerce:       { label:'Commerce',                     topics:[] },
+    accounting:     { label:'Principles of Accounting',     topics:[] },
+    crs:            { label:'Christian Religious Studies',  topics:[] },
+    irs:            { label:'Islamic Religious Studies',    topics:[] },
+    history:        { label:'History',                      topics:[] },
+    geography:      { label:'Geography',                    topics:[] },
+    computer:       { label:'Computer Studies',             topics:[] },
+    phe:            { label:'Physical & Health Education',  topics:[] },
+    fineart:        { label:'Fine Art',                     topics:[] },
+    music:          { label:'Music',                        topics:[] },
+    homeeconomics:  { label:'Home Economics',               topics:[] },
+    french:         { label:'French',                       topics:[] },
+    arabic:         { label:'Arabic',                       topics:[] },
+    yoruba:         { label:'Yoruba',                        topics:[] },
+    igbo:           { label:'Igbo',                          topics:[] },
+    hausa:          { label:'Hausa',                         topics:[] },
   };
 
   /* ── Free-tier video tracking ─────────────────────────────── */
@@ -428,7 +446,7 @@ window.CLASSROOM = (function () {
     if (!list) return;
 
     if (!subj.topics.length) {
-      const cfgd = window.UE_CONFIG?.SUBJECT_SHEET_URLS?.[subjKey];
+      const cfgd = window.UE_CONFIG?.CURRICULUM_SHEET_URLS?.[subjKey];
       const err  = window.GSHEET_CURRICULUM?.getLastError?.();
       list.innerHTML = `<div style="padding:28px 14px;text-align:center;color:var(--muted);font-size:.8rem;line-height:1.65">
         <div style="font-size:1.8rem;margin-bottom:10px">📋</div>
@@ -438,7 +456,7 @@ window.CLASSROOM = (function () {
         :          `${subj.label} coming soon`
         }</strong>
         <span style="font-size:.75rem">${
-          !cfgd ? `Add a CSV URL for <strong>${subjKey}</strong> in <code>config.js → SUBJECT_SHEET_URLS</code>.`
+          !cfgd ? `Add a CSV URL for <strong>${subjKey}</strong> in <code>config.js → CURRICULUM_SHEET_URLS</code>.`
         : err   ? `Check that the sheet is published (File → Publish to web → CSV).`
         :          `No topics added yet.`
         }</span>
