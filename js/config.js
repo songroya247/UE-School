@@ -135,9 +135,7 @@
       commerce: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=359201715&single=true&output=csv',
       computer: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1307176408&single=true&output=csv',
       economics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1824923062&single=true&output=csv',
-      // Home Economics shares the Economics video content (no separate
-      // curriculum sheet for it — confirmed by user).
-      homeeconomics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1824923062&single=true&output=csv',
+      homeeconomics: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1891958827&single=true&output=csv',
       phe: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1306404706&single=true&output=csv',
       literature: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=201971843&single=true&output=csv',
       government: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQce-Cfet2xotc8r3VOlroMApc-qPKy9uSMls_Y85n2XSXmf7_sHM23YIoh9e37WUXi0M0hz6V2uqe_/pub?gid=1624472995&single=true&output=csv',
