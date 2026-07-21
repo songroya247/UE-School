@@ -144,9 +144,12 @@ window.GDRIVE_VIDEO = (function () {
      Returns the direct-view URL for a Drive file used as an image
      or thumbnail asset.  NOT used for video embeds.
 
-     The /uc?export=view endpoint serves the raw file bytes directly,
-     suitable for <img src="...">.  This is different from the /preview
-     embed used for video iframes.
+     NOTE: /uc?export=view is unreliable for hotlinked <img> tags —
+     Google increasingly blocks/rate-limits it for cross-origin
+     embedding even when the file is shared correctly. The
+     googleusercontent CDN format below is the same one Google
+     Photos/Docs use internally and is far more reliable for direct
+     <img src> embedding.
 
      Returns: string — direct image URL, or the original input string
               as a fallback (allows plain https:// image URLs to pass
@@ -154,11 +157,6 @@ window.GDRIVE_VIDEO = (function () {
   ───────────────────────────────────────────────────────────────────── */
   function imageUrl(input) {
     const id = extractId(input);
-    // NOTE: /uc?export=view is unreliable for hotlinked <img> tags — Google
-    // increasingly blocks/rate-limits it for cross-origin embedding even
-    // when the file is shared correctly. The googleusercontent CDN format
-    // below is the same one Google Photos/Docs use internally and is far
-    // more reliable for direct <img src> embedding.
     return id ? `https://lh3.googleusercontent.com/d/${id}` : input || '';
   }
 
