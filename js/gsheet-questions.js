@@ -70,6 +70,12 @@ window.GSHEET_QUESTIONS = (function () {
     id:          ['id', 'question_id', 'qid'],
     subject:     ['subject'],
     topic:       ['topic'],
+    // Optional shared key with the curriculum/video sheet's topic_id column
+    // (e.g. "biology.classification-of-living-things"). When present, this
+    // lets classroom → CBT deep links match exactly instead of relying on
+    // free-text topic-name matching, which breaks whenever the curriculum
+    // sheet and question sheet word a topic slightly differently.
+    topicId:     ['topic_id', 'topicid'],
     examType:    ['exam_type', 'examtype', 'exam'],
     year:        ['year'],
     text:        ['text', 'question', 'prompt'],
@@ -122,6 +128,7 @@ window.GSHEET_QUESTIONS = (function () {
       id:          norm(row[idx.id]) || ('gs' + String(lineNo).padStart(4, '0')),
       subject:     norm(row[idx.subject]).toLowerCase() || 'general',
       topic:       norm(row[idx.topic]) || 'General',
+      topicId:     idx.topicId >= 0 ? norm(row[idx.topicId]) : '',
       examType:    norm(row[idx.examType]).toUpperCase() || 'JAMB',
       year:        parseInt(norm(row[idx.year]), 10) || null,
       text:        norm(row[idx.text]),
@@ -204,7 +211,7 @@ window.GSHEET_QUESTIONS = (function () {
       bank = await fetchAll(false);
     }
 
-    if (topic)    bank = bank.filter(q => q.topic    === topic);
+    if (topic)    bank = bank.filter(q => q.topic === topic || (q.topicId && q.topicId === topic));
     if (examType) bank = bank.filter(q => q.examType === String(examType).toUpperCase());
 
     bank = bank.sort(() => Math.random() - 0.5).slice(0, Math.min(count, bank.length));
