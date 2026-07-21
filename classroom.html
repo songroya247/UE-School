@@ -486,7 +486,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // than ever freezing on the static "Loading…" placeholder.
         await Promise.race([
           GSHEET_CURRICULUM.init(),
-          new Promise(function(resolve){ setTimeout(resolve, 15000); })
+          new Promise(function(resolve){ setTimeout(resolve, 65000); })
         ]);
       }
       catch(e) { console.error('[classroom] sheet init threw:', e); }
