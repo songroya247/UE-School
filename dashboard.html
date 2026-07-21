@@ -1323,30 +1323,45 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <!-- ── SUBJECT MANAGER MODAL ─────────────────────────────── -->
-<div id="subject-manager-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5000;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px)">
-  <div style="background:#fff;border-radius:18px;padding:32px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+<div id="subject-manager-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5000;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)">
+  <div style="background:#fff;border-radius:18px;padding:clamp(18px,5vw,32px);width:min(500px,100%);max-height:85vh;overflow-y:auto;overflow-x:hidden;box-shadow:0 24px 80px rgba(0,0,0,.25)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px">
       <h3 style="font-family:var(--font-head);font-size:1.4rem;font-weight:800;letter-spacing:-.03em">My Subjects</h3>
-      <button onclick="closeSubjectManager()" style="background:var(--bg-2);border:none;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">&#x2715;</button>
+      <button onclick="closeSubjectManager()" style="flex:none;background:var(--bg-2);border:none;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">&#x2715;</button>
     </div>
     <p style="font-size:.88rem;color:var(--muted);margin-bottom:20px">Select the subjects you want to study. Your SmartPath and progress tracking will update accordingly.</p>
-    <div id="subject-manager-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:24px"></div>
+    <div id="subject-manager-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px"></div>
     <button onclick="saveSubjects()" class="btn btn-primary" style="width:100%;height:44px">Save Subjects</button>
   </div>
 </div>
 
 <script>
 const ALL_SUBJECTS = [
-  {id:'mathematics',                 label:'Mathematics',                 icon:'\uD83D\uDCD0'},
-  {id:'english language',            label:'English Language',            icon:'\uD83D\uDCD6'},
-  {id:'physics',                     label:'Physics',                     icon:'\u269B'},
-  {id:'chemistry',                   label:'Chemistry',                   icon:'\uD83E\uDDEA'},
-  {id:'biology',                     label:'Biology',                     icon:'\uD83C\uDF3F'},
-  {id:'economics',                   label:'Economics',                   icon:'\uD83D\uDCC8'},
-  {id:'agricultural science',        label:'Agricultural Science',        icon:'\uD83C\uDF3E'},
-  {id:'commerce',                    label:'Commerce',                    icon:'\uD83D\uDCBC'},
-  {id:'computer studies',            label:'Computer Studies',            icon:'\uD83D\uDCBB'},
-  {id:'christian religious studies', label:'Christian Religious Studies', icon:'\u271D'},
+  {id:'mathematics',    label:'Mathematics',              icon:'\uD83D\uDCD0'},
+  {id:'english',        label:'English Language',         icon:'\uD83D\uDCD6'},
+  {id:'physics',        label:'Physics',                  icon:'\u269B'},
+  {id:'chemistry',      label:'Chemistry',                icon:'\uD83E\uDDEA'},
+  {id:'biology',        label:'Biology',                  icon:'\uD83C\uDF3F'},
+  {id:'agric',          label:'Agricultural Science',     icon:'\uD83C\uDF3E'},
+  {id:'crs',            label:'Christian Religious Studies', icon:'\u271D'},
+  {id:'commerce',       label:'Commerce',                 icon:'\uD83D\uDCBC'},
+  {id:'computer',       label:'Computer Studies',         icon:'\uD83D\uDCBB'},
+  {id:'economics',      label:'Economics',                icon:'\uD83D\uDCC8'},
+  {id:'phe',            label:'Physical & Health Education', icon:'\uD83C\uDFC3'},
+  {id:'literature',     label:'Literature in English',    icon:'\uD83D\uDCD5'},
+  {id:'government',     label:'Government',               icon:'\uD83C\uDFDB'},
+  {id:'history',        label:'History',                  icon:'\uD83D\uDCDC'},
+  {id:'fineart',        label:'Fine Art',                 icon:'\uD83C\uDFA8'},
+  {id:'accounting',     label:'Accounting',                icon:'\uD83E\uDDFE'},
+  {id:'french',         label:'French',                   icon:'\uD83C\uDDEB\uD83C\uDDF7'},
+  {id:'irs',            label:'Islamic Religious Studies', icon:'\u262A'},
+  {id:'music',          label:'Music',                    icon:'\uD83C\uDFB5'},
+  {id:'arabic',         label:'Arabic',                   icon:'\uD83D\uDCDC'},
+  {id:'geography',      label:'Geography',                icon:'\uD83C\uDF0D'},
+  {id:'homeeconomics',  label:'Home Economics',           icon:'\uD83C\uDFE0'},
+  {id:'yoruba',         label:'Yoruba',                   icon:'\uD83D\uDDE3'},
+  {id:'igbo',           label:'Igbo',                     icon:'\uD83D\uDDE3'},
+  {id:'hausa',          label:'Hausa',                    icon:'\uD83D\uDDE3'},
 ];
 
 function openSubjectManager() {
@@ -1355,11 +1370,11 @@ function openSubjectManager() {
   const current = (window.UE_PROFILE?.exam_subjects || []);
   
   grid.innerHTML = ALL_SUBJECTS.map(s => `
-    <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${current.includes(s.id)?'var(--accent)':'var(--border)'};border-radius:10px;cursor:pointer;background:${current.includes(s.id)?'rgba(26,86,255,.06)':'#fff'};transition:all .15s" id="sm-${s.id}">
+    <label style="display:flex;align-items:center;gap:8px;min-width:0;padding:12px 14px;border:1.5px solid ${current.includes(s.id)?'var(--accent)':'var(--border)'};border-radius:10px;cursor:pointer;background:${current.includes(s.id)?'rgba(26,86,255,.06)':'#fff'};transition:all .15s" id="sm-${s.id}">
       <input type="checkbox" value="${s.id}" ${current.includes(s.id)?'checked':''} onchange="toggleSM('${s.id}',this)" style="display:none">
-      <span style="font-size:1.2rem">${s.icon}</span>
-      <span style="font-weight:600;font-size:.88rem">${s.label}</span>
-      <span style="margin-left:auto;color:var(--accent);font-size:1rem;opacity:${current.includes(s.id)?1:0}" id="sm-check-${s.id}">\u2713</span>
+      <span style="flex:none;font-size:1.2rem">${s.icon}</span>
+      <span style="flex:1;min-width:0;font-weight:600;font-size:.85rem;line-height:1.25;word-break:break-word">${s.label}</span>
+      <span style="flex:none;color:var(--accent);font-size:1rem;opacity:${current.includes(s.id)?1:0}" id="sm-check-${s.id}">\u2713</span>
     </label>
   `).join('');
   
