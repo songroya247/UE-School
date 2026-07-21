@@ -1,774 +1,934 @@
-/* ═══════════════════════════════════════════════════════════════════
-   UE School — js/classroom.js  (v6 — Drive mobile fix)
-   ───────────────────────────────────────────────────────────────────
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBT Practice &mdash; UE School</title>
 
-   VIDEO PLAYER — HOW IT WORKS
-   ──────────────────────────────
-   The #vp element uses a data-state attribute as a CSS state machine:
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  SECURITY BLOCK &mdash; must be first in <head>           ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js"></script>
+<!-- END SECURITY BLOCK -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",sans-serif;background:#f0f4ff;color:#0f1c3f;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+#cbt-shell{display:flex;flex-direction:column;min-height:100vh}
 
-     data-state="empty"    → only #vp-empty is visible   (placeholder)
-     data-state="loading"  → only #vp-spin  is visible   (spinner)
-     data-state="playing"  → only the iframe is visible  (video)
+/* ══ SETUP ══ */
+#setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f0f4ff}
+.setup-card{background:#fff;border:1.5px solid rgba(59,130,246,.15);border-radius:16px;box-shadow:0 8px 40px rgba(26,86,255,.08);width:100%;max-width:480px;padding:36px 32px}
+.setup-logo{text-align:center;font-size:.75rem;font-weight:700;letter-spacing:.1em;color:#2563eb;text-transform:uppercase;margin-bottom:6px}
+.setup-card h1{font-size:1.6rem;font-weight:800;text-align:center;color:#0f1c3f;margin-bottom:4px}
+.setup-card>p{text-align:center;color:#6b7280;font-size:.88rem;margin-bottom:28px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:.8rem;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.form-select{width:100%;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-size:.9rem;color:#0f1c3f;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none;cursor:pointer;transition:border-color .2s}
+.form-select:focus{outline:none;border-color:#2563eb}
+.session-info-row{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.session-badge{background:#eff6ff;color:#1d4ed8;font-size:.78rem;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid rgba(37,99,235,.15)}
+.grade-badge{background:#f0fdf4;color:#166534;font-size:.78rem;font-weight:700;padding:4px 12px;border-radius:999px;border:1px solid rgba(22,101,52,.15)}
+.btn-start{width:100%;padding:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-family:inherit;font-size:1rem;font-weight:700;border:none;border-radius:10px;cursor:pointer;margin-top:8px;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 20px rgba(37,99,235,.3)}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(37,99,235,.4)}
+.btn-start:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.setup-back{display:block;text-align:center;margin-top:16px;font-size:.83rem;color:#6b7280;text-decoration:none}
+.setup-back:hover{color:#2563eb}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-   CSS (in classroom.html) enforces "display:none" on all children by
-   default and selectively shows exactly one based on data-state. This
-   makes it physically impossible for multiple elements to overlap.
+/* ══ EXAM HEADER ══ */
+#exam-screen{display:none;flex-direction:column;min-height:100vh}
+.exam-header{background:#0f1c3f;color:#fff;padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:50}
+.exam-header-left{display:flex;align-items:center;gap:14px}
+.exam-logo-pill{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#93c5fd;background:rgba(147,197,253,.1);border:1px solid rgba(147,197,253,.2);padding:4px 10px;border-radius:6px}
+#exam-title{font-size:1rem;font-weight:700;color:#fff}
+.exam-header-right{display:flex;align-items:center;gap:12px}
+.jamb-pred-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;font-size:.78rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:6px}
+.jamb-pred-pill span{font-weight:800;font-size:.95rem;color:#fbbf24}
+.timer-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 14px;font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.04em;color:#fff;min-width:90px;text-align:center;transition:background .4s,border-color .4s}
+.timer-box.warning{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.5);color:#fca5a5}
+.timer-box.critical{background:rgba(239,68,68,.5);border-color:#ef4444;color:#fff;animation:tpulse .5s ease infinite alternate}
+@keyframes tpulse{from{opacity:1}to{opacity:.6}}
+#map-toggle-btn{display:none;align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
+#map-toggle-btn:hover{background:rgba(255,255,255,.18)}
+#calc-toggle-btn{align-items:center;gap:6px;padding:6px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:7px;color:#fff;font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .2s}
+#calc-toggle-btn:hover{background:rgba(255,255,255,.18)}
+.calc-key{padding:12px 0;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:1rem;font-weight:600;color:#0f1c3f;cursor:pointer;font-family:inherit}
+.calc-key:hover{background:#eef2ff}
+.calc-key.op{background:#eff6ff;color:#1d4ed8}
+.calc-key.eq{background:#2563eb;color:#fff;grid-column:span 2}
+.calc-key.clear{background:#fee2e2;color:#b91c1c}
 
-   VIDEO SIZING — YOUTUBE vs GOOGLE DRIVE
-   ────────────────────────────────────────
-   YouTube: simple absolute fill (position:absolute;inset:0;width:100%;
-   height:100%). YouTube's compact player keeps controls at the bottom
-   even at narrow widths, so no special treatment is needed.
+/* ══ EXAM BODY ══ */
+.exam-body{flex:1;display:flex;overflow:hidden}
+.exam-main{flex:1;display:flex;flex-direction:column;padding:24px 32px;overflow-y:auto;background:#f0f4ff}
+.q-meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.q-counter-pill{background:#fff;border:1.5px solid rgba(37,99,235,.15);border-radius:999px;padding:6px 18px;font-size:.82rem;font-weight:700;color:#1e3a8a}
+.btn-flag{display:flex;align-items:center;gap:6px;padding:6px 14px;background:transparent;border:1.5px solid #d1d5db;border-radius:8px;color:#6b7280;font-family:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-flag:hover,.btn-flag.flagged{border-color:#f59e0b;color:#d97706;background:#fffbeb}
+.q-card{background:#fff;border:1.5px solid rgba(37,99,235,.1);border-radius:14px;padding:28px;margin-bottom:20px;box-shadow:0 2px 16px rgba(26,86,255,.06)}
+.q-number-badge{display:inline-flex;align-items:center;justify-content:center;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:14px}
+#q-text{font-size:1.1rem;font-weight:600;color:#0f1c3f;line-height:1.65}
+#q-options{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.drill-option{width:100%;display:flex;align-items:center;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;cursor:pointer;font-family:inherit;font-size:.95rem;font-weight:500;color:#1e3a8a;text-align:left;transition:all .18s;overflow:hidden}
+.drill-option:hover{border-color:#93c5fd;background:#f0f9ff}
+.opt-label{display:flex;align-items:center;justify-content:center;width:48px;min-width:48px;height:52px;background:#f1f5f9;border-right:1.5px solid #e5e7eb;font-size:.88rem;font-weight:800;color:#475569;flex-shrink:0;transition:background .18s,color .18s}
+.opt-text{padding:14px 18px;flex:1}
+.drill-option:hover .opt-label{background:#dbeafe;color:#1d4ed8;border-right-color:#93c5fd}
+.drill-option.selected{border-color:#2563eb;background:#eff6ff}
+.drill-option.selected .opt-label{background:#2563eb;color:#fff;border-right-color:#2563eb}
+.drill-option.selected .opt-text{color:#1e3a8a;font-weight:600}
+.drill-option.correct{border-color:#059669;background:#f0fdf4}
+.drill-option.correct .opt-label{background:#059669;color:#fff;border-right-color:#059669}
+.drill-option.wrong{border-color:#ef4444;background:#fef2f2}
+.drill-option.wrong .opt-label{background:#ef4444;color:#fff;border-right-color:#ef4444}
+.drill-option.disabled{cursor:default;pointer-events:none}
+.explanation-box{display:none;margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;font-size:.88rem;color:#166534;line-height:1.6}
+.explanation-box.show{display:block}
 
-   Google Drive /preview: Drive detects the iframe's rendered pixel
-   dimensions and switches to a "compact" layout when the iframe is
-   narrower than ~480 px (typical on mobile). In compact mode the
-   progress bar moves to the top and bottom controls are clipped by the
-   container's overflow:hidden.
+.q-nav-row{display:flex;justify-content:space-between;gap:12px;margin-top:4px}
+.btn-nav{padding:11px 28px;border-radius:10px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .15s;border:none}
+.btn-nav-prev{background:#fff;color:#374151;border:1.5px solid #d1d5db}
+.btn-nav-prev:hover{background:#f9fafb;border-color:#9ca3af}
+.btn-nav-prev:disabled{opacity:.4;cursor:not-allowed}
+.btn-nav-next{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 16px rgba(37,99,235,.3)}
+.btn-nav-next:hover{box-shadow:0 6px 22px rgba(37,99,235,.45);filter:brightness(1.06)}
 
-   Fix: render the Drive iframe at a fixed large logical size (1280×720)
-   and CSS-scale it down to fill the container. Drive sees a desktop-
-   sized viewport and keeps its full-size control layout. A ResizeObserver
-   recalculates the scale on orientation change or split-screen resize.
+/* ══ ASIDE ══ */
+#exam-aside{width:260px;flex-shrink:0;background:#fff;border-left:1.5px solid rgba(37,99,235,.1);display:flex;flex-direction:column}
+.aside-head{padding:16px 18px;border-bottom:1px solid rgba(37,99,246,.08);background:#f8faff}
+.aside-head-title{font-size:.88rem;font-weight:800;color:#0f1c3f;text-transform:uppercase;letter-spacing:.05em}
+.aside-body{flex:1;padding:16px;overflow-y:auto}
+#q-map{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.q-dot{aspect-ratio:1;border-radius:7px;background:#f1f5f9;border:1.5px solid #e2e8f0;font-size:.75rem;font-weight:700;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit}
+.q-dot:hover{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.q-dot.current{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.2)}
+.q-dot.answered{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.q-dot.flagged{background:#fef3c7;border-color:#fbbf24;color:#92400e}
+.q-dot.correct-dot{background:#d1fae5;border-color:#34d399;color:#065f46}
+.q-dot.wrong-dot{background:#fee2e2;border-color:#f87171;color:#991b1b}
+.map-legend{margin-top:18px;display:flex;flex-direction:column;gap:7px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:.75rem;color:#6b7280;font-weight:500}
+.legend-dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+.aside-foot{padding:14px 16px;border-top:1px solid rgba(37,99,246,.08)}
+.btn-submit{width:100%;padding:12px;background:#0f1c3f;color:#fff;font-family:inherit;font-size:.9rem;font-weight:700;border:none;border-radius:9px;cursor:pointer;transition:background .2s}
+.btn-submit:hover{background:#1e3a8a}
 
-   ?rm=minimal is also appended to Drive URLs to strip the top chrome
-   bar (file title + "Open in Drive" button), freeing the full height
-   for the video and controls.
+/* ══ MODAL ══ */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:24px}
+.modal-backdrop.open{display:flex}
+.modal-card{background:#fff;border-radius:16px;padding:32px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center}
+.modal-card h3{font-size:1.25rem;font-weight:800;margin-bottom:10px}
+.modal-card p{font-size:.9rem;color:#6b7280;margin-bottom:24px;line-height:1.6}
+.modal-btns{display:flex;gap:12px;justify-content:center}
+.modal-btns .btn-cancel{padding:10px 24px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-weight:700;font-size:.9rem;color:#374151;cursor:pointer}
+.modal-btns .btn-confirm{padding:10px 24px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:9px;font-family:inherit;font-weight:700;font-size:.9rem;color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.3)}
 
-   PUBLIC API (stable — skill_chamber.js monkey-patches loadTopic)
-   ─────────────────────────────────────────────────────────────────
-   CLASSROOM.init(authData)
-   CLASSROOM.mergeSheetIntoCurriculum()
-   CLASSROOM.switchSubject(key, tabEl)
-   CLASSROOM.selectTopic(topicId, tier)
-   CLASSROOM.selectTier(tier)
-   CLASSROOM.loadTopic(topicId, opts)       ← monkey-patched
-   CLASSROOM.nextLesson()
-   CLASSROOM.prevLesson()
-   CLASSROOM.playVideo(topicId)
-   CLASSROOM.toggleSidebar()
-   CLASSROOM.closeSidebar()
-   CLASSROOM.stopFloat()
-   CLASSROOM.CURRICULUM
+/* ══ RESULTS ══ */
+#results-screen{display:none;min-height:100vh;background:#f0f4ff;align-items:flex-start;justify-content:center;padding:40px 24px;overflow-y:auto}
+.results-card{background:#fff;border:1.5px solid rgba(37,99,235,.12);border-top:4px solid #2563eb;border-radius:16px;box-shadow:0 8px 40px rgba(26,86,255,.1);max-width:600px;width:100%;padding:36px 32px;text-align:center}
+.results-icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin:0 auto 20px}
+.results-icon.pass{background:#d1fae5;color:#059669}
+.results-icon.fail{background:#fee2e2;color:#ef4444}
+.results-icon.ok{background:#fef3c7;color:#d97706}
+.results-card h1{font-size:1.8rem;font-weight:800;color:#0f1c3f;margin-bottom:6px}
+.results-card>p{color:#6b7280;font-size:.9rem;margin-bottom:28px}
+#results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.result-stat{background:#f8faff;border:1.5px solid rgba(37,99,235,.1);border-radius:10px;padding:16px 10px}
+.result-stat-label{font-size:.7rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.result-stat-val{font-size:1.5rem;font-weight:800;color:#0f1c3f}
+.result-stat.accent{background:#eff6ff;border-color:#93c5fd}
+.result-stat.accent .result-stat-val{color:#1d4ed8}
+.xp-badge{display:inline-flex;align-items:center;gap:6px;background:#fef3c7;color:#92400e;font-weight:700;padding:6px 16px;border-radius:999px;font-size:.88rem;border:1px solid #fde68a;margin-bottom:20px}
+.grade-feedback{background:linear-gradient(135deg,#eff6ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:12px;padding:18px 20px;margin-bottom:24px;font-size:.9rem;text-align:left}
+.grade-feedback-title{font-weight:800;color:#1e3a8a;margin-bottom:4px}
+.grade-feedback-body{color:#3b4f8a;line-height:1.6}
+.results-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-results-outline{padding:12px 24px;background:#fff;border:1.5px solid #d1d5db;border-radius:10px;font-family:inherit;font-size:.9rem;font-weight:700;color:#374151;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center}
+.btn-results-outline:hover{border-color:#9ca3af;background:#f9fafb}
+.btn-results-primary{padding:12px 24px;background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;border-radius:10px;font-family:inherit;font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;box-shadow:0 4px 16px rgba(37,99,235,.3);transition:all .15s}
+.btn-results-primary:hover{filter:brightness(1.08)}
 
-   LOAD ORDER (enforced by classroom.html):
-     supabase → auth.js → auth-guard.js →
-     storage / skill_questions / curriculum / intervention_modal →
-     gdrive-video.js → gsheet-curriculum.js → THIS FILE → skill_chamber.js
-═══════════════════════════════════════════════════════════════════ */
+/* ══ SAVING OVERLAY ══ */
+#saving-overlay{display:none;position:fixed;inset:0;background:rgba(15,28,63,.7);z-index:300;align-items:center;justify-content:center;color:#fff;font-size:1rem;font-weight:600;gap:14px;flex-direction:column}
+#saving-overlay.show{display:flex}
 
-window.CLASSROOM = (function () {
-  'use strict';
+/* ══ TOAST ══ */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(15,28,63,.92);color:#fff;padding:11px 22px;border-radius:30px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(37,99,235,.2);opacity:0;pointer-events:none;z-index:9999;transition:opacity .3s,transform .3s;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* ── Curriculum shells ─────────────────────────────────────────
-     Topics are populated at runtime by mergeSheetIntoCurriculum().
-  ─────────────────────────────────────────────────────────────── */
-  const CURRICULUM = {
-    mathematics:    { label:'Mathematics',                  topics:[] },
-    english:        { label:'English Language',             topics:[] },
-    physics:        { label:'Physics',                      topics:[] },
-    chemistry:      { label:'Chemistry',                    topics:[] },
-    biology:        { label:'Biology',                      topics:[] },
-    agric:          { label:'Agricultural Science',         topics:[] },
-    economics:      { label:'Economics',                    topics:[] },
-    government:     { label:'Government',                   topics:[] },
-    literature:     { label:'Literature in English',        topics:[] },
-    commerce:       { label:'Commerce',                     topics:[] },
-    accounting:     { label:'Principles of Accounting',     topics:[] },
-    crs:            { label:'Christian Religious Studies',  topics:[] },
-    irs:            { label:'Islamic Religious Studies',    topics:[] },
-    history:        { label:'History',                      topics:[] },
-    geography:      { label:'Geography',                    topics:[] },
-    computer:       { label:'Computer Studies',             topics:[] },
-    phe:            { label:'Physical & Health Education',  topics:[] },
-    fineart:        { label:'Fine Art',                     topics:[] },
-    music:          { label:'Music',                        topics:[] },
-    homeeconomics:  { label:'Home Economics',               topics:[] },
-    french:         { label:'French',                       topics:[] },
-    arabic:         { label:'Arabic',                       topics:[] },
-    yoruba:         { label:'Yoruba',                        topics:[] },
-    igbo:           { label:'Igbo',                          topics:[] },
-    hausa:          { label:'Hausa',                         topics:[] },
-  };
+/* ══ DEFAULTER ══ */
+#defaulter-banner{background:#7c2d12;color:#fde8d0;text-align:center;padding:8px 20px;font-size:.78rem;font-weight:500;display:none}
+#defaulter-banner a{color:#fed7aa;text-decoration:underline;margin-left:6px}
 
-  /* ── Free-tier video tracking ─────────────────────────────── */
-  const FREE_KEY = 'ue_free_videos_watched';
-  function getWatched()    { try{return JSON.parse(localStorage.getItem(FREE_KEY)||'[]');}catch(_){return[];} }
-  function markWatched(id) {
-    const ids = getWatched();
-    if (!ids.includes(id)) { ids.push(id); try{localStorage.setItem(FREE_KEY,JSON.stringify(ids));}catch(_){} }
+/* ══ RESPONSIVE ══ */
+@media(max-width:768px){
+  #setup-screen{padding:16px}
+  .setup-card{padding:28px 20px}
+  .exam-header{height:auto;padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .exam-header-right{flex-wrap:wrap;gap:8px;justify-content:flex-end}
+  #exam-title{font-size:.9rem}
+  .timer-box{font-size:.85rem;padding:5px 10px}
+  .jamb-pred-pill{font-size:.72rem;padding:4px 8px}
+  #map-toggle-btn{display:inline-flex}
+  #calc-toggle-btn .btn-label,#map-toggle-btn .btn-label{display:none}
+  #calc-toggle-btn,#map-toggle-btn{padding:6px 9px}
+  .exam-body{flex-direction:column;overflow:visible}
+  .exam-main{overflow-y:visible;padding:16px}
+  #exam-aside{display:none;width:100%!important;border-left:none;border-top:1.5px solid rgba(37,99,235,.1);order:-1}
+  #exam-aside.open{display:flex}
+  .opt-label{width:40px;min-width:40px;height:48px;font-size:.82rem}
+  .opt-text{padding:12px 14px;font-size:.9rem}
+  .q-nav-row{gap:10px}
+  .btn-nav{flex:1;padding:12px 14px}
+  #results-grid{grid-template-columns:repeat(2,1fr)!important}
+  #results-screen{padding:20px 16px}
+  .results-card{max-width:100%;padding:24px 18px}
+  #exam-screen{height:auto;min-height:100vh}
+}
+@media(max-width:420px){
+  .exam-logo-pill{display:none}
+  #exam-title{font-size:.85rem}
+  .exam-header-right{gap:6px}
+  .jamb-pred-pill{padding:4px 6px;font-size:.68rem}
+  .jamb-pred-pill .pred-label-full{display:none}
+  .timer-box{min-width:70px;padding:5px 8px;font-size:.8rem}
+}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="padding:40px;text-align:center;font-family:system-ui">
+    <h2>JavaScript is required</h2>
+    <p>Please enable JavaScript or <a href="login.html">click here to log in</a>.</p>
+  </div>
+</noscript>
+
+<div id="defaulter-banner">
+  Your subscription has expired. <a href="pricing.html">Renew Now</a>
+</div>
+
+<!-- ══ SETUP SCREEN ══ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">UE School</div>
+    <h1>Exam Engine</h1>
+    <p>Configure your CBT practice session</p>
+
+    <div class="form-group">
+      <label class="form-label">Exam Type
+        <span style="font-weight:400;text-transform:none;font-size:.78rem;color:#6b7280">(pick this first — it affects which topics & timing are available)</span>
+      </label>
+      <select class="form-select" id="sel-examtype" onchange="onExamTypeChange()">
+        <option value="">All Exam Types</option>
+        <option value="JAMB">JAMB / UTME</option>
+        <option value="WAEC">WAEC / GCE</option>
+        <option value="NECO">NECO</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Exam Mode</label>
+      <select class="form-select" id="sel-mode" onchange="onModeChange()">
+        <option value="mock">Full Mock Exam (realistic exam-length timing)</option>
+        <option value="topic" selected>Topic Practice (10 questions, 20 min)</option>
+        <option value="quick">Quick Drill (5 questions, 10 min)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Subject</label>
+      <select class="form-select" id="sel-subject" onchange="onSubjectChange()">
+        <option value="mathematics">Mathematics</option>
+        <option value="english">English Language</option>
+        <option value="physics">Physics</option>
+        <option value="chemistry">Chemistry</option>
+        <option value="biology">Biology</option>
+        <option value="agric">Agricultural Science</option>
+        <option value="economics">Economics</option>
+        <option value="government">Government</option>
+        <option value="literature">Literature in English</option>
+        <option value="commerce">Commerce</option>
+        <option value="accounting">Accounting</option>
+        <option value="crs">Christian Religious Studies</option>
+        <option value="irs">Islamic Religious Studies</option>
+        <option value="history">History</option>
+        <option value="geography">Geography</option>
+        <option value="computer">Computer Studies</option>
+        <option value="phe">Physical &amp; Health Education</option>
+        <option value="fineart">Fine Art</option>
+        <option value="music">Music</option>
+        <option value="homeeconomics">Home Economics</option>
+        <option value="french">French</option>
+        <option value="arabic">Arabic</option>
+        <option value="yoruba">Yoruba</option>
+        <option value="igbo">Igbo</option>
+        <option value="hausa">Hausa</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="topic-group">
+      <label class="form-label">Topic
+        <span style="font-weight:400;text-transform:none;font-size:.78rem;color:#6b7280">(optional)</span>
+      </label>
+      <select class="form-select" id="sel-topic">
+        <option value="">All Topics</option>
+      </select>
+    </div>
+
+
+    <div class="session-info-row">
+      <span class="session-badge" id="q-count-badge">10 Questions</span>
+      <span class="session-badge" id="time-badge">⏱ 20 min</span>
+      <span class="grade-badge"   id="grade-badge">&#x1F4CA; Foundation Level</span>
+    </div>
+
+    <button class="btn-start" id="btn-start" onclick="startExam()">&#x25B6; Start Session</button>
+    <a href="dashboard.html" class="setup-back">&larr; Back to Dashboard</a>
+  </div>
+</div>
+
+<!-- ══ EXAM SCREEN ══ -->
+<div id="exam-screen">
+  <header class="exam-header">
+    <div class="exam-header-left">
+      <div class="exam-logo-pill">UE School</div>
+      <div id="exam-title">Mathematics &mdash; Topic Practice</div>
+    </div>
+    <div class="exam-header-right">
+      <button id="calc-toggle-btn" style="display:none"
+        onclick="document.getElementById('calc-modal').style.display='flex'">
+        <span class="btn-icon">&#x1F5A9;</span><span class="btn-label"> Calculator</span>
+      </button>
+      <button id="map-toggle-btn" onclick="toggleQuestionMap()">
+        <span class="btn-icon" id="map-toggle-icon">&#x25A6;</span><span class="btn-label" id="map-toggle-label"> Question Map</span>
+      </button>
+      <div class="jamb-pred-pill"><span class="pred-label-full">Pred. </span>JAMB: <span id="jamb-pred">&mdash;</span></div>
+      <div class="timer-box" id="timer-display">20:00</div>
+    </div>
+  </header>
+
+  <!-- ══ CALCULATOR MODAL (WAEC/NECO only — JAMB prohibits calculators) ══ -->
+  <div id="calc-modal" style="display:none;position:fixed;inset:0;background:rgba(15,28,63,.45);z-index:999;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:16px;padding:18px;width:280px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong style="font-size:.85rem;color:#0f1c3f">Calculator</strong>
+        <button onclick="document.getElementById('calc-modal').style.display='none'" style="border:none;background:none;font-size:1.1rem;cursor:pointer;color:#6b7280">&#x2715;</button>
+      </div>
+      <input id="calc-display" readonly style="width:100%;box-sizing:border-box;text-align:right;font-size:1.4rem;padding:10px;border-radius:8px;border:1.5px solid #d1d5db;margin-bottom:8px;font-family:monospace" value="0" />
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="calc-keys"></div>
+      <p style="font-size:.7rem;color:#9ca3af;margin:10px 0 0">Not permitted in real JAMB UTME — practice mentally for JAMB mode.</p>
+    </div>
+  </div>
+
+  <div class="exam-body">
+    <main class="exam-main">
+      <div class="q-meta-row">
+        <div class="q-counter-pill" id="q-counter">Question 1 of 10</div>
+        <button class="btn-flag" id="flag-btn" onclick="toggleFlag()">&#x2691; Flag</button>
+      </div>
+      <div class="q-card">
+        <div class="q-number-badge" id="q-number-badge">Question 1</div>
+        <img id="q-image" alt="Question illustration" style="display:none;max-width:100%;border-radius:10px;margin:4px 0 16px;border:1px solid #e5e7eb" />
+        <div id="q-text"></div>
+        <div id="q-options"></div>
+        <div class="explanation-box" id="explanation-box"></div>
+      </div>
+      <div class="q-nav-row">
+        <button class="btn-nav btn-nav-prev" onclick="navQ(-1)" id="prev-btn">&larr; Previous</button>
+        <button class="btn-nav btn-nav-next" onclick="navQ(1)"  id="next-btn">Next &rarr;</button>
+      </div>
+    </main>
+
+    <aside id="exam-aside">
+      <div class="aside-head"><div class="aside-head-title">Question Map</div></div>
+      <div class="aside-body">
+        <div id="q-map"></div>
+        <div class="map-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#2563eb;border:1.5px solid #2563eb"></div> Current</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#dbeafe;border:1.5px solid #93c5fd"></div> Answered</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fef3c7;border:1.5px solid #fbbf24"></div> Flagged</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f1f5f9;border:1.5px solid #e2e8f0"></div> Unanswered</div>
+        </div>
+      </div>
+      <div class="aside-foot">
+        <button class="btn-submit" onclick="promptSubmit()">Submit Exam &#x2713;</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Submit modal -->
+<div class="modal-backdrop" id="submit-modal">
+  <div class="modal-card">
+    <h3>Submit Exam?</h3>
+    <p>You have answered <strong id="modal-answered">0</strong> of <strong id="modal-total">0</strong> questions.<br>Unanswered questions will be marked incorrect.</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Continue Exam</button>
+      <button class="btn-confirm" onclick="submitExam()">Submit Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Saving overlay -->
+<div id="saving-overlay">
+  <div class="loading-spinner" style="width:32px;height:32px;border-width:3px;border-top-color:#fff;border-color:rgba(255,255,255,.3)"></div>
+  <div>Saving your results…</div>
+</div>
+
+<!-- ══ RESULTS SCREEN ══ -->
+<div id="results-screen">
+  <div class="results-card">
+    <div class="results-icon pass" id="results-icon">&#x1F389;</div>
+    <h1 id="results-title">Exam Completed</h1>
+    <p id="results-subtitle">Here is your performance breakdown.</p>
+    <div class="xp-badge" id="xp-badge" style="display:none">⚡ +0 XP earned</div>
+    <div id="results-grid"></div>
+    <div class="grade-feedback" id="grade-feedback" style="display:none">
+      <div class="grade-feedback-title" id="grade-title"></div>
+      <div class="grade-feedback-body"  id="grade-body"></div>
+    </div>
+    <div class="results-actions">
+      <button class="btn-results-outline" onclick="retryExam()">🔁 Retry Session</button>
+      <button class="btn-results-outline" onclick="reviewAnswers()">&#x1F4CB; Review Answers</button>
+      <a href="dashboard.html" class="btn-results-primary">Dashboard &rarr;</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/gdrive-video.js"></script>
+<script src="js/gsheet-questions.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/grading.js"></script>
+<script>
+// ════════════ STATE ════════════
+let QUESTIONS=[], currentQ=0, answers={}, flags=new Set(), timings={};
+let qStartTime=null, timeLeft=1200, totalTime=1200;
+let timerInterval, sessionSubmitted=false, currentGradeLevel=3, sessionConfig={};
+let isReviewMode=false;
+
+const URL_PARAMS=new URLSearchParams(window.location.search);
+
+// ════════════ INIT ════════════
+// window.sb is initialised by auth-guard.js using UE_CONFIG \u2014 no credentials here.
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // AUTH_GUARD.init() boots window.sb from UE_CONFIG, validates session,
+  // checks premium gate (cbt.html is in PREMIUM_PAGES), renders nav + defaulter banner.
+  const result=await AUTH_GUARD.init();
+  if(!result) return; // redirect in progress
+
+  // Pre-fill from URL
+  const urlSubj=URL_PARAMS.get('subject');
+  const urlTopic=URL_PARAMS.get('topic');
+  if(urlSubj){
+    const s=document.getElementById('sel-subject');
+    for(const o of s.options) if(o.value===urlSubj){s.value=urlSubj;break;}
   }
-
-  /* ── State ─────────────────────────────────────────────────── */
-  let currentSubject = 'mathematics';
-  let currentTopicId = null;
-  let currentTier    = 'standard';
-  let isPremiumUser  = false;
-  let userId         = null;
-  let studentName    = '';
-  let loadingTimer   = null;   // auto-dismiss spinner
-
-  /* ── Helpers ───────────────────────────────────────────────── */
-  function topicUnlocked(topic) {
-    if (isPremiumUser) return true;
-    if (getWatched().includes(topic.id)) return true;
-    return AUTH_GUARD.canSampleFeature('video');
+  const urlExamType=URL_PARAMS.get('examType');
+  if(urlExamType){
+    const es=document.getElementById('sel-examtype');
+    for(const o of es.options) if(o.value.toUpperCase()===urlExamType.toUpperCase()){es.value=o.value;break;}
   }
-
-  function esc(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function showToast(msg, dur) {
-    if (typeof window.toast === 'function') { window.toast(msg, dur); return; }
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), dur || 2800);
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-     VIDEO STATE MACHINE
-     ════════════════════
-     setVideoState(s) is the ONLY function that touches data-state.
-     All other functions call setVideoState to transition.
-
-     'empty'   — no topic selected (placeholder UI)
-     'loading' — topic selected, iframe being prepared
-     'playing' — iframe visible and playing
-  ═══════════════════════════════════════════════════════════════ */
-
-  function setVideoState(state) {
-    const vp = document.getElementById('vp');
-    if (vp) vp.dataset.state = state;
-  }
-
-  /* ── Drive iframe scale helper ───────────────────────────────
-     Google Drive's /preview player switches to a compact layout
-     (progress bar at top, bottom controls clipped) when the
-     rendered iframe width is below ~480 px — typical on mobile.
-
-     Fix: render the iframe at DRIVE_LOGICAL_W × DRIVE_LOGICAL_H
-     and CSS-scale it down to fill the container. Drive sees a
-     desktop viewport and renders its full-size control layout.
-
-     Called once on inject and again via ResizeObserver on resize.
-  ──────────────────────────────────────────────────────────────── */
-  const DRIVE_LOGICAL_W = 1280;
-  const DRIVE_LOGICAL_H = 720;
-
-  function applyDriveScale(iframe, container) {
-    var cw = container.offsetWidth;
-    var ch = container.offsetHeight;
-    if (!cw || !ch) return;
-
-    var scale = Math.min(cw / DRIVE_LOGICAL_W, ch / DRIVE_LOGICAL_H);
-    var left  = (cw - DRIVE_LOGICAL_W * scale) / 2;
-    var top   = (ch - DRIVE_LOGICAL_H * scale) / 2;
-
-    iframe.style.cssText = [
-      'position:absolute',
-      'border:none',
-      'width:'  + DRIVE_LOGICAL_W + 'px',
-      'height:' + DRIVE_LOGICAL_H + 'px',
-      'left:'   + left  + 'px',
-      'top:'    + top   + 'px',
-      'transform:scale(' + scale + ')',
-      'transform-origin:top left',
-    ].join(';');
-  }
-
-  /* ── injectIframe ────────────────────────────────────────────
-     The single point of iframe injection. Cleans up previous
-     iframe, creates a new one, transitions through loading→playing.
-
-     YouTube: simple absolute fill — compact layout keeps controls
-     at the bottom even on narrow screens, no special handling needed.
-
-     Google Drive: uses applyDriveScale() to render at a large
-     logical size and CSS-scale down, preventing Drive's compact
-     mobile layout. A ResizeObserver keeps the scale correct on
-     orientation change or split-screen resize.
-  ──────────────────────────────────────────────────────────────── */
-  function injectIframe(src, isDrive) {
-    const vp = document.getElementById('vp');
-    if (!vp) return;
-
-    // Clear any previous iframe (and its ResizeObserver if Drive)
-    vp.querySelectorAll('iframe').forEach(function(f) {
-      if (f._driveRO) { f._driveRO.disconnect(); f._driveRO = null; }
-      f.src = ''; f.remove();
-    });
-
-    // Clear previous overlays
-    const wm  = document.getElementById('vp-wm');
-    const blk = document.getElementById('vp-blk');
-    if (wm)  wm.innerHTML = '';
-    if (blk) blk.style.pointerEvents = 'none';
-
-    // Cancel previous loading timer
-    if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
-
-    // Transition to loading state
-    setVideoState('loading');
-
-    // Build the iframe
-    const iframe = document.createElement('iframe');
-    iframe.src = src;
-    iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-    iframe.allowFullscreen = true;
-    iframe.setAttribute('loading', 'lazy');
-
-    if (isDrive) {
-      // ── Google Drive: scale trick for mobile ──────────────────
-      // Render at a large logical size so Drive uses its full-size
-      // control layout, then CSS-scale down to fit the container.
-      applyDriveScale(iframe, vp);
-
-      // Re-apply whenever the container resizes (orientation change,
-      // split-screen, etc.)
-      if (typeof ResizeObserver !== 'undefined') {
-        var ro = new ResizeObserver(function() { applyDriveScale(iframe, vp); });
-        ro.observe(vp);
-        iframe._driveRO = ro;   // stored so clearVideo() can disconnect it
-      }
-    } else {
-      // ── YouTube / other: simple absolute fill ─────────────────
-      iframe.style.cssText = [
-        'position:absolute',
-        'inset:0',
-        'width:100%',
-        'height:100%',
-        'border:none',
-      ].join(';');
-    }
-
-    // Insert iframe BEFORE overlays so overlays stay on top
-    const wm2 = document.getElementById('vp-wm');
-    vp.insertBefore(iframe, wm2);
-
-    // Transition to playing after a brief moment.
-    // We DON'T rely on iframe.load event because:
-    //   • Cross-origin iframes (GDrive, YouTube) block load-event timing
-    //   • Drive's /preview may redirect internally before content shows
-    // Instead we give a short delay so the browser can start rendering
-    // the iframe, then flip the state. User sees video appear naturally.
-    loadingTimer = setTimeout(function() {
-      loadingTimer = null;
-      setVideoState('playing');
-    }, 1200);
-
-    // GDrive: activate arrow-icon blocker
-    if (isDrive && blk) {
-      blk.style.pointerEvents = 'all';
-    }
-
-    // Student watermark
-    if (studentName && wm2) {
-      const safeName = esc(studentName);
-      wm2.innerHTML = `<div style="
-        position:absolute;bottom:9px;right:11px;
-        background:rgba(0,0,0,.42);backdrop-filter:blur(6px);
-        -webkit-backdrop-filter:blur(6px);
-        border:1px solid rgba(255,255,255,.1);border-radius:5px;
-        padding:3px 9px 3px 7px;pointer-events:none;user-select:none;
-        display:flex;align-items:center;gap:5px">
-        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="5" cy="5" r="4" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
-          <path d="M3.5 3.5h3L3.5 6.5h3" stroke="rgba(255,255,255,0.35)" stroke-width=".8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span style="color:rgba(255,255,255,.45);font-size:.55rem;font-weight:600;
-          letter-spacing:.07em;white-space:nowrap;text-transform:uppercase;
-          font-family:'Inter',system-ui,sans-serif">${safeName}</span>
-      </div>`;
-    }
-  }
-
-  /* ── clearVideo — return to empty state ─────────────────────── */
-  function clearVideo() {
-    if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
-    const vp  = document.getElementById('vp');
-    const wm  = document.getElementById('vp-wm');
-    const blk = document.getElementById('vp-blk');
-    const bdg = document.getElementById('vp-badge');
-    if (vp)  {
-      vp.querySelectorAll('iframe').forEach(function(f) {
-        // Disconnect Drive ResizeObserver before removing the iframe
-        if (f._driveRO) { f._driveRO.disconnect(); f._driveRO = null; }
-        f.src=''; f.remove();
-      });
-      vp.classList.remove('floating');
-    }
-    if (wm)  { wm.innerHTML = ''; }
-    if (blk) { blk.style.pointerEvents = 'none'; }
-    if (bdg) { bdg.style.display = 'none'; }
-    setVideoState('empty');
-    const hint = document.getElementById('vp-hint');
-    if (hint) hint.classList.remove('show');
-  }
-
-  /* ── getVideoUrl — tier-aware ────────────────────────────────── */
-  function getVideoUrl(topic, requestedTier) {
-    requestedTier = requestedTier || 'standard';
-    if (topic.videos) {
-      const order = [requestedTier, 'standard', 'foundation', 'mastery'];
-      const seen  = new Set();
-      for (const t of order) {
-        if (seen.has(t)) continue; seen.add(t);
-        const v = topic.videos[t];
-        if (v && v.url) return v.url;
-      }
-    }
-    // ?rm=minimal strips Drive's top chrome bar (file title + open-in-Drive
-    // button), freeing the full iframe height for the video and controls.
-    if (topic.driveId) return `https://drive.google.com/file/d/${topic.driveId}/preview?rm=minimal`;
-    if (topic.driveUrl && window.GDRIVE_VIDEO) return GDRIVE_VIDEO.embedUrl(topic.driveUrl) || '';
-    return '';
-  }
-
-  /* ── extractYouTubeId ────────────────────────────────────────── */
-  function extractYouTubeId(url) {
-    if (!url) return '';
-    const m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
-           || url.match(/[?&]v=([a-zA-Z0-9_-]{11})/)
-           || url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
-    return m ? m[1] : '';
-  }
-
-  /* ── showTierBadge ───────────────────────────────────────────── */
-  function showTierBadge(tier) {
-    const b = document.getElementById('vp-badge');
-    if (!b) return;
-    const labels = { foundation:'Foundation', standard:'Standard', mastery:'Mastery' };
-    b.textContent = labels[tier] || '';
-    b.className   = tier;
-    b.id          = 'vp-badge';   // keep id after className reassign
-    b.style.display = 'block';
-  }
-
-  /* ── mergeSheetIntoCurriculum ────────────────────────────────── */
-  function mergeSheetIntoCurriculum() {
-    const blueprint = window.TOPIC_BLUEPRINT || {};
-    let count = 0;
-    for (const topic of Object.values(blueprint)) {
-      if (topic._source !== 'gsheet') continue;
-      const subj = topic.subject;
-      if (!subj) continue;
-      if (!CURRICULUM[subj]) {
-        CURRICULUM[subj] = { label: subj.charAt(0).toUpperCase() + subj.slice(1), topics: [] };
-      }
-      const t = {
-        id:      topic.id,
-        title:   topic.title,
-        duration:topic.duration || '14 mins',
-        premium: false,
-        videos:  topic.videos || null,
-        content: {
-          intro:    topic.blurb || '',
-          points:   topic.objectives || [],
-          formulas: (topic.formulas || []).map(f => ({ formula: f })),
-        },
-        quiz: [],
-      };
-      const idx = CURRICULUM[subj].topics.findIndex(x => x.id === topic.id);
-      if (idx >= 0) CURRICULUM[subj].topics[idx] = t;
-      else          CURRICULUM[subj].topics.push(t);
-      count++;
-    }
-    if (count) console.info(`[CLASSROOM] Merged ${count} topics from sheet.`);
-  }
-
-  /* ── init ────────────────────────────────────────────────────── */
-  async function init(authData) {
-    if (!authData) return;
-    const { profile, session } = authData;
-    userId        = session?.user?.id;
-    isPremiumUser = AUTH_GUARD.isPremium(profile);
-    studentName   = profile?.full_name || '';
-
-    const banner = document.getElementById('exp-banner');
-    if (banner) banner.style.display =
-      AUTH_GUARD.subscriptionStatus(profile) === 'EXPIRED' ? 'block' : 'none';
-
-    const subs = (profile?.exam_subjects || []).filter(s => CURRICULUM[s]);
-    const list = subs.length ? subs : Object.keys(CURRICULUM);
-
-    renderTabs(list);
-
-    const params   = new URLSearchParams(window.location.search);
-    const urlSubj  = params.get('subject');
-    const urlTopic = params.get('topic');
-    const startS   = (urlSubj && CURRICULUM[urlSubj]) ? urlSubj : list[0] || 'mathematics';
-    currentSubject = startS;
-
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.subject === startS));
-    renderSidebar(startS, urlTopic);
-  }
-
-  /* ── renderTabs ──────────────────────────────────────────────── */
-  function renderTabs(subjects) {
-    const c = document.getElementById('subject-tabs');
-    if (!c) return;
-    c.innerHTML = subjects.map(s => {
-      const m = CURRICULUM[s];
-      return m ? `<button class="tab-btn" data-subject="${s}" onclick="CLASSROOM.switchSubject('${s}',this)">${m.label}</button>` : '';
-    }).join('');
-  }
-
-  /* ── switchSubject ───────────────────────────────────────────── */
-  function switchSubject(key, tabEl) {
-    if (!CURRICULUM[key]) return;
-    currentSubject = key; currentTopicId = null; currentTier = 'standard';
-    clearVideo();
-    const ti = document.getElementById('lesson-title');
-    const ci = document.getElementById('lesson-content');
-    const qi = document.getElementById('quiz-section');
-    const ri = document.getElementById('tier-row');
-    if (ti) ti.textContent = 'Select a topic';
-    if (ci) ci.innerHTML = '<p style="color:var(--muted)">Select a topic from the sidebar to begin.</p>';
-    if (qi) qi.style.display = 'none';
-    if (ri) ri.style.display = 'none';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    if (tabEl) tabEl.classList.add('active');
-    renderSidebar(key, null);
-  }
-
-  /* ── renderSidebar ───────────────────────────────────────────── */
-  function renderSidebar(subjKey, autoSelect) {
-    const subj = CURRICULUM[subjKey];
-    if (!subj) return;
-    const sEl = document.getElementById('sb-subj');
-    const cEl = document.getElementById('sb-cnt');
-    if (sEl) sEl.textContent = subj.label;
-    if (cEl) cEl.textContent = `${subj.topics.length} Lesson${subj.topics.length !== 1 ? 's' : ''}`;
-
-    const list = document.getElementById('topic-list');
-    if (!list) return;
-
-    if (!subj.topics.length) {
-      const cfgd = window.UE_CONFIG?.CURRICULUM_SHEET_URLS?.[subjKey];
-      const err  = window.GSHEET_CURRICULUM?.getLastError?.();
-      list.innerHTML = `<div style="padding:28px 14px;text-align:center;color:var(--muted);font-size:.8rem;line-height:1.65">
-        <div style="font-size:1.8rem;margin-bottom:10px">📋</div>
-        <strong style="display:block;margin-bottom:7px;color:var(--txt2)">${
-          !cfgd ? `${subj.label} — no sheet configured`
-        : err   ? `${subj.label} — sheet error`
-        :          `${subj.label} coming soon`
-        }</strong>
-        <span style="font-size:.75rem">${
-          !cfgd ? `Add a CSV URL for <strong>${subjKey}</strong> in <code>config.js → CURRICULUM_SHEET_URLS</code>.`
-        : err   ? `Check that the sheet is published (File → Publish to web → CSV).`
-        :          `No topics added yet.`
-        }</span>
-      </div>`;
-      return;
-    }
-
-    list.innerHTML = subj.topics.map((t, i) => {
-      const locked = !topicUnlocked(t);
-      const active = t.id === currentTopicId;
-      return `<button class="ti${active?' active':''}${locked?' locked':''}" data-topic-id="${t.id}"
-        onclick="CLASSROOM.loadTopic('${t.id}')">
-        <span class="ti-n">${i+1}</span>
-        <span class="ti-t">${esc(t.title)}</span>
-        ${locked ? '<span class="ti-p">PRO</span>' : ''}
-      </button>`;
-    }).join('');
-
-    const first = subj.topics.find(t => topicUnlocked(t));
-    let target = null;
-    if (autoSelect) {
-      const match = subj.topics.find(t =>
-        t.id.endsWith(autoSelect) || t.title.toLowerCase() === autoSelect.toLowerCase()
-      );
-      target = match?.id || first?.id || null;
-    } else {
-      target = first?.id || null;
-    }
-    if (target) selectTopic(target);
-  }
-
-  /* ── selectTopic ─────────────────────────────────────────────── */
-  function selectTopic(topicId, tier) {
-    let topic = null;
-    for (const s of Object.values(CURRICULUM)) {
-      topic = s.topics.find(t => t.id === topicId);
-      if (topic) break;
-    }
-    if (!topic) return;
-
-    if (!topicUnlocked(topic)) {
-      AUTH_GUARD.bouncePremium('You\'ve used your free video sample. Upgrade to UE Premium to unlock every lesson.');
-      return;
-    }
-
-    if (!isPremiumUser && !getWatched().includes(topic.id)) {
-      AUTH_GUARD.recordSampleUse('video');
-      markWatched(topic.id);
-    }
-
-    currentTopicId = topicId;
-    currentTier    = tier || 'standard';
-
-    document.querySelectorAll('.ti').forEach(el =>
-      el.classList.toggle('active', el.dataset.topicId === topicId));
-
-    renderLesson(topic, currentTier);
-    closeSidebar();
-    const main = document.querySelector('.main');
-    if (main) main.scrollTop = 0;
-
-    // Non-blocking Supabase progress log
-    if (userId && window.sb) {
-      window.sb.from('topic_mastery').upsert({
-        user_id:    userId,
-        topic_id:   topicId,
-        started_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,topic_id', ignoreDuplicates: true })
-      .then(({ error }) => { if (error) console.warn('[CLASSROOM] mastery upsert:', error.message); });
+  const urlTopicId=URL_PARAMS.get('topicId');
+  // Await so the sheet-enriched topic list is fully in place before we
+  // try to pre-select urlTopic below — otherwise the async merge inside
+  // onSubjectChange can overwrite the selection right after it's made.
+  await onSubjectChange();
+  if(urlTopic){
+    const matchedValue=findTopicMatch(urlTopic,urlTopicId);
+    const ts=document.getElementById('sel-topic');
+    if(matchedValue!==null){
+      ts.value=matchedValue;
+      document.getElementById('sel-mode').value='topic';
+    }else{
+      // Couldn't confidently match the classroom topic to a tagged topic
+      // in the question bank — fall back to "All Topics" for this subject
+      // rather than silently guessing, but tell the user why.
+      const subjLabel=document.getElementById('sel-subject').selectedOptions[0]?.text||'this subject';
+      toast(`Showing all ${subjLabel} topics — "${urlTopic.replace(/[_-]+/g,' ')}" isn't tagged yet in the question bank.`,4500);
     }
   }
+  if(result.session) await loadGradeLevel(result.session.user.id, urlSubj||'mathematics');
+  updateSessionBadges();
+});
 
-  /* ── renderLesson ────────────────────────────────────────────── */
-  function renderLesson(topic, tier) {
-    tier = tier || 'standard';
+// Normalizes topic text/slugs for robust comparison: lowercases, converts
+// underscores/hyphens to spaces, strips punctuation, collapses whitespace.
+function normTopicKey(s){
+  return String(s||'').toLowerCase().replace(/[_\-]+/g,' ').replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
 
-    // Meta
-    const chipEl  = document.getElementById('topic-chip');
-    const durEl   = document.getElementById('dur-chip');
-    const titleEl = document.getElementById('lesson-title');
-    if (chipEl)  chipEl.textContent  = topic.title;
-    if (durEl)   durEl.textContent   = topic.duration || '14 mins';
-    if (titleEl) titleEl.textContent = topic.title;
-
-    // Practice-Questions deep link → cbt.html, pre-filling subject + topic
-    // so a student can immediately drill what they just watched. Uses the
-    // human-readable title (matches the Google Sheet question bank's topic
-    // column far more reliably than the raw topic_id, which may be an
-    // arbitrary machine key) with topic.id as a fallback for fuzzy matching.
-    const practiceBtn = document.getElementById('practice-btn');
-    if (practiceBtn) {
-      const subjKey = topic.subject || currentSubject;
-      practiceBtn.href = `cbt.html?subject=${encodeURIComponent(subjKey)}`
-        + `&topic=${encodeURIComponent(topic.title || topic.id)}`
-        + `&topicId=${encodeURIComponent(topic.id)}`;
-    }
-
-    // Tier pills
-    const tierRow = document.getElementById('tier-row');
-    if (tierRow) {
-      const hasTiers = topic.videos && Object.keys(topic.videos).length > 1;
-      tierRow.style.display = hasTiers ? 'flex' : 'none';
-      if (hasTiers) {
-        document.querySelectorAll('.tier-pill').forEach(p =>
-          p.classList.toggle('active', p.dataset.tier === tier));
-        const tagEl = document.getElementById('tier-tag');
-        if (tagEl) tagEl.textContent = topic.videos?.[tier]?.tagline
-          ? `— ${topic.videos[tier].tagline}` : '';
-      }
-    }
-
-    // Video
-    const url  = getVideoUrl(topic, tier);
-    const ytId = topic.youtubeId || extractYouTubeId(url);
-
-    if (ytId) {
-      showTierBadge(tier);
-      injectIframe(`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`, false);
-    } else if (url) {
-      showTierBadge(tier);
-      injectIframe(url, true); // isDrive=true → scale trick + arrow blocker
-    } else {
-      clearVideo();
-    }
-
-    renderContent(topic);
-    renderQuizSection(topic);
+// Finds the best-matching <option value> in #sel-topic for a topic coming
+// from an external page (e.g. classroom.js), trying progressively looser
+// matching so wording differences between the classroom curriculum and the
+// Google Sheet's topic column don't silently break the deep link.
+function findTopicMatch(urlTopic,urlTopicId){
+  const ts=document.getElementById('sel-topic');
+  const candidates=[urlTopic,urlTopicId].filter(Boolean);
+  // 1) Exact match against option value or visible text
+  for(const cand of candidates){
+    for(const o of ts.options) if(o.value===cand||o.text===cand) return o.value;
   }
-
-  /* ── selectTier (public, called by tier pills) ───────────────── */
-  function selectTier(tier) {
-    if (!currentTopicId) return;
-    currentTier = tier;
-    document.querySelectorAll('.tier-pill').forEach(p =>
-      p.classList.toggle('active', p.dataset.tier === tier));
-
-    let topic = null;
-    for (const s of Object.values(CURRICULUM)) {
-      topic = s.topics.find(t => t.id === currentTopicId);
-      if (topic) break;
-    }
-    if (!topic) return;
-
-    const url  = getVideoUrl(topic, tier);
-    const ytId = extractYouTubeId(url);
-    if (ytId)      injectIframe(`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1`, false);
-    else if (url)  injectIframe(url, true);
-
-    const tagEl = document.getElementById('tier-tag');
-    if (tagEl) tagEl.textContent = topic.videos?.[tier]?.tagline
-      ? `— ${topic.videos[tier].tagline}` : '';
-    showTierBadge(tier);
-  }
-
-  /* ── renderContent ───────────────────────────────────────────── */
-  function renderContent(topic) {
-    const el = document.getElementById('lesson-content');
-    if (!el) return;
-    const c = topic.content || {};
-    let html = '';
-    if (c.intro) html += `<p>${esc(c.intro)}</p>`;
-    if (c.points?.length) {
-      html += '<h3>Key Points</h3><ul>';
-      html += c.points.map(p => `<li><span class="blt">&#x25CF;</span>${esc(p)}</li>`).join('');
-      html += '</ul>';
-    }
-    if (c.formulas?.length) {
-      html += '<div class="fbox"><div class="fbox-lbl">Key Formulas</div><div class="fgrid">';
-      html += c.formulas.map(f => `<div class="fitem">${esc(typeof f==='string'?f:f.formula||'')}</div>`).join('');
-      html += '</div></div>';
-    }
-    if (!html) html = '<p style="color:var(--muted)">Lesson content will appear once it has been added to your curriculum sheet.</p>';
-    el.innerHTML = html;
-  }
-
-  /* ── renderQuizSection ───────────────────────────────────────── */
-  function renderQuizSection(topic) {
-    const qs = document.getElementById('quiz-section');
-    if (!qs) return;
-    if (topic.quiz?.length) {
-      _quiz = { idx:0, correct:0, questions: topic.quiz };
-      renderQuiz();
-      qs.style.display = 'block';
-    } else {
-      qs.style.display = 'none';
+  // 2) Normalized exact match
+  for(const cand of candidates){
+    const target=normTopicKey(cand);
+    if(!target) continue;
+    for(const o of ts.options){
+      if(normTopicKey(o.value||o.text)===target) return o.value;
     }
   }
-
-  let _quiz = { idx:0, correct:0, questions:[] };
-
-  function renderQuiz() {
-    const q   = _quiz.questions[_quiz.idx];
-    const nEl = document.getElementById('q-num');
-    const tEl = document.getElementById('q-tot');
-    const dEl = document.getElementById('q-dots');
-    const qEl = document.getElementById('quiz-q');
-    const oEl = document.getElementById('quiz-opts');
-    const fEl = document.getElementById('quiz-fb');
-    if (nEl) nEl.textContent = _quiz.idx + 1;
-    if (tEl) tEl.textContent = _quiz.questions.length;
-    if (dEl) dEl.innerHTML = _quiz.questions.map((_,i) => {
-      const cls = i < _quiz.idx ? 'qdot done' : i === _quiz.idx ? 'qdot active' : 'qdot';
-      return `<span class="${cls}"></span>`;
-    }).join('');
-    if (qEl) qEl.textContent = q.q || '';
-    if (fEl) fEl.style.display = 'none';
-    if (oEl) {
-      const ltrs = ['A','B','C','D'];
-      oEl.innerHTML = (q.opts||[]).map((o,i) =>
-        `<button class="opt" onclick="CLASSROOM._qa(${i},this)">
-           <span class="opt-l">${ltrs[i]}</span>${esc(o)}</button>`
-      ).join('');
+  // 3) Normalized substring match (covers minor wording differences,
+  //    e.g. "Quadratics" vs "Quadratic Equations")
+  for(const cand of candidates){
+    const target=normTopicKey(cand);
+    if(!target) continue;
+    for(const o of ts.options){
+      const norm=normTopicKey(o.value||o.text);
+      if(norm && (norm.includes(target)||target.includes(norm))) return o.value;
     }
   }
+  return null;
+}
 
-  function _qa(idx, btn) {
-    const q  = _quiz.questions[_quiz.idx];
-    const fEl = document.getElementById('quiz-fb');
-    document.querySelectorAll('#quiz-opts .opt').forEach(b => b.style.pointerEvents = 'none');
-    btn.classList.add('sel');
-    const ok = idx === q.ans;
-    if (ok) _quiz.correct++;
-    if (fEl) {
-      fEl.style.display = 'block';
-      fEl.style.cssText = ok
-        ? 'display:block;background:rgba(22,163,74,.1);color:#15803d;border:1px solid rgba(22,163,74,.25);padding:10px 14px;border-radius:9px;font-weight:600;margin-top:11px'
-        : 'display:block;background:rgba(239,68,68,.1);color:#dc2626;border:1px solid rgba(239,68,68,.22);padding:10px 14px;border-radius:9px;font-weight:600;margin-top:11px';
-      fEl.textContent = ok ? '✓ Correct! Well done.'
-        : `✗ Not quite. Answer: ${(q.opts||[])[q.ans]||''}`;
-      if (!ok) {
-        const all = document.querySelectorAll('#quiz-opts .opt');
-        if (all[q.ans]) all[q.ans].style.borderColor = '#16a34a';
-      }
-    }
-    setTimeout(() => {
-      if (_quiz.idx < _quiz.questions.length - 1) {
-        _quiz.idx++;
-        renderQuiz();
-      } else {
-        const pct = Math.round((_quiz.correct / _quiz.questions.length) * 100);
-        if (fEl) {
-          fEl.style.cssText = 'display:block;background:rgba(37,99,235,.08);color:#1d4ed8;border:1px solid rgba(37,99,235,.2);padding:10px 14px;border-radius:9px;font-weight:600;margin-top:11px';
-          fEl.innerHTML = `🎉 Quiz done! Score: <strong>${pct}%</strong>.`;
+// ════════════ SETUP HELPERS ════════════
+function onModeChange(){ updateSessionBadges(); }
+function onExamTypeChange(){ onSubjectChange(); }
+function toggleQuestionMap(){
+  const aside=document.getElementById('exam-aside');
+  aside.classList.toggle('open');
+  const open=aside.classList.contains('open');
+  document.getElementById('map-toggle-icon').innerHTML=open?'&#x2715;':'&#x25A6;';
+  document.getElementById('map-toggle-label').textContent=open?' Hide Map':' Question Map';
+}
+
+async function onSubjectChange(){
+  const subj=document.getElementById('sel-subject').value;
+  const examType=document.getElementById('sel-examtype').value;
+  const ts=document.getElementById('sel-topic');
+  const prevSelection=ts.value;
+  // Immediately populate with local-bank topics (fast, sync)
+  let topics=QUESTION_BANK.getTopics(subj);
+  ts.innerHTML='<option value="">All Topics</option>'+topics.map(t=>`<option value="${t}">${t}</option>`).join('');
+  updateSessionBadges();
+  // Then enrich from Google Sheet (async — replaces the list when ready)
+  if(window.GSHEET_QUESTIONS && window.GSHEET_QUESTIONS.isEnabled()){
+    try{
+      // Filter by examType here too — a topic should only be listed if it
+      // actually has questions under the CURRENTLY SELECTED exam type,
+      // otherwise picking it later returns "No questions available".
+      const rows=await window.GSHEET_QUESTIONS.getQuestions({subject:subj,examType,count:2000});
+      sheetCountCache={subj,examType,rows:rows||[]};
+      if(rows && rows.length){
+        // Group by topic_id when present (robust shared key with the
+        // curriculum/video sheet), falling back to the free-text topic
+        // name for older/untagged rows. Option value = the key we filter
+        // on later; option text = the human-readable label either way.
+        const byKey=new Map();
+        for(const q of rows){
+          if(!q.topic) continue;
+          const key=q.topicId||q.topic;
+          if(!byKey.has(key)) byKey.set(key,q.topic);
         }
-        const oEl = document.getElementById('quiz-opts');
-        if (oEl) oEl.innerHTML = '';
+        if(byKey.size){
+          const sheetOptions=[...byKey.entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+          const seenLabels=new Set(sheetOptions.map(([,label])=>label));
+          const localOnly=topics.filter(t=>!seenLabels.has(t));
+          ts.innerHTML=['<option value="">All Topics</option>']
+            .concat(sheetOptions.map(([key,label])=>`<option value="${key}">${label}</option>`))
+            .concat(localOnly.map(t=>`<option value="${t}">${t}</option>`))
+            .join('');
+          // Restore the user's previous topic selection if it's still valid
+          if(prevSelection && [...ts.options].some(o=>o.value===prevSelection)) ts.value=prevSelection;
+        }
       }
-    }, 1500);
+      updateSessionBadges();
+    }catch(e){/* silently keep local topics */}
   }
+}
 
-  /* ── Navigation ──────────────────────────────────────────────── */
-  function nextLesson() {
-    const topics = CURRICULUM[currentSubject]?.topics || [];
-    const idx = topics.findIndex(t => t.id === currentTopicId);
-    for (let i = idx + 1; i < topics.length; i++) {
-      if (topicUnlocked(topics[i])) { selectTopic(topics[i].id); return; }
-    }
-    showToast('You\'re on the last lesson.');
-  }
+// Cache of the last Google Sheet fetch for the currently-selected subject +
+// exam type, so updateSessionBadges() can show an accurate count without
+// re-fetching.
+let sheetCountCache={subj:null,examType:null,rows:[]};
 
-  function prevLesson() {
-    const topics = CURRICULUM[currentSubject]?.topics || [];
-    const idx = topics.findIndex(t => t.id === currentTopicId);
-    for (let i = idx - 1; i >= 0; i--) {
-      if (topicUnlocked(topics[i])) { selectTopic(topics[i].id); return; }
-    }
-    showToast('You\'re on the first lesson.');
+function updateSessionBadges(){
+  const mode=document.getElementById('sel-mode').value;
+  const subj=document.getElementById('sel-subject').value;
+  const topic=document.getElementById('sel-topic').value;
+  const examType=document.getElementById('sel-examtype').value;
+  const cfg=getModeConfig(mode,examType,subj);
+  let avail=QUESTION_BANK.countFor(subj,topic||null);
+  if(sheetCountCache.subj===subj && sheetCountCache.examType===examType && sheetCountCache.rows.length){
+    const sheetAvail=topic?sheetCountCache.rows.filter(q=>q.topic===topic||q.topicId===topic).length:sheetCountCache.rows.length;
+    avail=Math.max(avail,sheetAvail);
   }
+  document.getElementById('q-count-badge').textContent=`${Math.min(cfg.count,avail)||cfg.count} Questions`;
+  document.getElementById('time-badge').textContent=`⏱ ${Math.round(cfg.seconds/60)} min`;
+  document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
+}
 
-  function playVideo(topicId) {
-    selectTopic(topicId || currentTopicId, currentTier);
-  }
-
-  /* ── Sidebar ─────────────────────────────────────────────────── */
-  function toggleSidebar() {
-    const sb = document.getElementById('sidebar');
-    const ov = document.getElementById('sb-ov');
-    const open = sb?.classList.toggle('open');
-    ov?.classList.toggle('open', !!open);
-  }
-  function closeSidebar() {
-    document.getElementById('sidebar')?.classList.remove('open');
-    document.getElementById('sb-ov')?.classList.remove('open');
-  }
-
-  /* ── stopFloat — dock mini-player ────────────────────────────── */
-  function stopFloat() {
-    document.getElementById('vp')?.classList.remove('floating');
-    document.getElementById('vp-hint')?.classList.remove('show');
-  }
-
-  /* ── loadTopic — public alias (monkey-patched by skill_chamber) */
-  function loadTopic(topicId, opts) {
-    selectTopic(topicId, (opts || {}).tier);
-  }
-
-  /* ── Public API ──────────────────────────────────────────────── */
-  return {
-    init,
-    mergeSheetIntoCurriculum,
-    switchSubject,
-    selectTopic,
-    selectTier,
-    loadTopic,
-    nextLesson,
-    prevLesson,
-    playVideo,
-    toggleSidebar,
-    closeSidebar,
-    stopFloat,
-    _qa,
-    CURRICULUM,
+// Realistic timing, modelled on actual exam-board structure:
+//  • JAMB: single continuous 180-question / 120-min CBT (60 English + 40 x 3
+//    others). There's no official per-subject sub-clock, but candidates are
+//    widely advised to budget ~40 min for English and ~27 min for each other
+//    subject — that's what we use for a single-subject JAMB mock here.
+//  • WAEC: objective (Paper 1) papers run ~50 questions / 60 minutes for
+//    most subjects.
+//  • NECO: objective papers are ~60 questions / 60 minutes.
+//  • "All Exam Types" / unspecified: falls back to the JAMB-style pacing
+//    since it's the most commonly practised format.
+function getModeConfig(mode, examType, subject){
+  if(mode==='quick') return {count:5,  seconds:600};   // 10 min
+  if(mode==='topic') return {count:10, seconds:1200};  // 20 min
+  // mode === 'mock' — realistic full-subject exam simulation
+  const isEnglish=subject==='english';
+  const REALISTIC={
+    JAMB: isEnglish ? {count:60,seconds:2400} : {count:40,seconds:1620}, // 40 min / 27 min
+    WAEC: {count:50,seconds:3600},  // 60 min
+    NECO: {count:60,seconds:3600},  // 60 min
   };
+  return REALISTIC[examType] || REALISTIC.JAMB;
+}
 
+async function loadGradeLevel(userId,subject){
+  const{data}=await window.sb.from('topic_mastery').select('grade_level').eq('user_id',userId).ilike('topic_id',subject+'.%').order('last_studied',{ascending:false}).limit(1);
+  if(data&&data.length>0) currentGradeLevel=data[0].grade_level;
+  updateSessionBadges();
+}
+
+// ════════════ START ════════════
+async function startExam(){
+  const mode=document.getElementById('sel-mode').value;
+  const subj=document.getElementById('sel-subject').value;
+  const topic=document.getElementById('sel-topic').value||null;
+  const examType=document.getElementById('sel-examtype').value;
+  const cfg=getModeConfig(mode,examType,subj);
+
+  // Calculators are a banned item under JAMB rules, and "All Exam Types"
+  // can't guarantee WAEC/NECO-style permission either — only show the
+  // on-screen calculator when the student has explicitly picked WAEC
+  // or NECO practice.
+  const calcBtn=document.getElementById('calc-toggle-btn');
+  if(calcBtn) calcBtn.style.display=(examType==='WAEC'||examType==='NECO')?'inline-flex':'none';
+
+  const startBtn=document.getElementById('btn-start');
+  if(startBtn){startBtn.disabled=true;startBtn.textContent='Loading questions…';}
+
+  try{
+    QUESTIONS=await QUESTION_BANK.getQuestions({subject:subj,topic,examType,count:cfg.count});
+  }catch(e){
+    console.warn('[CBT] getQuestions failed:',e.message);
+    QUESTIONS=[];
+  }finally{
+    if(startBtn){startBtn.disabled=false;startBtn.textContent='\u25B6 Start Session';}
+  }
+  if(!QUESTIONS || !QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
+
+  sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
+  totalTime=cfg.seconds; timeLeft=cfg.seconds;
+  currentQ=0; answers={}; flags=new Set(); timings={};
+  sessionSubmitted=false; isReviewMode=false;
+
+  const subjLabel=document.getElementById('sel-subject').options[document.getElementById('sel-subject').selectedIndex].text;
+  const parts=[subjLabel];
+  if(topic) parts.push(topic);
+  parts.push(mode==='mock'?'Mock Exam':mode==='quick'?'Quick Drill':'Practice');
+  document.getElementById('exam-title').textContent=parts.join(' \u2014 ');
+
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('exam-screen').style.display='flex';
+  document.getElementById('flag-btn').style.display='';
+  renderQ(); renderMap(); startTimer();
+}
+
+// ════════════ TIMER ════════════
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft<=0){clearInterval(timerInterval);submitExam();}
+  },1000);
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay(){
+  const h=Math.floor(timeLeft/3600),m=Math.floor((timeLeft%3600)/60),s=timeLeft%60;
+  const disp=document.getElementById('timer-display');
+  disp.textContent=h>0?`${pad(h)}:${pad(m)}:${pad(s)}`:`${pad(m)}:${pad(s)}`;
+  const pct=timeLeft/totalTime;
+  disp.classList.toggle('warning',pct<=0.25&&pct>0.1);
+  disp.classList.toggle('critical',pct<=0.1);
+}
+
+function pad(n){return String(n).padStart(2,'0');}
+
+// ════════════ RENDER QUESTION ════════════
+function renderQ(){
+  const q=QUESTIONS[currentQ]; if(!q) return;
+  if(qStartTime!==null) timings[currentQ-1]=(timings[currentQ-1]||0)+Math.round((Date.now()-qStartTime)/1000);
+  qStartTime=Date.now();
+
+  document.getElementById('q-counter').textContent=`Question ${currentQ+1} of ${QUESTIONS.length}`;
+  document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
+  document.getElementById('q-text').textContent=q.text;
+
+  const qImg=document.getElementById('q-image');
+  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.dataset.fallback='0'; qImg.onerror=()=>{ if(qImg.dataset.fallback==='0' && /lh3\.googleusercontent\.com\/d\//.test(qImg.src)){ qImg.dataset.fallback='1'; const id=qImg.src.split('/d/')[1]; qImg.src='https://drive.google.com/thumbnail?id='+id+'&sz=w1000'; } else { qImg.style.display='none'; } }; }
+  else { qImg.removeAttribute('src'); qImg.style.display='none'; }
+
+  const fb=document.getElementById('flag-btn');
+  fb.classList.toggle('flagged',flags.has(currentQ));
+  fb.textContent=flags.has(currentQ)?'\u2691 Flagged':'\u2691 Flag';
+
+  const oc=document.getElementById('q-options'); oc.innerHTML='';
+  q.opts.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='drill-option'+(answers[currentQ]===i?' selected':'');
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
+    btn.onclick=()=>selectAnswer(i);
+    oc.appendChild(btn);
+  });
+
+  document.getElementById('explanation-box').classList.remove('show');
+  document.getElementById('prev-btn').disabled=currentQ===0;
+  const nb=document.getElementById('next-btn');
+  if(currentQ===QUESTIONS.length-1){
+    nb.textContent='Submit \u2713'; nb.onclick=promptSubmit;
+    nb.style.background='linear-gradient(135deg,#059669,#047857)';
+  } else {
+    nb.textContent='Next \u2192'; nb.onclick=()=>navQ(1); nb.style.background='';
+  }
+
+  // Live pred
+  const done=Object.keys(answers).length;
+  if(done>0){
+    const corr=QUESTIONS.filter((qq,i)=>answers[i]===qq.ans).length;
+    document.getElementById('jamb-pred').textContent=Math.round(120+(corr/done)*260);
+  }
+}
+
+// ════════════ ANSWER SELECTION ════════════
+function selectAnswer(idx){
+  answers[currentQ]=idx;
+  renderQ(); renderMap();
+  if(currentQ<QUESTIONS.length-1) setTimeout(()=>{currentQ++;renderQ();renderMap();},280);
+}
+
+function navQ(dir){
+  if(qStartTime!==null){timings[currentQ]=(timings[currentQ]||0)+Math.round((Date.now()-qStartTime)/1000);qStartTime=null;}
+  currentQ=Math.max(0,Math.min(QUESTIONS.length-1,currentQ+dir));
+  if(isReviewMode) renderReviewQ(); else renderQ();
+  renderMap();
+}
+
+function toggleFlag(){
+  if(flags.has(currentQ)) flags.delete(currentQ); else flags.add(currentQ);
+  renderQ(); renderMap();
+}
+
+// ════════════ MAP ════════════
+function renderMap(){
+  const map=document.getElementById('q-map'); map.innerHTML='';
+  QUESTIONS.forEach((_,i)=>{
+    const dot=document.createElement('button');
+    dot.className='q-dot';
+    if(i===currentQ) dot.classList.add('current');
+    else if(flags.has(i)) dot.classList.add('flagged');
+    else if(answers[i]!==undefined) dot.classList.add('answered');
+    dot.textContent=flags.has(i)&&i!==currentQ?'\u2691':i+1;
+    dot.onclick=()=>{currentQ=i;if(isReviewMode)renderReviewQ();else renderQ();renderMap();};
+    map.appendChild(dot);
+  });
+}
+
+// ════════════ SUBMIT ════════════
+function promptSubmit(){
+  const ans=Object.keys(answers).length;
+  document.getElementById('modal-answered').textContent=ans;
+  document.getElementById('modal-total').textContent=QUESTIONS.length;
+  document.getElementById('submit-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('submit-modal').classList.remove('open');}
+
+async function submitExam(){
+  if(sessionSubmitted) return;
+  sessionSubmitted=true;
+  closeModal();
+  clearInterval(timerInterval);
+  if(qStartTime!==null){timings[currentQ]=(timings[currentQ]||0)+Math.round((Date.now()-qStartTime)/1000);}
+  document.getElementById('saving-overlay').classList.add('show');
+  let gradingResult=null;
+  try{
+    gradingResult=await GRADING.processSession({
+      questions:QUESTIONS,answers,timings,
+      meta:{userId:window.UE_USER_ID,subject:sessionConfig.subject,topic:sessionConfig.topic,examType:sessionConfig.examType,gradeLevel:sessionConfig.gradeLevel}
+    });
+  } catch(err){console.error('Grading error:',err);}
+  document.getElementById('saving-overlay').classList.remove('show');
+  showResults(gradingResult);
+}
+
+// ════════════ RESULTS ════════════
+function showResults(gr){
+  const correct=QUESTIONS.filter((q,i)=>answers[i]===q.ans).length;
+  const total=QUESTIONS.length, pct=Math.round(correct/total*100);
+  const timeSpent=totalTime-timeLeft;
+  const mins=Math.floor(timeSpent/60),secs=timeSpent%60;
+  const jambPred=Math.round(120+(correct/total)*260);
+
+  const icon=document.getElementById('results-icon');
+  const title=document.getElementById('results-title');
+  const sub=document.getElementById('results-subtitle');
+  if(pct>=70){icon.className='results-icon pass';icon.textContent='\uD83C\uDF89';title.textContent='Excellent Work!';sub.textContent=`You scored ${pct}% \u2014 you're on track!`;}
+  else if(pct>=50){icon.className='results-icon ok';icon.textContent='\uD83D\uDC4D';title.textContent='Good Effort!';sub.textContent=`You scored ${pct}%. Keep practising.`;}
+  else{icon.className='results-icon fail';icon.textContent='\uD83D\uDCDA';title.textContent='Keep Practising';sub.textContent=`You scored ${pct}%. Review and try again.`;}
+
+  if(gr?.xpEarned){const x=document.getElementById('xp-badge');x.style.display='inline-flex';x.textContent=`\u26A1 +${gr.xpEarned} XP earned`;}
+
+  document.getElementById('results-grid').innerHTML=`
+    <div class="result-stat"><div class="result-stat-label">Score</div><div class="result-stat-val">${correct}/${total}</div></div>
+    <div class="result-stat accent"><div class="result-stat-label">Accuracy</div><div class="result-stat-val">${pct}%</div></div>
+    <div class="result-stat"><div class="result-stat-label">Time</div><div class="result-stat-val">${pad(mins)}:${pad(secs)}</div></div>
+    <div class="result-stat accent"><div class="result-stat-label">Pred. JAMB</div><div class="result-stat-val">${jambPred}</div></div>
+  `;
+
+  if(gr){
+    const gf=document.getElementById('grade-feedback');
+    gf.style.display='block';
+    const oldG=sessionConfig.gradeLevel, newG=gr.newGradeLevel;
+    const gTitle=document.getElementById('grade-title');
+    const gBody=document.getElementById('grade-body');
+    if(newG<oldG){gTitle.textContent=`\uD83D\uDE80 Level Up! ${GRADING.gradeLabel(oldG)} \u2192 ${GRADING.gradeLabel(newG)}`;gBody.textContent=`Your accuracy of ${pct}% qualifies you for harder questions next session.`;}
+    else if(newG>oldG){gTitle.textContent='\uD83D\uDCC9 Adjusting Difficulty';gBody.textContent=`We'll reduce difficulty to help you build confidence at ${GRADING.gradeLabel(newG)} level.`;}
+    else{gTitle.textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(newG)} Level`;gBody.textContent=`Continue at this level. Reach ${pct>=65?'80':'65'}% accuracy to advance.`;}
+  }
+
+  document.getElementById('exam-screen').style.display='none';
+  const rs=document.getElementById('results-screen');
+  rs.style.display='flex'; rs.scrollTop=0; window.scrollTo(0,0);
+}
+
+// ════════════ REVIEW ════════════
+function reviewAnswers(){
+  isReviewMode=true;
+  document.getElementById('results-screen').style.display='none';
+  document.getElementById('exam-screen').style.display='flex';
+  document.getElementById('flag-btn').style.display='none';
+  currentQ=0;
+
+  // Colour-code map dots
+  const map=document.getElementById('q-map'); map.innerHTML='';
+  QUESTIONS.forEach((q,i)=>{
+    const dot=document.createElement('button');
+    const isC=answers[i]===q.ans;
+    dot.className='q-dot '+(answers[i]!==undefined?(isC?'correct-dot':'wrong-dot'):'');
+    if(i===currentQ) dot.classList.add('current');
+    dot.textContent=i+1;
+    dot.onclick=()=>{currentQ=i;renderReviewQ();renderMap();};
+    map.appendChild(dot);
+  });
+
+  renderReviewQ();
+}
+
+function renderReviewQ(){
+  const q=QUESTIONS[currentQ], sel=answers[currentQ], isC=sel===q.ans;
+  document.getElementById('q-counter').textContent=`Review \u2014 Question ${currentQ+1} of ${QUESTIONS.length}`;
+  document.getElementById('q-number-badge').textContent=`Question ${currentQ+1}`;
+  document.getElementById('q-text').textContent=q.text;
+
+  const qImg=document.getElementById('q-image');
+  if(q.image){ qImg.src=q.image; qImg.style.display='block'; qImg.dataset.fallback='0'; qImg.onerror=()=>{ if(qImg.dataset.fallback==='0' && /lh3\.googleusercontent\.com\/d\//.test(qImg.src)){ qImg.dataset.fallback='1'; const id=qImg.src.split('/d/')[1]; qImg.src='https://drive.google.com/thumbnail?id='+id+'&sz=w1000'; } else { qImg.style.display='none'; } }; }
+  else { qImg.removeAttribute('src'); qImg.style.display='none'; }
+
+  const oc=document.getElementById('q-options'); oc.innerHTML='';
+  q.opts.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    let cls='drill-option disabled';
+    if(i===q.ans) cls+=' correct';
+    if(i===sel&&!isC) cls+=' wrong';
+    btn.className=cls;
+    btn.innerHTML=`<span class="opt-label">${String.fromCharCode(65+i)}</span><span class="opt-text">${opt}</span>`;
+    oc.appendChild(btn);
+  });
+
+  const eb=document.getElementById('explanation-box');
+  if(q.explanation){eb.innerHTML=`<strong>Explanation:</strong> ${q.explanation}`;eb.classList.add('show');}
+  else eb.classList.remove('show');
+
+  document.getElementById('prev-btn').disabled=currentQ===0;
+  const nb=document.getElementById('next-btn');
+  if(currentQ===QUESTIONS.length-1){
+    nb.textContent='Back to Results';nb.style.background='';
+    nb.onclick=()=>{document.getElementById('exam-screen').style.display='none';document.getElementById('results-screen').style.display='flex';};
+  } else {
+    nb.textContent='Next \u2192';nb.style.background='';nb.onclick=()=>{currentQ++;renderReviewQ();renderMap();};
+  }
+}
+
+// ════════════ RETRY ════════════
+function retryExam(){
+  isReviewMode=false;
+  document.getElementById('results-screen').style.display='none';
+  document.getElementById('setup-screen').style.display='flex';
+  document.getElementById('flag-btn').style.display='';
+}
+
+// ════════════ CALCULATOR (WAEC/NECO practice only) ════════════
+(function initCalculator(){
+  const keys=['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','C','+','='];
+  const grid=document.getElementById('calc-keys');
+  if(!grid) return;
+  let expr='';
+  const disp=document.getElementById('calc-display');
+  function render(){ disp.value = expr || '0'; }
+  function press(k){
+    if(k==='C'){ expr=''; render(); return; }
+    if(k==='='){
+      try{
+        const safe=expr.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+        if(!/^[0-9+\-*/.()\s]+$/.test(safe)) throw new Error('bad');
+        // eslint-disable-next-line no-eval
+        const result=Function('"use strict";return ('+safe+')')();
+        expr=(Number.isFinite(result)?String(Math.round(result*1e8)/1e8):'Error');
+      }catch(e){ expr='Error'; }
+      render(); return;
+    }
+    if(expr==='Error') expr='';
+    expr+=k; render();
+  }
+  keys.forEach(k=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='calc-key'+(['÷','×','−','+'].includes(k)?' op':k==='='?' eq':k==='C'?' clear':'');
+    btn.textContent=k;
+    btn.onclick=()=>press(k);
+    grid.appendChild(btn);
+  });
+  render();
+  // Close modal when clicking the backdrop (outside the calculator card)
+  document.getElementById('calc-modal').addEventListener('click',(e)=>{
+    if(e.target.id==='calc-modal') e.currentTarget.style.display='none';
+  });
 })();
+
+// ════════════ TOAST ════════════
+function toast(msg,dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+</script>
+</body>
+</html>
