@@ -1,389 +1,519 @@
-/* ═══════════════════════════════════════════════════════════════════
-   UE School — js/gsheet-curriculum.js  (v3 — ground-up rewrite)
-   ───────────────────────────────────────────────────────────────────
-   ROLE: Fetch published Google Sheet CSVs → parse → write to
-         window.TOPIC_BLUEPRINT so classroom.js can render lessons.
-
-   PIPELINE ORDER (classroom.html loads scripts in this sequence):
-     config.js           → UE_CONFIG (SUBJECT_SHEET_URLS, cache settings)
-     gdrive-video.js     → GDRIVE_VIDEO.embedUrl()        ← MUST BE BEFORE THIS
-     gsheet-curriculum.js  ← THIS FILE
-     classroom.js        → reads window.TOPIC_BLUEPRINT
-
-   WHAT THIS FILE OWNS:
-     • Fetch + parse published CSV URLs from UE_CONFIG.SUBJECT_SHEET_URLS
-     • Normalise video URLs (YouTube and Google Drive)
-     • Write structured topic objects to window.TOPIC_BLUEPRINT
-     • Session cache (respects UE_CONFIG.GS_CURRICULUM_CACHE_MIN)
-     • Clear, surfaced errors — no silent failures
-
-   WHAT THIS FILE DOES NOT OWN:
-     • Rendering UI           → classroom.js
-     • Auth / premium gating  → auth-guard.js
-     • Supabase writes        → classroom.js
-═══════════════════════════════════════════════════════════════════ */
-
-window.GSHEET_CURRICULUM = (function () {
-  'use strict';
-
-  // ─── Config ───────────────────────────────────────────────────────
-  const cfg          = window.UE_CONFIG || {};
-  const SUBJECT_URLS = cfg.CURRICULUM_SHEET_URLS || {};
-  const LEGACY_URL   = cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL || '';
-  const CACHE_MIN    = (cfg.GS_CURRICULUM_CACHE_MIN > 0) ? cfg.GS_CURRICULUM_CACHE_MIN : 30;
-  const CACHE_MS     = CACHE_MIN * 60 * 1000;
-  // Every subject tab is fetched in parallel (see fetchAll below). With 25
-  // subjects sharing one spreadsheet, Google can throttle/stall some of
-  // those simultaneous requests. Without a timeout, a single stalled
-  // request would hang Promise.all forever, freezing the whole classroom
-  // page on its "Loading…" placeholder. Capping each request at 10s means
-  // a throttled tab fails fast (shown as a per-subject "sheet error")
-  // instead of blocking every other subject from ever loading.
-  const FETCH_TIMEOUT_MS = 10000;
-
-  // ─── State ────────────────────────────────────────────────────────
-  let _promise   = null;   // in-flight or resolved Promise (dedup + cache)
-  let _loadedAt  = 0;      // timestamp of last successful load (0 = never)
-  let _loadError = null;   // last error message, shown in renderSidebar
-
-  // ─── Public: expose last error so classroom.js can surface it ─────
-  function getLastError() { return _loadError; }
-
-  // ─── getSheetEntries() ────────────────────────────────────────────
-  // Returns [{ subject, url }, ...] from config.  Falls back to
-  // LEGACY_URL (single sheet, subject inferred per-row).
-  function getSheetEntries() {
-    const entries = Object.entries(SUBJECT_URLS)
-      .filter(([, url]) => typeof url === 'string' && url.trim())
-      .map(([subject, url]) => ({ subject: subject.toLowerCase().trim(), url: url.trim() }));
-
-    if (entries.length === 0 && LEGACY_URL && LEGACY_URL.trim()) {
-      entries.push({ subject: null, url: LEGACY_URL.trim() });
-    }
-    return entries;
-  }
-
-  function isEnabled() { return getSheetEntries().length > 0; }
-
-  // ─── parseCSV(text) ───────────────────────────────────────────────
-  // Minimal RFC-4180 parser — handles quoted fields, embedded commas,
-  // escaped double-quotes, and CRLF line endings.
-  function parseCSV(text) {
-    const rows = [];
-    let row = [], cell = '', inQ = false;
-    for (let i = 0; i < text.length; i++) {
-      const c = text[i], n = text[i + 1];
-      if (inQ) {
-        if (c === '"' && n === '"') { cell += '"'; i++; }
-        else if (c === '"')         { inQ = false; }
-        else                        { cell += c; }
-      } else {
-        if      (c === '"')  { inQ = true; }
-        else if (c === ',')  { row.push(cell); cell = ''; }
-        else if (c === '\r') { /* skip CR */ }
-        else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
-        else                 { cell += c; }
-      }
-    }
-    // Flush last row (file may not end with \n)
-    if (cell || row.length) { row.push(cell); rows.push(row); }
-    return rows.filter(r => r.some(v => v && v.trim()));
-  }
-
-  // ─── norm(s) ──────────────────────────────────────────────────────
-  function norm(s) { return (s == null ? '' : String(s)).trim(); }
-
-  // ─── normaliseVideoUrl(raw) ───────────────────────────────────────
-  // Converts any raw value from a sheet cell into a playable embed URL.
-  // YouTube URLs pass through unchanged (classroom.js extracts the ID).
-  // Everything else is treated as a Google Drive reference.
-  function normaliseVideoUrl(raw) {
-    const v = norm(raw);
-    if (!v) return '';
-    // YouTube — pass through; classroom.js extractYouTubeId() handles it
-    if (/youtu\.be\/|youtube\.com\//i.test(v)) return v;
-    // Google Drive — use dedicated helper (guaranteed loaded before this file)
-    if (window.GDRIVE_VIDEO) return window.GDRIVE_VIDEO.embedUrl(v) || '';
-    // Fallback: extract /file/d/ID directly
-    const m = v.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-    if (m) return `https://drive.google.com/file/d/${m[1]}/preview`;
-    // Already a valid-looking URL → return as-is
-    if (/^https?:\/\//i.test(v)) return v;
-    return '';
-  }
-
-  // ─── Column alias table ───────────────────────────────────────────
-  // Maps canonical field names → accepted lowercase header aliases.
-  // Operators can use any of the aliases; the first match wins.
-  const HEADER_MAP = {
-    topic_id:           ['topic_id', 'id', 'topic'],
-    subject:            ['subject'],
-    title:              ['title', 'name'],
-    duration:           ['duration', 'card_duration'],
-    blurb:              ['blurb', 'description', 'summary'],
-    objectives:         ['objectives', 'objective', 'learning_objectives'],
-    formulas:           ['formulas', 'formula', 'key_facts', 'facts'],
-    video_foundation:   ['video_foundation', 'foundation_url', 'foundation_video', 'video_slow'],
-    video_standard:     ['video_standard',   'standard_url',   'standard_video',   'video_main', 'video_url', 'video'],
-    video_mastery:      ['video_mastery',    'mastery_url',    'mastery_video',    'video_exam'],
-    tagline_foundation: ['tagline_foundation', 'foundation_tagline', 'foundation_label'],
-    tagline_standard:   ['tagline_standard',   'standard_tagline',   'standard_label'],
-    tagline_mastery:    ['tagline_mastery',    'mastery_tagline',    'mastery_label'],
-    dur_foundation:     ['duration_foundation', 'foundation_duration', 'dur_foundation'],
-    dur_standard:       ['duration_standard',   'standard_duration',  'dur_standard'],
-    dur_mastery:        ['duration_mastery',    'mastery_duration',   'dur_mastery'],
-  };
-
-  // buildIndex: row[0] headers → { canonicalKey: colIndex } (-1 = absent)
-  function buildIndex(headerRow) {
-    const lc  = headerRow.map(h => norm(h).toLowerCase());
-    const idx = {};
-    for (const key of Object.keys(HEADER_MAP)) {
-      idx[key] = lc.findIndex(h => HEADER_MAP[key].includes(h));
-    }
-    return idx;
-  }
-
-  // g: safe cell getter — returns '' for missing/out-of-range columns
-  function g(row, idx, key) {
-    const i = idx[key];
-    return (i >= 0 && i < row.length) ? norm(row[i]) : '';
-  }
-
-  // ─── buildVideos(row, idx) ────────────────────────────────────────
-  // Returns the videos object  { foundation, standard, mastery }
-  // or null if the row has no video URL at all.
-  // Each tier: { url, duration, tagline, _fallback? }
-  function buildVideos(row, idx) {
-    const raw = {
-      foundation: normaliseVideoUrl(g(row, idx, 'video_foundation')),
-      standard:   normaliseVideoUrl(g(row, idx, 'video_standard')),
-      mastery:    normaliseVideoUrl(g(row, idx, 'video_mastery')),
-    };
-
-    const best = raw.standard || raw.foundation || raw.mastery;
-    if (!best) return null;
-
-    const filled = {
-      foundation: raw.foundation || raw.standard || raw.mastery,
-      standard:   raw.standard   || raw.foundation || raw.mastery,
-      mastery:    raw.mastery    || raw.standard || raw.foundation,
-    };
-
-    const defaultTaglines = {
-      foundation: 'Slow walkthrough · step-by-step with lots of examples',
-      standard:   'Default lesson · full topic covered clearly',
-      mastery:    'Exam-focused · past-paper patterns & tricky cases',
-    };
-    const cardDur = g(row, idx, 'duration');
-    const defaultDur = { foundation: '20 mins', standard: '14 mins', mastery: '9 mins' };
-
-    const videos = {};
-    for (const tier of ['foundation', 'standard', 'mastery']) {
-      const url = filled[tier];
-      if (!url) continue;
-      videos[tier] = {
-        url,
-        duration: g(row, idx, 'dur_' + tier) || cardDur || defaultDur[tier],
-        tagline:  g(row, idx, 'tagline_' + tier) || defaultTaglines[tier],
-        _fallback: (!raw[tier] && url) ? true : undefined,
-      };
-    }
-    return videos;
-  }
-
-  // ─── rowToBlueprint(row, idx, subjectOverride) ────────────────────
-  // Returns a TOPIC_BLUEPRINT entry or null if the row should be skipped.
-  function rowToBlueprint(row, idx, subjectOverride) {
-    const topicId = g(row, idx, 'topic_id');
-    const subject  = subjectOverride || g(row, idx, 'subject').toLowerCase();
-    const title    = g(row, idx, 'title');
-
-    // Skip rows missing required fields — prevents phantom entries
-    if (!topicId || !subject || !title) return null;
-
-    const videos = buildVideos(row, idx);
-    if (!videos) return null; // no video URL → not useful in classroom
-
-    return {
-      id:         topicId,
-      subject,
-      title,
-      duration:   g(row, idx, 'duration') || '14 mins',
-      videos,
-      blurb:      g(row, idx, 'blurb') || '',
-      objectives: (g(row, idx, 'objectives') || '').split('|').map(s => s.trim()).filter(Boolean),
-      formulas:   (g(row, idx, 'formulas')   || '').split('|').map(s => s.trim()).filter(Boolean),
-      subSkills:  [],
-      _source:    'gsheet',
-    };
-  }
-
-  // ─── fetchOneSheet(url, subjectOverride) ─────────────────────────
-  // Fetches one CSV and returns a partial { topicId: topicObj } map.
-  // Network / parse errors return {} (non-fatal) and set _loadError.
-  async function fetchOneSheet(url, subjectOverride) {
-    let res;
-    let timeoutId;
-    try {
-      const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      // Use cache:reload to always get the latest published sheet,
-      // bypassing any stale service-worker or CDN cache.
-      res = await fetch(url, { cache: 'reload', signal: controller.signal });
-      clearTimeout(timeoutId);
-    } catch (networkErr) {
-      clearTimeout(timeoutId);
-      const timedOut = networkErr && networkErr.name === 'AbortError';
-      const msg = timedOut
-        ? `Timed out (${FETCH_TIMEOUT_MS / 1000}s) fetching sheet${subjectOverride ? ' for "' + subjectOverride + '"' : ''} — Google may be throttling multiple simultaneous requests to the same spreadsheet. Try again shortly.`
-        : `Network error fetching sheet${subjectOverride ? ' for "' + subjectOverride + '"' : ''}: ${networkErr.message}. Check your internet connection.`;
-      console.error('[GSHEET_CURRICULUM] ❌', msg, '\nURL:', url);
-      _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-      return {};
-    }
-
-    if (!res.ok) {
-      const msg = `Sheet fetch returned HTTP ${res.status}${subjectOverride ? ' for "' + subjectOverride + '"' : ''}. `
-        + (res.status === 404 ? 'URL not found — re-publish the sheet (File → Publish to web → CSV).'
-         : res.status === 403 ? 'Access denied — make sure the sheet is shared "Anyone with the link".'
-         : 'Check the URL in config.js.');
-      console.error('[GSHEET_CURRICULUM] ❌', msg, '\nURL:', url);
-      _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-      return {};
-    }
-
-    let text;
-    try {
-      text = await res.text();
-    } catch (readErr) {
-      const msg = `Failed to read sheet response: ${readErr.message}`;
-      console.error('[GSHEET_CURRICULUM] ❌', msg);
-      _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-      return {};
-    }
-
-    if (!text || !text.trim()) {
-      const msg = `Sheet is empty${subjectOverride ? ' for "' + subjectOverride + '"' : ''}. Add at least a header row and one data row.`;
-      console.warn('[GSHEET_CURRICULUM] ⚠️', msg);
-      _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-      return {};
-    }
-
-    const rows = parseCSV(text);
-    if (rows.length < 2) {
-      const msg = `Sheet has only ${rows.length} row(s)${subjectOverride ? ' for "' + subjectOverride + '"' : ''} — header row and at least one data row are required.`;
-      console.warn('[GSHEET_CURRICULUM] ⚠️', msg);
-      _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-      return {};
-    }
-
-    const idx = buildIndex(rows[0]);
-
-    // Warn about missing required columns so operators can fix their sheet
-    for (const col of ['topic_id', 'title']) {
-      if (idx[col] < 0) {
-        const msg = `Required column "${col}" not found in sheet${subjectOverride ? ' for "' + subjectOverride + '"' : ''}. `
-          + `Headers found: [${rows[0].map(h => '"' + h + '"').join(', ')}]`;
-        console.error('[GSHEET_CURRICULUM] ❌', msg);
-        _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-      }
-    }
-
-    const partial = {};
-    let skipped = 0;
-    for (let i = 1; i < rows.length; i++) {
-      const topic = rowToBlueprint(rows[i], idx, subjectOverride);
-      if (topic) {
-        partial[topic.id] = topic;
-      } else {
-        skipped++;
-      }
-    }
-
-    const loaded = Object.keys(partial).length;
-    const dataRows = rows.length - 1;
-
-    if (loaded === 0 && dataRows > 0) {
-      const msg = `Parsed ${dataRows} row(s) but produced 0 topics${subjectOverride ? ' for "' + subjectOverride + '"' : ''}. `
-        + 'Each row needs: topic_id, title (or name), and at least one video column filled in.';
-      console.error('[GSHEET_CURRICULUM] ❌', msg);
-      _loadError = (_loadError ? _loadError + '\n' : '') + msg;
-    } else {
-      const skippedNote = skipped > 0 ? ` (${skipped} row(s) skipped — missing topic_id, title, or video URL)` : '';
-      console.info(`[GSHEET_CURRICULUM] ✓ Loaded ${loaded} topic(s)${subjectOverride ? ' for "' + subjectOverride + '"' : ''}${skippedNote}.`);
-    }
-
-    return partial;
-  }
-
-  // ─── fetchAll() ───────────────────────────────────────────────────
-  // Fetches all configured sheets in parallel, merges results.
-  async function fetchAll() {
-    const entries = getSheetEntries();
-    if (entries.length === 0) return {};
-
-    _loadError = null; // reset error accumulator before each full fetch
-
-    const results = await Promise.all(
-      entries.map(({ subject, url }) => fetchOneSheet(url, subject))
-    );
-
-    // Merge — later entries win on topic_id collision
-    return Object.assign({}, ...results);
-  }
-
-  // ─── init() ───────────────────────────────────────────────────────
-  // The primary public method.  Call: await GSHEET_CURRICULUM.init()
-  //
-  // Idempotent within the cache window (CACHE_MIN minutes).
-  // After cache expires, the next init() call re-fetches automatically.
-  // Returns the blueprint object (may be empty {} on failure).
-  async function init() {
-    // Already have a fresh result in cache → return the same promise
-    const now = Date.now();
-    if (_promise && (now - _loadedAt) < CACHE_MS) {
-      return _promise;
-    }
-
-    // Start a new fetch and cache the promise immediately (dedup
-    // concurrent callers — they all await the same Promise).
-    _promise = (async () => {
-      const blueprint = await fetchAll();
-      const count = Object.keys(blueprint).length;
-
-      if (count === 0) {
-        // Don't update _loadedAt — a failed/empty fetch should retry
-        // on the next navigation rather than being silently cached.
-        console.info('[GSHEET_CURRICULUM] No topics loaded. Classroom will use built-in content only.');
-        // Return empty — don't blow away any existing TOPIC_BLUEPRINT
-        return blueprint;
-      }
-
-      // Merge into window.TOPIC_BLUEPRINT (sheet wins over hardcoded)
-      window.TOPIC_BLUEPRINT = Object.assign(
-        {},
-        window.TOPIC_BLUEPRINT || {},
-        blueprint
-      );
-
-      _loadedAt = Date.now();
-      console.info(`[GSHEET_CURRICULUM] ✓ Merged ${count} topic(s) into TOPIC_BLUEPRINT.`);
-      return blueprint;
-    })();
-
-    return _promise;
-  }
-
-  // ─── clearCache() ────────────────────────────────────────────────
-  // Force a re-fetch on the next init() call.  Admin / debug use only.
-  function clearCache() {
-    _loadedAt = 0;
-    _promise  = null;
-    _loadError = null;
-    console.info('[GSHEET_CURRICULUM] Cache cleared. Next init() will re-fetch.');
-  }
-
-  return { init, clearCache, isEnabled, getLastError };
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function(){
+  var L='login.html',page=window.location.pathname.split('/').pop()||'';
+  var h=window.location.hash||'',s=window.location.search||'';
+  if(h.indexOf('access_token=')>-1||h.indexOf('type=')>-1||/[?&](code|token_hash|token)=/.test(s))return;
+  var ok=false;
+  try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('sb-')===0&&k.indexOf('-auth-token')>-1){var v=localStorage.getItem(k);if(v&&v.length>10){ok=true;break;}}}}catch(e){}
+  if(!ok)window.location.replace(L+'?next='+encodeURIComponent(page));
 })();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Classroom &mdash; UE School</title>
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js?v=3"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f7fc;--surf:#fff;--surf2:#eef3ff;
+  --bdr:#e4eaf6;--bdr2:#c9d8f8;
+  --accent:#2563eb;--adim:rgba(37,99,235,.09);--amid:rgba(37,99,235,.22);
+  --txt:#0b1730;--txt2:#374265;--muted:#6b7696;
+  --r:10px;--rlg:15px;--sw:270px;--hh:56px;
+}
+html{height:100%;font-size:15px}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--bg);color:var(--txt);
+  height:100vh;display:flex;flex-direction:column;
+  overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+
+/* ── Expired banner ── */
+#exp-banner{
+  background:linear-gradient(90deg,#7c2d12,#b45309);
+  color:#fef3c7;font-size:.74rem;font-weight:500;
+  text-align:center;padding:7px 16px;flex-shrink:0;display:none
+}
+#exp-banner a{color:#fde68a;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(253,230,138,.4);margin-left:6px}
+
+/* ── Header ── */
+header{
+  height:var(--hh);flex-shrink:0;
+  background:var(--surf);border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 14px;gap:9px;position:relative;z-index:50
+}
+.h-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;border-radius:8px;
+  background:var(--surf2);border:1px solid var(--bdr);
+  color:var(--txt2);font-size:1.2rem;text-decoration:none;
+  transition:background .15s;cursor:pointer;flex-shrink:0;font-family:inherit
+}
+.h-btn:hover{background:var(--bdr2)}
+.logo{font-size:.88rem;font-weight:800;letter-spacing:-.025em;text-decoration:none;flex-shrink:0;
+  background:linear-gradient(135deg,var(--txt) 30%,var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hsep{width:1px;height:18px;background:var(--bdr);flex-shrink:0}
+.tabs{display:flex;align-items:center;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;min-width:0}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{
+  font-family:inherit;font-size:.73rem;font-weight:500;
+  color:var(--muted);background:transparent;border:none;
+  padding:6px 12px;border-radius:7px;cursor:pointer;
+  white-space:nowrap;transition:all .15s;flex-shrink:0
+}
+.tab-btn:hover{color:var(--txt);background:var(--surf2)}
+.tab-btn.active{background:var(--accent);color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(37,99,235,.28)}
+#sb-tog{display:none}
+
+/* ── Layout ── */
+.layout{flex:1;display:grid;grid-template-columns:var(--sw) 1fr;overflow:hidden;min-height:0}
+
+/* ── Sidebar ── */
+.sidebar{background:var(--surf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.sb-hd{padding:14px 15px;border-bottom:1px solid var(--bdr);background:linear-gradient(160deg,#f7f9ff,#eef2ff)}
+.sb-subj{font-size:.97rem;font-weight:700;letter-spacing:-.02em;color:var(--txt);margin-bottom:3px}
+.sb-cnt{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+.sb-cnt::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
+#topic-list{flex:1;overflow-y:auto;padding:6px;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent}
+#topic-list::-webkit-scrollbar{width:3px}
+#topic-list::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+.ti{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:transparent;border:1px solid transparent;border-radius:8px;
+  padding:8px 10px;text-align:left;cursor:pointer;
+  color:var(--txt2);font-family:inherit;font-size:.79rem;font-weight:400;
+  margin-bottom:2px;position:relative;transition:all .15s
+}
+.ti:hover:not(.locked){background:var(--surf2);border-color:var(--bdr)}
+.ti.active{background:var(--adim);border-color:var(--amid);color:var(--accent);font-weight:600}
+.ti.active::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:3px;background:var(--accent);border-radius:0 3px 3px 0}
+.ti.locked{opacity:.42;cursor:not-allowed}
+.ti-n{font-size:.63rem;font-weight:700;color:var(--muted);min-width:22px;text-align:center;background:var(--surf2);border:1px solid var(--bdr);border-radius:5px;padding:1px 5px;flex-shrink:0}
+.ti.active .ti-n{background:var(--accent);border-color:var(--accent);color:#fff}
+.ti-t{flex:1;line-height:1.4}
+.ti-p{font-size:.64rem;color:var(--muted);margin-left:auto;flex-shrink:0}
+.sb-ov{display:none;position:fixed;inset:0;background:rgba(8,18,48,.32);backdrop-filter:blur(2px);z-index:100;opacity:0;transition:opacity .2s;pointer-events:none}
+.sb-ov.open{opacity:1;pointer-events:auto}
+
+/* ── Main ── */
+.main{overflow-y:auto;background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--bdr) transparent}
+.main::-webkit-scrollbar{width:5px}
+.main::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:4px}
+
+/* ═══════════════════════════════════════════════════════════
+   VIDEO PLAYER
+   ═══════════════════════════════════════════════════════════
+   DESIGN: data-state attribute controls which child is visible.
+   Only ONE child is ever shown at a time — impossible to overlap.
+
+   data-state="empty"   → #vp-empty shows  (placeholder UI)
+   data-state="loading" → #vp-spin shows  (spinner)
+   data-state="playing" → iframe shows    (actual video)
+
+   SIZING — YOUTUBE vs GOOGLE DRIVE
+   ──────────────────────────────────
+   Both sources use the same aspect-ratio:16/9 container.
+
+   YouTube: iframe fills the container with position:absolute;
+   inset:0;width:100%;height:100%. YouTube's player keeps its
+   controls at the bottom even at narrow mobile widths.
+
+   Google Drive (/preview?rm=minimal): On mobile the iframe renders
+   at ~360×202 px, which triggers Drive's "compact" layout —
+   progress bar moves to the top, bottom controls are clipped.
+   Fix (in classroom.js → injectIframe): the Drive iframe is
+   rendered at a fixed 1280×720 logical size and CSS-scaled down
+   via transform:scale() to fill the container. Drive sees a
+   desktop viewport and uses its full-size control layout.
+   A ResizeObserver recalculates the scale on orientation change.
+   ?rm=minimal strips Drive's top chrome bar so the full height
+   is used for the video and controls.
+   ═══════════════════════════════════════════════════════════ */
+
+.vp-outer{position:sticky;top:0;z-index:40;background:var(--bg)}
+
+/* Mini-player hint (when scrolled past video) */
+#vp-hint{
+  display:none;padding:7px 0;
+  text-align:center;font-size:.72rem;font-weight:500;
+  color:var(--accent);gap:6px;align-items:center;justify-content:center
+}
+#vp-hint.show{display:flex}
+
+/* ── The video box ── */
+#vp{
+  width:100%;
+  aspect-ratio:16/9;   /* same for all sources: YT + Drive */
+  background:#050c1e;
+  position:relative;
+  overflow:hidden;
+  display:block;
+}
+
+/* ── State machine: hide everything, then selectively show ── */
+#vp-empty,
+#vp-spin,
+#vp > iframe{
+  position:absolute;inset:0;width:100%;height:100%;
+}
+
+/* Default: hide all children */
+#vp-empty { display:none; }
+#vp-spin  { display:none; }
+#vp > iframe { display:none; border:none; }
+
+/* State overrides */
+#vp[data-state="empty"]   #vp-empty { display:flex; }
+#vp[data-state="loading"] #vp-spin  { display:flex; }
+#vp[data-state="playing"] > iframe  { display:block; }
+
+/* ── Empty (placeholder) ── */
+#vp-empty{
+  background:radial-gradient(ellipse 85% 70% at 50% 40%,#0f2050,#050c1e);
+  flex-direction:column;align-items:center;justify-content:center;gap:16px
+}
+.vp-ring{
+  width:88px;height:88px;border-radius:50%;cursor:pointer;
+  background:linear-gradient(135deg,rgba(91,138,255,.85),rgba(60,90,210,.75));
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.2rem;color:#fff;padding-left:5px;
+  box-shadow:0 0 0 16px rgba(91,138,255,.1),0 8px 28px rgba(91,138,255,.4);
+  transition:transform .2s,box-shadow .2s
+}
+.vp-ring:hover{transform:scale(1.09)}
+.vp-hint-txt{font-size:.78rem;color:rgba(255,255,255,.28);letter-spacing:.04em}
+
+/* ── Loading spinner ── */
+#vp-spin{
+  background:#050c1e;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px
+}
+.vp-spinner{
+  width:40px;height:40px;border-radius:50%;
+  border:3px solid rgba(91,138,255,.15);
+  border-top-color:#5b8aff;
+  animation:spin .85s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vp-loading-txt{font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.07em}
+
+/* ── Floating mini-player ── */
+#vp.floating{
+  position:fixed !important;
+  bottom:18px !important;right:14px !important;
+  top:auto !important;left:auto !important;
+  width:270px !important;
+  aspect-ratio:16/9 !important;
+  z-index:9999 !important;
+  border-radius:13px !important;
+  overflow:hidden !important;
+  box-shadow:0 10px 50px rgba(0,0,0,.65),0 0 0 1px rgba(100,140,255,.2) !important
+}
+#vp-float-bar{
+  display:none;position:absolute;
+  top:0;left:0;right:0;height:28px;z-index:5;
+  background:linear-gradient(180deg,rgba(5,12,30,.88),transparent);
+  border-radius:13px 13px 0 0;
+  align-items:center;justify-content:space-between;padding:0 9px
+}
+#vp.floating #vp-float-bar{display:flex}
+.fp-close{background:none;border:none;color:rgba(255,255,255,.55);font-size:.8rem;cursor:pointer;padding:2px 5px;border-radius:4px;line-height:1;font-family:inherit}
+.fp-close:hover{color:#fff;background:rgba(255,255,255,.1)}
+.fp-lbl{font-size:.56rem;color:rgba(255,255,255,.28);letter-spacing:.08em;text-transform:uppercase}
+
+/* Overlays inside video (z-index above iframe) */
+#vp-wm,#vp-blk{position:absolute;z-index:4;pointer-events:none}
+#vp-wm{inset:0;overflow:hidden}
+#vp-blk{top:0;right:0;width:80px;height:52px;background:transparent;pointer-events:all;cursor:default}
+
+/* Tier badge */
+#vp-badge{
+  display:none;position:absolute;bottom:11px;left:11px;z-index:4;pointer-events:none;
+  font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;backdrop-filter:blur(8px)
+}
+#vp-badge.foundation{background:rgba(251,146,60,.2);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
+#vp-badge.standard  {background:rgba(91,138,255,.2);color:#5b8aff;border:1px solid rgba(91,138,255,.3)}
+#vp-badge.mastery   {background:rgba(167,139,250,.2);color:#a78bfa;border:1px solid rgba(167,139,250,.3)}
+
+/* ── Lesson panel ── */
+.panel{max-width:740px;margin:0 auto;padding:20px 24px 44px}
+.tier-row{display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tier-pill{
+  font-family:inherit;font-size:.71rem;font-weight:600;
+  padding:5px 14px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--bdr2);background:var(--surf);color:var(--txt2);transition:all .15s
+}
+.tier-pill:hover{border-color:var(--accent);color:var(--accent);background:var(--adim)}
+.tier-pill.active.foundation{background:rgba(251,146,60,.1);color:#c2410c;border-color:rgba(251,146,60,.35)}
+.tier-pill.active.standard  {background:var(--adim);color:var(--accent);border-color:var(--amid)}
+.tier-pill.active.mastery   {background:rgba(139,92,246,.1);color:#6d28d9;border-color:rgba(139,92,246,.3)}
+.tier-tag{font-size:.71rem;color:var(--muted);margin-left:2px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.topic-chip{background:var(--adim);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid var(--amid)}
+.dur-chip{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.dur-chip::before{content:'◷';font-size:.8rem}
+.lesson-title{font-size:1.45rem;font-weight:800;letter-spacing:-.03em;color:var(--txt);line-height:1.2;margin-bottom:17px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--bdr);margin-bottom:22px}
+.btn{font-family:inherit;font-size:.8rem;font-weight:600;border:none;border-radius:9px;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:7px;text-decoration:none;padding:9px 18px}
+.btn-p{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 3px 14px rgba(79,130,255,.24)}
+.btn-p:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.btn-g{background:var(--surf);color:var(--txt2);border:1px solid var(--bdr2)}
+.btn-g:hover{background:var(--surf2);color:var(--txt)}
+#lesson-content p{font-size:.93rem;line-height:1.85;color:var(--txt2);margin-bottom:17px}
+#lesson-content h3{font-size:1rem;font-weight:700;letter-spacing:-.02em;color:var(--txt);margin:6px 0 11px}
+#lesson-content ul{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:22px}
+#lesson-content ul li{display:flex;gap:10px;align-items:flex-start;background:var(--surf);border:1px solid var(--bdr);border-radius:9px;padding:10px 13px;color:var(--txt2);font-size:.87rem;line-height:1.6;transition:border-color .15s}
+#lesson-content ul li:hover{border-color:var(--bdr2)}
+#lesson-content ul li .blt{color:var(--accent);font-size:1rem;margin-top:1px;flex-shrink:0}
+.fbox{background:linear-gradient(135deg,rgba(219,234,254,.85),rgba(191,219,254,.55));border:1px solid rgba(37,99,235,.16);border-radius:var(--rlg);padding:16px 18px;margin-bottom:22px;position:relative;overflow:hidden}
+.fbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.fbox-lbl{font-size:.62rem;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.fbox-lbl::before{content:'f(x)';background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.18);color:var(--accent);font-family:'DM Mono','Courier New',monospace;font-size:.66rem;padding:1px 6px;border-radius:4px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.fitem{background:rgba(255,255,255,.7);border:1px solid rgba(37,99,235,.1);border-radius:8px;padding:10px 13px;font-size:.88rem;color:var(--txt);font-family:'DM Mono','Courier New',monospace}
+#quiz-section{padding-top:24px;border-top:1px solid var(--bdr)}
+.qh{font-size:1.04rem;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+.qcard{background:var(--surf);border:1px solid var(--bdr2);border-radius:var(--rlg);padding:19px;box-shadow:0 2px 14px rgba(37,99,235,.05)}
+.qmeta{font-size:.67rem;font-weight:700;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em}
+.qdots{display:flex;gap:5px}
+.qdot{width:7px;height:7px;border-radius:50%;background:var(--surf2);border:1px solid var(--bdr2);transition:all .3s}
+.qdot.done{background:var(--accent);border-color:var(--accent)}
+.qdot.active{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px var(--accent)}
+#quiz-q{font-size:.97rem;font-weight:700;margin-bottom:15px;color:var(--txt);line-height:1.55;letter-spacing:-.01em}
+#quiz-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{background:var(--surf2);border:1px solid var(--bdr2);border-radius:9px;padding:10px 12px;text-align:left;cursor:pointer;font-family:inherit;font-size:.83rem;color:var(--txt2);transition:all .15s;display:flex;align-items:center;gap:8px}
+.opt:hover{background:var(--surf);border-color:var(--amid);color:var(--txt);transform:translateY(-1px)}
+.opt.sel{border-color:var(--accent);background:var(--adim);color:var(--accent)}
+.opt-l{font-size:.66rem;font-weight:700;color:var(--muted);background:var(--surf);border:1px solid var(--bdr);border-radius:5px;padding:1px 6px;flex-shrink:0}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(11,23,48,.92);backdrop-filter:blur(14px);border:1px solid rgba(100,140,255,.18);color:#fff;font-family:inherit;font-size:.8rem;font-weight:500;padding:11px 20px;border-radius:28px;box-shadow:0 6px 28px rgba(37,99,235,.18);opacity:0;pointer-events:none;transition:opacity .28s,transform .28s;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Responsive ── */
+@media(max-width:700px){
+  body{height:auto !important;overflow:visible !important;overflow-x:hidden}
+  .layout{grid-template-columns:1fr;overflow:visible !important}
+  .main{overflow-y:visible !important}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:272px;z-index:110;transform:translateX(-100%);transition:transform .26s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 32px rgba(37,99,235,.1)}
+  .sidebar.open{transform:translateX(0)}
+  .sb-ov{display:block}
+  #sb-tog{display:flex !important}
+  .panel{padding:16px 15px 44px}
+  .fgrid{grid-template-columns:1fr}
+  #quiz-opts{grid-template-columns:1fr}
+  .btn-row{flex-wrap:wrap;gap:8px}
+  .lesson-title{font-size:1.2rem}
+  #vp.floating{width:245px !important;bottom:62px !important;right:10px !important}
+}
+@media(max-width:400px){.tab-btn{padding:5px 8px;font-size:.69rem}}
+</style>
+</head>
+<body style="visibility:hidden">
+<noscript><div style="padding:40px;text-align:center;font-family:system-ui"><h2>JavaScript Required</h2><p>Enable JS to use UE School. <a href="login.html">Log in</a>.</p></div></noscript>
+
+<div id="exp-banner">Your subscription has expired. <a href="pricing.html">Renew Now &rarr;</a></div>
+
+<header>
+  <button id="sb-tog" class="h-btn" onclick="CLASSROOM.toggleSidebar()">&#9776;</button>
+  <a href="dashboard.html" class="h-btn" onclick="try{sessionStorage.setItem('ue_from_classroom','1')}catch(e){}">&#8249;</a>
+  <a href="index.html" class="logo">UE School</a>
+  <div class="hsep"></div>
+  <div class="tabs" id="subject-tabs">
+    <button class="tab-btn active" data-subject="mathematics" onclick="CLASSROOM.switchSubject('mathematics',this)">Mathematics</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-hd">
+      <div class="sb-subj" id="sb-subj">Mathematics</div>
+      <div class="sb-cnt"  id="sb-cnt">Loading&hellip;</div>
+    </div>
+    <div id="topic-list">
+      <div style="padding:22px 14px;text-align:center;color:var(--muted);font-size:.81rem">Loading&hellip;</div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ═══ VIDEO PLAYER ═══════════════════════════════════════════ -->
+    <div class="vp-outer" id="vp-outer">
+      <div id="vp-hint">&#9654;&nbsp;Video is playing below &mdash; scroll up to see it</div>
+
+      <!--
+        #vp uses data-state to control which child is visible:
+          "empty"   → placeholder
+          "loading" → spinner
+          "playing" → iframe
+
+        Exactly ONE child is visible at a time — no overlapping possible.
+
+        Drive mobile fix: classroom.js renders the Drive iframe at
+        1280×720 and CSS-scales it down so Drive uses its full desktop
+        control layout. See injectIframe() / applyDriveScale() in
+        classroom.js for implementation details.
+      -->
+      <div id="vp" data-state="empty">
+
+        <!-- Float bar (mini-player controls) -->
+        <div id="vp-float-bar">
+          <span class="fp-lbl">Now Playing</span>
+          <button class="fp-close" onclick="CLASSROOM.stopFloat()">&#x2715;</button>
+        </div>
+
+        <!-- State: empty ────────────────────────────── -->
+        <div id="vp-empty">
+          <div class="vp-ring" onclick="CLASSROOM.playVideo(null)">&#9654;</div>
+          <div class="vp-hint-txt">Select a topic to begin</div>
+        </div>
+
+        <!-- State: loading ──────────────────────────── -->
+        <div id="vp-spin">
+          <div class="vp-spinner"></div>
+          <div class="vp-loading-txt">Loading video&hellip;</div>
+        </div>
+
+        <!-- State: playing ──────────────────────────── -->
+        <!-- iframe injected/removed here by JS         -->
+
+        <!-- Overlays (always above iframe, z-index:4) -->
+        <div id="vp-wm"></div>      <!-- watermark -->
+        <div id="vp-blk"></div>     <!-- GDrive arrow blocker -->
+        <div id="vp-badge"></div>   <!-- tier badge -->
+
+      </div><!-- /#vp -->
+    </div>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    <div class="panel">
+
+      <div class="tier-row" id="tier-row" style="display:none">
+        <button class="tier-pill foundation" data-tier="foundation" onclick="CLASSROOM.selectTier('foundation')">Foundation</button>
+        <button class="tier-pill standard active" data-tier="standard" onclick="CLASSROOM.selectTier('standard')">Standard</button>
+        <button class="tier-pill mastery" data-tier="mastery" onclick="CLASSROOM.selectTier('mastery')">Mastery</button>
+        <span class="tier-tag" id="tier-tag"></span>
+      </div>
+
+      <div class="meta-row">
+        <span class="topic-chip" id="topic-chip">Topic</span>
+        <span class="dur-chip"   id="dur-chip">&mdash;</span>
+      </div>
+      <h1 class="lesson-title" id="lesson-title">Select a topic</h1>
+
+      <div class="btn-row">
+        <a href="cbt.html" class="btn btn-p" id="practice-btn">&#128221;&nbsp;Practice Questions</a>
+        <button class="btn btn-g" onclick="CLASSROOM.nextLesson()">Next &rarr;</button>
+        <button class="btn btn-g" onclick="CLASSROOM.prevLesson()" style="padding:9px 12px">&larr; Prev</button>
+      </div>
+
+      <div id="lesson-content">
+        <p style="color:var(--muted)">Select a topic from the sidebar to begin.</p>
+      </div>
+
+      <div id="quiz-section" style="display:none">
+        <h2 class="qh">Quick Check</h2>
+        <div class="qcard">
+          <div class="qmeta">
+            <span>Q&nbsp;<span id="q-num">1</span>&nbsp;/&nbsp;<span id="q-tot">3</span></span>
+            <div class="qdots" id="q-dots"></div>
+          </div>
+          <h3 id="quiz-q"></h3>
+          <div id="quiz-opts"></div>
+        </div>
+        <div id="quiz-fb" style="display:none"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+<div class="sb-ov" id="sb-ov" onclick="CLASSROOM.closeSidebar()"></div>
+
+<link rel="stylesheet" href="css/skill_chamber.css">
+
+<!--
+  CRITICAL LOAD ORDER — DO NOT REORDER
+  1. supabase       → window.supabase
+  2. auth.js        → window.sb
+  3. auth-guard.js  → AUTH_GUARD
+  4-7. Skill Chamber deps (storage, skill_questions, curriculum, intervention_modal)
+  8. gdrive-video.js  MUST be before gsheet-curriculum
+  9. gsheet-curriculum.js → GSHEET_CURRICULUM
+  10. classroom.js  → CLASSROOM  (this file)
+  11. skill_chamber.js → monkey-patches CLASSROOM.loadTopic
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js?v=3"></script>
+<script src="js/storage.js"></script>
+<script src="js/skill_questions.js"></script>
+<script src="js/curriculum.js"></script>
+<script src="js/intervention_modal.js"></script>
+<script src="js/gdrive-video.js"></script>
+<script src="js/gsheet-curriculum.js"></script>
+<script src="js/classroom.js"></script>
+<script src="js/skill_chamber.js"></script>
+
+<script>
+function toast(msg, dur) {
+  dur = dur || 2800;
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, dur);
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+  var results = await Promise.all([
+    AUTH_GUARD.init(),
+    (async function(){
+      if (!window.GSHEET_CURRICULUM || !GSHEET_CURRICULUM.isEnabled()) return;
+      try {
+        // Belt-and-suspenders: even though gsheet-curriculum.js now times
+        // out individual sheet fetches, this outer race guarantees the
+        // classroom page proceeds (with whatever loaded so far) rather
+        // than ever freezing on the static "Loading…" placeholder.
+        await Promise.race([
+          GSHEET_CURRICULUM.init(),
+          new Promise(function(resolve){ setTimeout(resolve, 15000); })
+        ]);
+      }
+      catch(e) { console.error('[classroom] sheet init threw:', e); }
+    })()
+  ]);
+
+  var authData = results[0];
+  if (!authData) return;
+
+  CLASSROOM.mergeSheetIntoCurriculum();
+  window._ueProfile = authData.profile;
+  await CLASSROOM.init(authData);
+
+  /* Mini-player: activates when #vp-outer scrolls out of view */
+  var outer = document.getElementById('vp-outer');
+  if (outer && window.IntersectionObserver) {
+    new IntersectionObserver(function(entries) {
+      var vp   = document.getElementById('vp');
+      var hint = document.getElementById('vp-hint');
+      var playing = vp && vp.dataset.state === 'playing';
+      if (!playing) return;
+      var gone = !entries[0].isIntersecting;
+      if (gone) { vp.classList.add('floating'); if(hint) hint.classList.add('show'); }
+      else       { vp.classList.remove('floating'); if(hint) hint.classList.remove('show'); }
+    }, { threshold: 0, rootMargin: '-56px 0px 0px 0px' }).observe(outer);
+  }
+});
+</script>
+</body>
+</html>
