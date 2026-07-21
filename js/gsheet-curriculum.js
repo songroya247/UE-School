@@ -39,7 +39,7 @@ window.GSHEET_CURRICULUM = (function () {
   // page on its "Loading…" placeholder. Capping each request at 10s means
   // a throttled tab fails fast (shown as a per-subject "sheet error")
   // instead of blocking every other subject from ever loading.
-  const FETCH_TIMEOUT_MS = 10000;
+  const FETCH_TIMEOUT_MS = 12000;
 
   // ─── State ────────────────────────────────────────────────────────
   let _promise   = null;   // in-flight or resolved Promise (dedup + cache)
@@ -318,16 +318,34 @@ window.GSHEET_CURRICULUM = (function () {
   }
 
   // ─── fetchAll() ───────────────────────────────────────────────────
-  // Fetches all configured sheets in parallel, merges results.
+  // Fetches all configured sheets with LIMITED CONCURRENCY, merges results.
+  //
+  // Firing all subject sheets at once (25 simultaneous requests to the
+  // SAME spreadsheet) overwhelms slow/constrained connections — on a
+  // very slow mobile connection, 25-way contention means almost none of
+  // them finish within any reasonable timeout, so subjects that should
+  // load successfully end up failing too. Processing a bounded number at
+  // a time (a worker pool) means slower connections just take a bit
+  // longer overall, instead of everything failing together.
+  const FETCH_CONCURRENCY = 5;
+
   async function fetchAll() {
     const entries = getSheetEntries();
     if (entries.length === 0) return {};
 
     _loadError = null; // reset error accumulator before each full fetch
 
-    const results = await Promise.all(
-      entries.map(({ subject, url }) => fetchOneSheet(url, subject))
-    );
+    const results = new Array(entries.length);
+    let next = 0;
+    async function worker() {
+      while (next < entries.length) {
+        const i = next++;
+        const { subject, url } = entries[i];
+        results[i] = await fetchOneSheet(url, subject);
+      }
+    }
+    const workerCount = Math.min(FETCH_CONCURRENCY, entries.length);
+    await Promise.all(Array.from({ length: workerCount }, worker));
 
     // Merge — later entries win on topic_id collision
     return Object.assign({}, ...results);
