@@ -32,6 +32,14 @@ window.GSHEET_CURRICULUM = (function () {
   const LEGACY_URL   = cfg.GOOGLE_SHEET_CURRICULUM_CSV_URL || '';
   const CACHE_MIN    = (cfg.GS_CURRICULUM_CACHE_MIN > 0) ? cfg.GS_CURRICULUM_CACHE_MIN : 30;
   const CACHE_MS     = CACHE_MIN * 60 * 1000;
+  // Every subject tab is fetched in parallel (see fetchAll below). With 25
+  // subjects sharing one spreadsheet, Google can throttle/stall some of
+  // those simultaneous requests. Without a timeout, a single stalled
+  // request would hang Promise.all forever, freezing the whole classroom
+  // page on its "Loading…" placeholder. Capping each request at 10s means
+  // a throttled tab fails fast (shown as a per-subject "sheet error")
+  // instead of blocking every other subject from ever loading.
+  const FETCH_TIMEOUT_MS = 10000;
 
   // ─── State ────────────────────────────────────────────────────────
   let _promise   = null;   // in-flight or resolved Promise (dedup + cache)
@@ -216,12 +224,20 @@ window.GSHEET_CURRICULUM = (function () {
   // Network / parse errors return {} (non-fatal) and set _loadError.
   async function fetchOneSheet(url, subjectOverride) {
     let res;
+    let timeoutId;
     try {
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
       // Use cache:reload to always get the latest published sheet,
       // bypassing any stale service-worker or CDN cache.
-      res = await fetch(url, { cache: 'reload' });
+      res = await fetch(url, { cache: 'reload', signal: controller.signal });
+      clearTimeout(timeoutId);
     } catch (networkErr) {
-      const msg = `Network error fetching sheet${subjectOverride ? ' for "' + subjectOverride + '"' : ''}: ${networkErr.message}. Check your internet connection.`;
+      clearTimeout(timeoutId);
+      const timedOut = networkErr && networkErr.name === 'AbortError';
+      const msg = timedOut
+        ? `Timed out (${FETCH_TIMEOUT_MS / 1000}s) fetching sheet${subjectOverride ? ' for "' + subjectOverride + '"' : ''} — Google may be throttling multiple simultaneous requests to the same spreadsheet. Try again shortly.`
+        : `Network error fetching sheet${subjectOverride ? ' for "' + subjectOverride + '"' : ''}: ${networkErr.message}. Check your internet connection.`;
       console.error('[GSHEET_CURRICULUM] ❌', msg, '\nURL:', url);
       _loadError = (_loadError ? _loadError + '\n' : '') + msg;
       return {};
