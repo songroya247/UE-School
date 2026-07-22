@@ -157,7 +157,6 @@ const GRADING = (function () {
       return null;
     }
 
-    console.log('[GRADING] Session saved, id:', data.id);
     return data.id;
   }
 
