@@ -119,6 +119,14 @@ window.GSHEET_CURRICULUM = (function () {
     topic_id:           ['topic_id', 'id', 'topic'],
     subject:            ['subject'],
     title:              ['title', 'name'],
+    // Optional: the CBT question-bank "topic" tag this lesson's practice
+    // questions live under. Use this when the question bank groups several
+    // curriculum lessons into one broader topic (e.g. four Biology lessons
+    // — Classification, Organization of Life, Cell Forms, Cell Structure —
+    // all filed under the single question-bank topic "Variety of Organisms").
+    // When present, classroom.js sends this instead of the lesson title to
+    // cbt.html so the topic dropdown auto-selects correctly.
+    exam_topic:         ['exam_topic', 'question_topic', 'qbank_topic', 'cbt_topic'],
     duration:           ['duration', 'card_duration'],
     blurb:              ['blurb', 'description', 'summary'],
     objectives:         ['objectives', 'objective', 'learning_objectives'],
@@ -209,6 +217,7 @@ window.GSHEET_CURRICULUM = (function () {
       id:         topicId,
       subject,
       title,
+      examTopic:  g(row, idx, 'exam_topic') || '',
       duration:   g(row, idx, 'duration') || '14 mins',
       videos,
       blurb:      g(row, idx, 'blurb') || '',
