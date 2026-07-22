@@ -26,7 +26,7 @@
 .exam-check-label:has(input:checked) { border-color:var(--accent); background:var(--accent-glow); color:var(--accent); }
 .exam-check-label input { display:none; }
 
-.subject-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px; max-height:320px; overflow-y:auto; padding-right:4px; }
+.subject-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px; padding-right:4px; }
 .subj-card { border:2px solid var(--border2); border-radius:10px; padding:14px 10px; text-align:center; cursor:pointer; transition:all .15s; position:relative; }
 .subj-card.selected { border-color:var(--accent); background:var(--accent-glow); }
 .subj-card-icon { font-size:1.5rem; margin-bottom:6px; }
@@ -57,6 +57,19 @@
 
 .divider { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:.82rem; margin:20px 0; }
 .divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── Mobile responsiveness ── */
+@media (max-width: 480px) {
+  .auth-wrap { min-height:100dvh; padding:12px; justify-content:flex-start; padding-top:32px; }
+  .auth-logo { font-size:1.35rem; margin-bottom:18px; }
+  .auth-card { padding:22px 16px; border-radius:14px; max-width:100%; }
+  .subject-grid { grid-template-columns:repeat(2, 1fr); }
+  .subj-card { padding:12px 8px; }
+  .study-pref-option { padding:12px; }
+  #step-1 h2, #step-2 h2, #step-3 h2, #step-4 h2 { font-size:1.5rem; }
+  #signup-form div[style*="gap:10px"] { flex-wrap:wrap; }
+  #signup-form div[style*="gap:10px"] > .btn { flex:1 1 100%; }
+}
 </style>
 </head>
 <body>
@@ -227,55 +240,120 @@
             <div class="subj-card-icon">📖</div>
             <div class="subj-card-name" style="color:#00c97a">English Language</div>
           </div>
-          <div class="subj-card" onclick="toggleSubj(this,'physics')">
+          <div class="subj-card" onclick="toggleSubj(this,'biology')">
             <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">⚛️</div>
-            <div class="subj-card-name" style="color:#7c3aed">Physics</div>
+            <div class="subj-card-icon">🌿</div>
+            <div class="subj-card-name" style="color:#0891b2">Biology</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'agric')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🌾</div>
+            <div class="subj-card-name" style="color:#65a30d">Agricultural Science</div>
           </div>
           <div class="subj-card" onclick="toggleSubj(this,'chemistry')">
             <div class="subj-check">&#x2713;</div>
             <div class="subj-card-icon">🧪</div>
             <div class="subj-card-name" style="color:#ff6b35">Chemistry</div>
           </div>
-          <div class="subj-card" onclick="toggleSubj(this,'biology')">
+          <div class="subj-card" onclick="toggleSubj(this,'crs')">
             <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">🌿</div>
-            <div class="subj-card-name" style="color:#0891b2">Biology</div>
-          </div>
-          <div class="subj-card" onclick="toggleSubj(this,'economics')">
-            <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">&#x1F4C8;</div>
-            <div class="subj-card-name" style="color:#f59e0b">Economics</div>
-          </div>
-          <div class="subj-card" onclick="toggleSubj(this,'government')">
-            <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">🏛️</div>
-            <div class="subj-card-name" style="color:#6366f1">Government</div>
-          </div>
-          <div class="subj-card" onclick="toggleSubj(this,'literature')">
-            <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">📚</div>
-            <div class="subj-card-name" style="color:#ec4899">Literature</div>
-          </div>
-          <div class="subj-card" onclick="toggleSubj(this,'geography')">
-            <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">🌍</div>
-            <div class="subj-card-name" style="color:#10b981">Geography</div>
+            <div class="subj-card-icon">✝️</div>
+            <div class="subj-card-name" style="color:#6d28d9">CRS</div>
           </div>
           <div class="subj-card" onclick="toggleSubj(this,'commerce')">
             <div class="subj-check">&#x2713;</div>
             <div class="subj-card-icon">🏪</div>
             <div class="subj-card-name" style="color:#8b5cf6">Commerce</div>
           </div>
-          <div class="subj-card" onclick="toggleSubj(this,'accounts')">
+          <div class="subj-card" onclick="toggleSubj(this,'computer')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">💻</div>
+            <div class="subj-card-name" style="color:#0ea5e9">Computer Studies</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'economics')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">&#x1F4C8;</div>
+            <div class="subj-card-name" style="color:#f59e0b">Economics</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'physics')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">⚛️</div>
+            <div class="subj-card-name" style="color:#7c3aed">Physics</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'phe')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🏃</div>
+            <div class="subj-card-name" style="color:#dc2626">Physical &amp; Health Ed.</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'literature')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">📚</div>
+            <div class="subj-card-name" style="color:#ec4899">Literature</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'government')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🏛️</div>
+            <div class="subj-card-name" style="color:#6366f1">Government</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'history')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🏺</div>
+            <div class="subj-card-name" style="color:#92400e">History</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'fineart')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🎨</div>
+            <div class="subj-card-name" style="color:#db2777">Fine Art</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'accounting')">
             <div class="subj-check">&#x2713;</div>
             <div class="subj-card-icon">💼</div>
-            <div class="subj-card-name" style="color:#14b8a6">Accounts</div>
+            <div class="subj-card-name" style="color:#14b8a6">Financial Accounting</div>
           </div>
-          <div class="subj-card" onclick="toggleSubj(this,'crk')">
+          <div class="subj-card" onclick="toggleSubj(this,'french')">
             <div class="subj-check">&#x2713;</div>
-            <div class="subj-card-icon">✝️</div>
-            <div class="subj-card-name" style="color:#6d28d9">CRK</div>
+            <div class="subj-card-icon">🇫🇷</div>
+            <div class="subj-card-name" style="color:#2563eb">French</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'irs')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">☪️</div>
+            <div class="subj-card-name" style="color:#059669">IRS</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'music')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🎵</div>
+            <div class="subj-card-name" style="color:#7c3aed">Music</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'arabic')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">📜</div>
+            <div class="subj-card-name" style="color:#15803d">Arabic</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'geography')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🌍</div>
+            <div class="subj-card-name" style="color:#10b981">Geography</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'homeeconomics')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🍳</div>
+            <div class="subj-card-name" style="color:#f97316">Home Economics</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'yoruba')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🗣️</div>
+            <div class="subj-card-name" style="color:#16a34a">Yoruba</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'igbo')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🗣️</div>
+            <div class="subj-card-name" style="color:#ca8a04">Igbo</div>
+          </div>
+          <div class="subj-card" onclick="toggleSubj(this,'hausa')">
+            <div class="subj-check">&#x2713;</div>
+            <div class="subj-card-icon">🗣️</div>
+            <div class="subj-card-name" style="color:#be123c">Hausa</div>
           </div>
         </div>
 
