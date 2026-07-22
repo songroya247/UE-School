@@ -561,11 +561,17 @@ window.CLASSROOM = (function () {
     // column at all (e.g. Maths), so nothing breaks for them.
     const practiceBtn = document.getElementById('practice-btn');
     if (practiceBtn) {
+      // Cache the button's original label the first time we see it, so we
+      // can restore it exactly when switching away from a skipped lesson.
+      if (!practiceBtn.dataset.originalLabel) {
+        practiceBtn.dataset.originalLabel = practiceBtn.innerHTML;
+      }
       const isSkipped = (topic.examTopic || '').trim().toLowerCase() === 'skip';
       if (isSkipped) {
         practiceBtn.removeAttribute('href');
         practiceBtn.setAttribute('aria-disabled', 'true');
         practiceBtn.title = 'Practice questions for this lesson are coming soon';
+        practiceBtn.innerHTML = '&#128274;&nbsp;Coming Soon';
         practiceBtn.style.pointerEvents = 'none';
         practiceBtn.style.opacity = '0.45';
         practiceBtn.style.filter = 'grayscale(1)';
@@ -573,6 +579,7 @@ window.CLASSROOM = (function () {
       } else {
         practiceBtn.removeAttribute('aria-disabled');
         practiceBtn.title = '';
+        practiceBtn.innerHTML = practiceBtn.dataset.originalLabel;
         practiceBtn.style.pointerEvents = '';
         practiceBtn.style.opacity = '';
         practiceBtn.style.filter = '';
