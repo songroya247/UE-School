@@ -1,27 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-(function(){
-  var params = new URLSearchParams(window.location.search);
-  if (params.get('token')) return;
-  var found = false;
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
-        var raw = JSON.parse(localStorage.getItem(k) || '{}');
-        if (raw && raw.access_token && (raw.expires_at || 0) > Math.floor(Date.now()/1000)) { found = true; }
-        break;
-      }
-    }
-  } catch(e) {}
-  if (!found) { window.location.replace('login.html?next=report.html'); throw new Error('[UE] No session'); }
-})();
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Mastery Report — UE School</title>
+
+<!-- ╔══════════════════════════════════════════════════════╗
+     ║  SECURITY BLOCK — must be first in <head>              ║
+     ║  (same shared gate every other protected page uses;   ║
+     ║   head-gatekeeper.js already lets a ?token= share-link ║
+     ║   through without a session — see report_share_token   ║
+     ║   handling further down this file)                     ║
+     ╚══════════════════════════════════════════════════════╝ -->
+<script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js"></script>
+<!-- END SECURITY BLOCK -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
@@ -384,16 +377,33 @@ function el(id){ return document.getElementById(id); }
 function setEl(id,v){ const e=el(id); if(e) e.textContent=v; }
 function setHTML(id,h){ const e=el(id); if(e) e.innerHTML=h; }
 
+// head-gatekeeper.js injects a <style id="ue-gatekeeper-veil"> with an
+// !important body{visibility:hidden} rule. Pages that call AUTH_GUARD.init()
+// get this removed automatically; report.html manages its own reveal timing
+// (it also supports a logged-out ?token= share-link view), so it must strip
+// the veil itself or the !important rule would keep the page hidden forever.
+function liftGatekeeperVeil(){
+  const veil = document.getElementById('ue-gatekeeper-veil');
+  if (veil) veil.remove();
+  document.body.style.visibility='visible';
+}
+
 const SUBJ_LABELS={
-  mathematics:'Mathematics',english:'English Language',physics:'Physics',
-  chemistry:'Chemistry',biology:'Biology',economics:'Economics',
-  government:'Government',literature:'Literature in English',
-  geography:'Geography',commerce:'Commerce',accounts:'Financial Accounts',crk:'CRK'
+  mathematics:'Mathematics',english:'English Language',biology:'Biology',
+  agric:'Agricultural Science',chemistry:'Chemistry',crs:'CRS',
+  commerce:'Commerce',computer:'Computer Studies',economics:'Economics',
+  physics:'Physics',phe:'Physical & Health Ed.',literature:'Literature in English',
+  government:'Government',history:'History',fineart:'Fine Art',
+  accounting:'Financial Accounting',french:'French',irs:'IRS',
+  music:'Music',arabic:'Arabic',geography:'Geography',
+  homeeconomics:'Home Economics',yoruba:'Yoruba',igbo:'Igbo',hausa:'Hausa'
 };
 const SUBJ_ICONS={
-  mathematics:'📐',english:'📖',physics:'⚛️',chemistry:'🧪',biology:'🌿',
-  economics:'📊',government:'🏛️',literature:'✍️',geography:'🌍',
-  commerce:'🛒',accounts:'🧾',crk:'✝️'
+  mathematics:'📐',english:'📖',biology:'🌿',agric:'🌾',chemistry:'🧪',
+  crs:'✝️',commerce:'🏪',computer:'💻',economics:'📊',physics:'⚛️',
+  phe:'🏃',literature:'✍️',government:'🏛️',history:'🏺',fineart:'🎨',
+  accounting:'🧾',french:'🇫🇷',irs:'☪️',music:'🎵',arabic:'📜',
+  geography:'🌍',homeeconomics:'🍳',yoruba:'🗣️',igbo:'🗣️',hausa:'🗣️'
 };
 
 function fmtDate(ts){
@@ -703,7 +713,7 @@ function renderReport(profile, masteryRows, sessions){
   window._shareToken=profile.report_share_token;
   el('loading-state').style.display='none';
   el('report-content').style.display='block';
-  document.body.style.visibility='visible';
+  liftGatekeeperVeil();
 }
 
 // ── PDF ──────────────────────────────────────────────────────────
@@ -758,7 +768,7 @@ function showError(msg){
   const e=el('error-state');
   if(msg&&e){const p=e.querySelector('#error-msg');if(p)p.textContent=msg;}
   if(e)e.style.display='block';
-  document.body.style.visibility='visible';
+  liftGatekeeperVeil();
 }
 
 // ── Init ─────────────────────────────────────────────────────────
@@ -795,7 +805,7 @@ function showError(msg){
   }catch(e){
     console.error('[REPORT]',e);
     showError('Something went wrong. Please refresh.');
-    document.body.style.visibility='visible';
+    liftGatekeeperVeil();
   }
 })();
 </script>
