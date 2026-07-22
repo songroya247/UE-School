@@ -552,13 +552,37 @@ window.CLASSROOM = (function () {
     // Falls back to the human-readable lesson title (matches the question
     // bank's topic column reliably for subjects with 1:1 granularity, like
     // Maths), with topic.id as a last-resort fuzzy-match candidate.
+    //
+    // A curriculum row can set exam_topic to the literal word "SKIP" to
+    // explicitly mark a lesson as not yet mapped to any question-bank
+    // topic — this greys out the button instead of linking to a guess.
+    // A genuinely blank exam_topic is NOT treated as SKIP: it just falls
+    // back to the title match, same as subjects that never use this
+    // column at all (e.g. Maths), so nothing breaks for them.
     const practiceBtn = document.getElementById('practice-btn');
     if (practiceBtn) {
-      const subjKey = topic.subject || currentSubject;
-      const topicParam = topic.examTopic || topic.title || topic.id;
-      practiceBtn.href = `cbt.html?subject=${encodeURIComponent(subjKey)}`
-        + `&topic=${encodeURIComponent(topicParam)}`
-        + `&topicId=${encodeURIComponent(topic.id)}`;
+      const isSkipped = (topic.examTopic || '').trim().toLowerCase() === 'skip';
+      if (isSkipped) {
+        practiceBtn.removeAttribute('href');
+        practiceBtn.setAttribute('aria-disabled', 'true');
+        practiceBtn.title = 'Practice questions for this lesson are coming soon';
+        practiceBtn.style.pointerEvents = 'none';
+        practiceBtn.style.opacity = '0.45';
+        practiceBtn.style.filter = 'grayscale(1)';
+        practiceBtn.style.cursor = 'not-allowed';
+      } else {
+        practiceBtn.removeAttribute('aria-disabled');
+        practiceBtn.title = '';
+        practiceBtn.style.pointerEvents = '';
+        practiceBtn.style.opacity = '';
+        practiceBtn.style.filter = '';
+        practiceBtn.style.cursor = '';
+        const subjKey = topic.subject || currentSubject;
+        const topicParam = topic.examTopic || topic.title || topic.id;
+        practiceBtn.href = `cbt.html?subject=${encodeURIComponent(subjKey)}`
+          + `&topic=${encodeURIComponent(topicParam)}`
+          + `&topicId=${encodeURIComponent(topic.id)}`;
+      }
     }
 
     // Tier pills
