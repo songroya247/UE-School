@@ -235,8 +235,8 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
       <label class="form-label">Exam Mode</label>
       <select class="form-select" id="sel-mode" onchange="onModeChange()">
         <option value="mock">Full Mock Exam (realistic exam-length timing)</option>
-        <option value="topic" selected>Topic Practice (10 questions, 20 min)</option>
-        <option value="quick">Quick Drill (5 questions, 10 min)</option>
+        <option value="topic" selected>Topic Practice (10 questions, 10 min)</option>
+        <option value="quick">Quick Drill (5 questions, 5 min)</option>
       </select>
     </div>
 
@@ -283,7 +283,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 
     <div class="session-info-row">
       <span class="session-badge" id="q-count-badge">10 Questions</span>
-      <span class="session-badge" id="time-badge">⏱ 20 min</span>
+      <span class="session-badge" id="time-badge">⏱ 10 min</span>
       <span class="grade-badge"   id="grade-badge">&#x1F4CA; Foundation Level</span>
     </div>
 
@@ -308,7 +308,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
         <span class="btn-icon" id="map-toggle-icon">&#x25A6;</span><span class="btn-label" id="map-toggle-label"> Question Map</span>
       </button>
       <div class="jamb-pred-pill"><span class="pred-label-full">Pred. </span>JAMB: <span id="jamb-pred">&mdash;</span></div>
-      <div class="timer-box" id="timer-display">20:00</div>
+      <div class="timer-box" id="timer-display">10:00</div>
     </div>
   </header>
 
@@ -412,7 +412,7 @@ body{font-family:'Inter',"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoj
 <script>
 // ════════════ STATE ════════════
 let QUESTIONS=[], currentQ=0, answers={}, flags=new Set(), timings={};
-let qStartTime=null, timeLeft=1200, totalTime=1200;
+let qStartTime=null, timeLeft=600, totalTime=600;
 let timerInterval, sessionSubmitted=false, currentGradeLevel=3, sessionConfig={};
 let isReviewMode=false;
 
@@ -572,32 +572,43 @@ function updateSessionBadges(){
     const sheetAvail=topic?sheetCountCache.rows.filter(q=>q.topic===topic||q.topicId===topic).length:sheetCountCache.rows.length;
     avail=Math.max(avail,sheetAvail);
   }
-  document.getElementById('q-count-badge').textContent=`${Math.min(cfg.count,avail)||cfg.count} Questions`;
-  document.getElementById('time-badge').textContent=`⏱ ${Math.round(cfg.seconds/60)} min`;
+  const shownCount=Math.min(cfg.count,avail)||cfg.count;
+  document.getElementById('q-count-badge').textContent=`${shownCount} Questions`;
+  document.getElementById('time-badge').textContent=`⏱ ${Math.round(scaledSeconds(cfg, shownCount)/60)} min`;
   document.getElementById('grade-badge').textContent=`\uD83D\uDCCA ${GRADING.gradeLabel(currentGradeLevel)} Level`;
 }
 
-// Realistic timing, modelled on actual exam-board structure:
-//  • JAMB: single continuous 180-question / 120-min CBT (60 English + 40 x 3
-//    others). There's no official per-subject sub-clock, but candidates are
-//    widely advised to budget ~40 min for English and ~27 min for each other
-//    subject — that's what we use for a single-subject JAMB mock here.
-//  • WAEC: objective (Paper 1) papers run ~50 questions / 60 minutes for
-//    most subjects.
-//  • NECO: objective papers are ~60 questions / 60 minutes.
-//  • "All Exam Types" / unspecified: falls back to the JAMB-style pacing
-//    since it's the most commonly practised format.
+// Standard timing: 1 minute (60s) per question, flat across every mode
+// and exam board. Simpler and easier to reason about than exam-board-
+// specific pacing, and still scales correctly to however many questions
+// actually get returned (see scaledSeconds below) — a 3-question topic
+// session gets 3 min, a 40-question JAMB mock gets 40 min, etc.
+const SECONDS_PER_QUESTION = 60;
+
 function getModeConfig(mode, examType, subject){
-  if(mode==='quick') return {count:5,  seconds:600};   // 10 min
-  if(mode==='topic') return {count:10, seconds:1200};  // 20 min
-  // mode === 'mock' — realistic full-subject exam simulation
-  const isEnglish=subject==='english';
-  const REALISTIC={
-    JAMB: isEnglish ? {count:60,seconds:2400} : {count:40,seconds:1620}, // 40 min / 27 min
-    WAEC: {count:50,seconds:3600},  // 60 min
-    NECO: {count:60,seconds:3600},  // 60 min
-  };
-  return REALISTIC[examType] || REALISTIC.JAMB;
+  let count;
+  if(mode==='quick') count=5;
+  else if(mode==='topic') count=10;
+  else{
+    // mode === 'mock' — realistic full-subject exam simulation
+    const isEnglish=subject==='english';
+    const COUNTS={
+      JAMB: isEnglish ? 60 : 40,
+      WAEC: 50,
+      NECO: 60,
+    };
+    count = COUNTS[examType] || COUNTS.JAMB;
+  }
+  return {count, seconds: count*SECONDS_PER_QUESTION, secondsPerQuestion: SECONDS_PER_QUESTION};
+}
+
+// Minimum session length so a 1-2 question topic doesn't get an
+// unreasonably short, stressful timer (e.g. 24 seconds).
+const MIN_SESSION_SECONDS = 120;
+
+function scaledSeconds(cfg, actualCount){
+  const n = Math.max(1, actualCount || cfg.count);
+  return Math.max(MIN_SESSION_SECONDS, Math.round(cfg.secondsPerQuestion * n));
 }
 
 async function loadGradeLevel(userId,subject){
@@ -635,7 +646,7 @@ async function startExam(){
   if(!QUESTIONS || !QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
-  totalTime=cfg.seconds; timeLeft=cfg.seconds;
+  totalTime=scaledSeconds(cfg, QUESTIONS.length); timeLeft=totalTime;
   currentQ=0; answers={}; flags=new Set(); timings={};
   sessionSubmitted=false; isReviewMode=false;
 
