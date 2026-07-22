@@ -118,9 +118,9 @@ const DASHBOARD = (function () {
         text = 'Exam time is here! ';
       }
       text += streak > 0
-        ? `You're on a ${streak}-day streak — keep it up! &#x1F525;`
+        ? `You're on a ${streak}-day streak — keep it up! \u{1F525}`
         : 'Start a session today to build your streak.';
-      subEl.innerHTML = text; // innerHTML needed for HTML entities (emoji)
+      subEl.textContent = text;
     }
 
     // Next recommended topic
@@ -141,7 +141,7 @@ const DASHBOARD = (function () {
     // Nav streak badge
     const streakEl = document.getElementById('nav-streak');
     if (streakEl) {
-      streakEl.innerHTML = streak > 0 ? `&#x1F525; ${streak}-day streak` : '&#x1F525; Start streak';
+      streakEl.textContent = streak > 0 ? `\u{1F525} ${streak}-day streak` : '\u{1F525} Start streak';
     }
 
     // Nav XP
@@ -197,7 +197,7 @@ const DASHBOARD = (function () {
         valueEl.innerHTML = `${grade}<span class="score-denom" style="font-size:1.2rem;margin-left:6px">/ A1</span>`;
         if (hintEl) {
           if (grade <= target) {
-            hintEl.innerHTML = `You're on track for ${target} or better. Keep it up! &#x1F31F;`;
+            hintEl.textContent = `You're on track for ${target} or better. Keep it up! \u{1F31F}`;
           } else {
             hintEl.textContent = `Target: ${target}. Focus on weak topics to push your grade up.`;
           }
@@ -247,7 +247,7 @@ const DASHBOARD = (function () {
         if (gap > 0) {
           hintEl.textContent = `${gap} points away from your target of ${target}. Keep pushing!`;
         } else {
-          hintEl.innerHTML = `You've hit your target of ${target}! Aim higher? &#x1F389;`;
+          hintEl.textContent = `You've hit your target of ${target}! Aim higher? \u{1F389}`;
         }
       }
       if (fillEl) fillEl.style.width = prediction.pct + '%';
