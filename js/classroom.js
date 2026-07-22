@@ -360,6 +360,7 @@ window.CLASSROOM = (function () {
       const t = {
         id:      topic.id,
         title:   topic.title,
+        examTopic: topic.examTopic || '',
         duration:topic.duration || '14 mins',
         premium: false,
         videos:  topic.videos || null,
@@ -542,15 +543,21 @@ window.CLASSROOM = (function () {
     if (titleEl) titleEl.textContent = topic.title;
 
     // Practice-Questions deep link → cbt.html, pre-filling subject + topic
-    // so a student can immediately drill what they just watched. Uses the
-    // human-readable title (matches the Google Sheet question bank's topic
-    // column far more reliably than the raw topic_id, which may be an
-    // arbitrary machine key) with topic.id as a fallback for fuzzy matching.
+    // so a student can immediately drill what they just watched.
+    //
+    // Prefer topic.examTopic when the curriculum sheet declares one — this
+    // covers subjects (e.g. Biology) where the question bank groups several
+    // fine-grained curriculum lessons under one broader topic tag, so the
+    // lesson title itself wouldn't match anything in the question bank.
+    // Falls back to the human-readable lesson title (matches the question
+    // bank's topic column reliably for subjects with 1:1 granularity, like
+    // Maths), with topic.id as a last-resort fuzzy-match candidate.
     const practiceBtn = document.getElementById('practice-btn');
     if (practiceBtn) {
       const subjKey = topic.subject || currentSubject;
+      const topicParam = topic.examTopic || topic.title || topic.id;
       practiceBtn.href = `cbt.html?subject=${encodeURIComponent(subjKey)}`
-        + `&topic=${encodeURIComponent(topic.title || topic.id)}`
+        + `&topic=${encodeURIComponent(topicParam)}`
         + `&topicId=${encodeURIComponent(topic.id)}`;
     }
 
