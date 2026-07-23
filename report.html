@@ -141,11 +141,26 @@ tr:hover td{background:#fafbff}
 /* ── FOOTER ── */
 .rpt-footer{font-size:.7rem;color:#9ca3af;text-align:center;padding-top:14px;border-top:1px solid #e5e9f2;line-height:1.6}
 
+/* ── ACCORDION SECTIONS (detail sections collapse by default so the
+     header + snapshot band above stays the compact "at a glance" view) ── */
+.rpt-accordion{padding:0;overflow:hidden}
+.rpt-accordion > summary{list-style:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;-webkit-user-select:none;user-select:none}
+.rpt-accordion > summary::-webkit-details-marker{display:none}
+.rpt-accordion > summary .sec-title{margin-bottom:0}
+.rpt-accordion > summary:hover{background:#f8faff}
+.rpt-chevron{font-size:.7rem;color:#9ca3af;transition:transform .18s ease;flex-shrink:0}
+.rpt-accordion[open] .rpt-chevron{transform:rotate(180deg)}
+.rpt-accordion-body{padding:0 20px 20px}
+.rpt-accordion-body .sec-subtitle{margin-top:-4px}
+
 /* ── PRINT ── */
 @media print{
   .no-print{display:none!important}
   body{background:#fff;padding:0;visibility:visible!important}
   .card{box-shadow:none;border:1px solid #e5e9f2;break-inside:avoid}
+  /* Always show full detail when printing, regardless of collapsed state */
+  .rpt-accordion:not([open]) > *:not(summary){display:block!important}
+  .rpt-chevron{display:none}
 }
 
 /* ── MOBILE ── */
@@ -192,6 +207,7 @@ tr:hover td{background:#fafbff}
     <div class="action-bar no-print">
       <a href="dashboard.html" class="btn btn-outline-sm">← Dashboard</a>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline-sm" id="toggle-all-btn" onclick="toggleAllSections()">⤢ Expand All</button>
         <button class="btn btn-outline-sm" id="copy-share-btn" onclick="copyShareLink()">🔗 Share Link</button>
         <button class="btn btn-outline-sm" onclick="window.print()">🖨 Print</button>
         <button class="btn btn-primary-sm" id="download-pdf-btn" onclick="downloadReportPDF()">⬇ Download PDF</button>
@@ -254,8 +270,12 @@ tr:hover td{background:#fafbff}
     </div>
 
     <!-- ③ PARENT/TEACHER VIEW -->
-    <div class="card card-sm">
-      <div class="sec-title">📅 Study Habits & Consistency</div>
+    <details class="card rpt-accordion" id="acc-habits">
+      <summary>
+        <div class="sec-title">📅 Study Habits &amp; Consistency</div>
+        <span class="rpt-chevron">▾</span>
+      </summary>
+      <div class="rpt-accordion-body">
       <div class="sec-subtitle">A snapshot parents and teachers can read at a glance</div>
 
       <!-- Consistency -->
@@ -286,28 +306,43 @@ tr:hover td{background:#fafbff}
           <div style="color:#6b7280;font-size:.8rem;grid-column:1/-1">No subject data yet.</div>
         </div>
       </div>
-    </div>
+      </div>
+    </details>
 
     <!-- ④ STRENGTHS & WEAKNESSES -->
-    <div class="card card-sm">
-      <div class="sec-title">💪 Strengths & Areas to Improve</div>
+    <details class="card rpt-accordion" id="acc-sw" open>
+      <summary>
+        <div class="sec-title">💪 Strengths &amp; Areas to Improve</div>
+        <span class="rpt-chevron">▾</span>
+      </summary>
+      <div class="rpt-accordion-body">
       <div class="sw-grid" id="sw-grid">
         <div style="color:#6b7280;font-size:.82rem">Complete more sessions to see your strengths and weaknesses.</div>
       </div>
-    </div>
+      </div>
+    </details>
 
     <!-- ⑤ NEXT RECOMMENDED TOPICS -->
-    <div class="card card-sm">
-      <div class="sec-title">🎯 Next Recommended Topics</div>
+    <details class="card rpt-accordion" id="acc-next" open>
+      <summary>
+        <div class="sec-title">🎯 Next Recommended Topics</div>
+        <span class="rpt-chevron">▾</span>
+      </summary>
+      <div class="rpt-accordion-body">
       <div class="sec-subtitle">Focus on these to improve your score fastest</div>
       <div id="next-topics-list">
         <div style="color:#6b7280;font-size:.82rem">No recommendations yet — complete a few sessions first.</div>
       </div>
-    </div>
+      </div>
+    </details>
 
     <!-- ⑥ SCORE PREDICTIONS -->
-    <div class="card card-sm">
-      <div class="sec-title">📈 Score Predictions</div>
+    <details class="card rpt-accordion" id="acc-pred">
+      <summary>
+        <div class="sec-title">📈 Score Predictions</div>
+        <span class="rpt-chevron">▾</span>
+      </summary>
+      <div class="rpt-accordion-body">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="predictions-grid">
         <div>
           <div style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:10px">WAEC / NECO Grade Estimates</div>
@@ -318,11 +353,16 @@ tr:hover td{background:#fafbff}
           <div id="not-started-list"><div style="color:#6b7280;font-size:.82rem">—</div></div>
         </div>
       </div>
-    </div>
+      </div>
+    </details>
 
     <!-- ⑦ TOPIC-LEVEL ANALYSIS -->
-    <div class="card card-sm">
-      <div class="sec-title">🔬 Topic-Level Analysis</div>
+    <details class="card rpt-accordion" id="acc-topics">
+      <summary>
+        <div class="sec-title">🔬 Topic-Level Analysis</div>
+        <span class="rpt-chevron">▾</span>
+      </summary>
+      <div class="rpt-accordion-body">
       <div class="table-scroll">
         <table>
           <thead><tr><th>Topic</th><th>Subject</th><th>Mastery</th><th>Sessions</th><th>Status</th></tr></thead>
@@ -331,11 +371,16 @@ tr:hover td{background:#fafbff}
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </details>
 
     <!-- ⑧ RECENT SESSIONS -->
-    <div class="card card-sm">
-      <div class="sec-title">📋 Recent Sessions</div>
+    <details class="card rpt-accordion" id="acc-sessions">
+      <summary>
+        <div class="sec-title">📋 Recent Sessions</div>
+        <span class="rpt-chevron">▾</span>
+      </summary>
+      <div class="rpt-accordion-body">
       <div class="table-scroll">
         <table>
           <thead><tr><th>Date</th><th>Subject</th><th>Exam Type</th><th>Score</th><th>Accuracy</th><th>Avg Time/Q</th></tr></thead>
@@ -344,7 +389,8 @@ tr:hover td{background:#fafbff}
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </details>
 
     <!-- Footer -->
     <div class="card card-sm">
@@ -717,12 +763,28 @@ function renderReport(profile, masteryRows, sessions){
 }
 
 // ── PDF ──────────────────────────────────────────────────────────
+function toggleAllSections(){
+  const details = document.querySelectorAll('#report-content details.rpt-accordion');
+  const anyClosed = Array.from(details).some(d => !d.open);
+  details.forEach(d => { d.open = anyClosed; });
+  const btn = el('toggle-all-btn');
+  if (btn) btn.textContent = anyClosed ? '⤡ Collapse All' : '⤢ Expand All';
+}
+
 async function downloadReportPDF(){
   const btn=el('download-pdf-btn');
   const node=el('report-content');
   if(!node||!window.html2canvas||!window.jspdf){toast('Try again in a moment.');return;}
   const orig=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='Building PDF…';}
+
+  // Collapsed <details> sections render nothing on screen, so html2canvas
+  // would silently omit them from the PDF. Force everything open first,
+  // then restore whatever state the user had, even if export fails.
+  const details=document.querySelectorAll('#report-content details.rpt-accordion');
+  const wasOpen=new Map();
+  details.forEach(d=>{ wasOpen.set(d, d.open); d.open=true; });
+
   try{
     const canvas=await window.html2canvas(node,{scale:1.8,backgroundColor:'#f0f4f9',useCORS:true,logging:false});
     const{jsPDF}=window.jspdf;
@@ -747,6 +809,8 @@ async function downloadReportPDF(){
     console.error(e);
     if(btn){btn.disabled=false;btn.textContent=orig;}
     toast('PDF failed — try Print instead.');
+  }finally{
+    details.forEach(d=>{ d.open=wasOpen.get(d); });
   }
 }
 
