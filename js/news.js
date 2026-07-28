@@ -59,6 +59,61 @@
     return '<span class="ue-news-tag" style="background:' + c.bg + ';color:' + c.fg + '">' + escape(tag || 'News') + '</span>';
   }
 
+  // ── AdSense (free-tier users only) ───────────────────────────────
+  // Returns true only when we actually have a publisher/slot id AND the
+  // current user is neither premium nor admin. Falls open (shows ads) for
+  // anonymous/unknown visitors, since "unknown" is never "premium".
+  function adsEnabled() {
+    var a = _cfg().ADSENSE || {};
+    if (!a.PUBLISHER_ID || !a.NEWS_SLOT_ID) return false;
+    var u = window.UE_USER;
+    if (u && (u.is_premium || u.is_admin)) return false;
+    return true;
+  }
+
+  function adCardHTML() {
+    var a = _cfg().ADSENSE;
+    return ''
+      + '<div class="ue-news-card ue-news-ad-card">'
+      +   '<div class="ue-news-ad-label">Advertisement</div>'
+      +   '<ins class="adsbygoogle" style="display:block;width:100%;height:100%;min-height:150px" '
+      +       'data-ad-client="' + escape(a.PUBLISHER_ID) + '" '
+      +       'data-ad-slot="' + escape(a.NEWS_SLOT_ID) + '" '
+      +       'data-ad-format="fluid" data-full-width-responsive="true"></ins>'
+      + '</div>';
+  }
+
+  // Push one adsbygoogle request per <ins> we just inserted. Safe to call
+  // repeatedly — each <ins> can only be initialised once, so we track and
+  // skip ones we've already pushed.
+  // Injects Google's adsbygoogle.js loader once, only when we actually
+  // need it (never loaded for premium/admin users or if unconfigured).
+  function ensureAdsScript(cb) {
+    var a = _cfg().ADSENSE || {};
+    if (document.getElementById('ue-adsbygoogle-loader')) { cb(); return; }
+    var s = document.createElement('script');
+    s.id = 'ue-adsbygoogle-loader';
+    s.async = true;
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(a.PUBLISHER_ID);
+    s.crossOrigin = 'anonymous';
+    s.onload = cb;
+    s.onerror = cb; // fail silently — cards just show blank ad slots
+    document.head.appendChild(s);
+  }
+
+  function initAds(mountEl) {
+    ensureAdsScript(function () { _pushAdSlots(mountEl); });
+  }
+
+  function _pushAdSlots(mountEl) {
+    if (!window.adsbygoogle) return;
+    var slots = mountEl.querySelectorAll('ins.adsbygoogle:not([data-ue-ad-init])');
+    slots.forEach(function (el) {
+      el.setAttribute('data-ue-ad-init', '1');
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (_) {}
+    });
+  }
+
   function cardHTML(item) {
     var link = item.link ? escape(item.link) : '';
     var isExternal = /^https?:\/\//i.test(link);
@@ -109,6 +164,8 @@
       + '.ue-news-source{font-size:.7rem;color:var(--muted2,#9ca3af);text-transform:uppercase;letter-spacing:.04em;margin-top:auto}'
       + '.ue-news-readmore{font-size:.78rem;color:var(--accent,#2563eb);font-weight:700;margin-top:6px}'
       + '.ue-news-empty{padding:18px;border:1px dashed var(--border,#e5e7eb);border-radius:12px;color:var(--muted,#6b7280);font-size:.85rem;text-align:center}'
+      + '.ue-news-ad-card{border-style:dashed;background:#fafafa}'
+      + '.ue-news-ad-label{font-size:.65rem;color:var(--muted2,#9ca3af);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px}'
       // ── Slim cross-page ticker ───────────────────────────────────
       + '.ue-news-ticker{position:relative;background:linear-gradient(90deg,#0f1c3f,#1e3a8a);color:#fff;font-size:.82rem;padding:8px 14px;display:flex;align-items:center;gap:12px;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.12)}'
       + '.ue-news-ticker-label{flex-shrink:0;font-weight:800;letter-spacing:.04em;text-transform:uppercase;font-size:.7rem;background:rgba(255,255,255,.16);padding:3px 8px;border-radius:6px}'
@@ -139,7 +196,17 @@
       mountEl.innerHTML = '<div class="ue-news-empty">No updates yet — check back soon!</div>';
       return;
     }
-    mountEl.innerHTML = items.map(cardHTML).join('');
+    var showAds = adsEnabled();
+    var everyN  = (_cfg().ADSENSE && _cfg().ADSENSE.SHOW_EVERY_N_CARDS) || 3;
+    var html = '';
+    items.forEach(function (item, i) {
+      html += cardHTML(item);
+      if (showAds && (i + 1) % everyN === 0 && i !== items.length - 1) {
+        html += adCardHTML();
+      }
+    });
+    mountEl.innerHTML = html;
+    if (showAds) initAds(mountEl);
     // Auto-scroll: advance one card width every 3.5s, pause on hover/touch
     if (mountEl._newsTimer) clearInterval(mountEl._newsTimer);
     var cardW = function() {
@@ -180,17 +247,59 @@
       + '<div class="ue-news-ticker-track"><div class="ue-news-ticker-inner">' + inner + inner + '</div></div>';
   }
 
+  // ── Caching ────────────────────────────────────────────────────
+  // Two layers, so repeat views cost as little Supabase egress as
+  // possible:
+  //   1. In-memory: dedupes multiple mountStrip/mountTicker calls on
+  //      the SAME page load (e.g. dashboard shows both a strip and a
+  //      ticker) into a single network request.
+  //   2. localStorage: persists across page loads / new tabs / browser
+  //      restarts, so a student re-visiting the dashboard 5 times in a
+  //      day only actually hits Supabase once per cache window.
+  // News only changes once a day (the bot runs on a cron), so a fairly
+  // long cache window is safe — configurable via UE_CONFIG.NEWS_CACHE_MIN.
+  var _memCache = null; // { items, ts } — cleared on full page reload
+
+  function _cacheMin()  { var n = _cfg().NEWS_CACHE_MIN; return (n > 0) ? n : 15; }
+  function _cacheKey()   { return 'ue_news_cache::' + _url(); }
+
+  function _readLocalCache() {
+    try {
+      var raw = localStorage.getItem(_cacheKey());
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.items)) return null;
+      if (Date.now() - parsed.ts > _cacheMin() * 60000) return null; // expired
+      return parsed.items;
+    } catch (_) { return null; }
+  }
+
+  function _writeLocalCache(items) {
+    try {
+      localStorage.setItem(_cacheKey(), JSON.stringify({ items: items, ts: Date.now() }));
+    } catch (_) { /* storage full/unavailable — degrade to no cache, not an error */ }
+  }
+
   // Try to fetch the remote JSON feed. Returns [] on any failure.
   async function fetchRemote() {
     var url = _url();
     if (!url) return [];
+
+    if (_memCache) return _memCache.items;
+
+    var cached = _readLocalCache();
+    if (cached) { _memCache = { items: cached }; return cached; }
+
     try {
       var ctrl = new AbortController();
       setTimeout(function () { ctrl.abort(); }, 6000);
       var res  = await fetch(url, { signal: ctrl.signal, cache: 'no-cache' });
       if (!res.ok) return [];
-      var data = await res.json();
-      return Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+      var data  = await res.json();
+      var items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+      _memCache = { items: items };
+      _writeLocalCache(items);
+      return items;
     } catch (_) { return []; }
   }
 
