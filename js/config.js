@@ -157,6 +157,48 @@
 
     // Cache the parsed curriculum sheet in memory for this many minutes
     GS_CURRICULUM_CACHE_MIN: 30,
+
+    // ── Education News feed ────────────────────────────────────────
+    // Filled in by the daily news-bot Cron Worker (Firecrawl + OpenRouter
+    // → Supabase `news_items` table). We read it straight from Supabase's
+    // PostgREST endpoint using the SAME anon key already defined above —
+    // RLS on `news_items` only allows SELECT to anon, never INSERT/DELETE,
+    // so this is safe to expose client-side.
+    //
+    // Local NEWS_ITEMS below is just a fallback so the section never looks
+    // broken before the bot's first run (or if the feed fetch fails).
+    // How long (minutes) a visitor's browser caches the news feed
+    // locally before re-fetching from Supabase. News only updates once
+    // a day (the cron bot), so this can be generous — it directly cuts
+    // Supabase egress on repeat visits within the window.
+    NEWS_CACHE_MIN: 60,
+
+    NEWS_FEED_URL:
+      'https://nmkuujtupgcgxzxbenti.supabase.co/rest/v1/news_items' +
+      '?select=id,title,body,tag,date,link,source' +
+      '&order=date.desc&limit=20' +
+      '&apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ta3V1anR1cGdjZ3h6eGJlbnRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4Njg2NDYsImV4cCI6MjA5MjQ0NDY0Nn0.89PvF3HdNL5FPwsyQoZQrmeQxwgpmDCFBjqVA_lBY_w',
+
+    NEWS_ITEMS: [
+      {
+        id:    'seed-1',
+        title: 'Welcome to UE School news',
+        body:  'Daily JAMB, WAEC & NECO updates will appear here automatically once the news bot runs.',
+        tag:   'UE School',
+        date:  new Date().toISOString(),
+        link:  '',
+        source:'UE School'
+      }
+    ],
+
+    // ── AdSense (free-tier users only — see js/news.js) ────────────
+    // Leave PUBLISHER_ID blank to keep ads fully disabled site-wide,
+    // even if the adsbygoogle.js script tag is present on a page.
+    ADSENSE: {
+      PUBLISHER_ID:      '',   // e.g. 'ca-pub-1234567890123456'
+      NEWS_SLOT_ID:      '',   // ad unit slot id for the news-strip placement
+      SHOW_EVERY_N_CARDS: 3    // insert one ad after every N news cards
+    },
   };
 
   Object.defineProperty(window, 'UE_CONFIG', {
