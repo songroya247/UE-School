@@ -147,6 +147,86 @@
   .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .how-it-works-grid { grid-template-columns: 1fr !important; }
 }
+
+/* ══════════════════════════════════════════════════════
+   HOMEPAGE HERO — refined typography + texture
+   These classes appear nowhere else in the app, so this
+   can't affect other pages.
+══════════════════════════════════════════════════════ */
+
+/* Bebas Neue was already being loaded for this page but never
+   used — its condensed, stamped character echoes the look of a
+   WAEC/JAMB result slip, which is deliberate, not decorative. */
+.hero-headline {
+  font-family: 'Bebas Neue', var(--font-body);
+  font-weight: 400;               /* Bebas Neue only ships one weight */
+  font-size: 3.6rem;
+  line-height: .98;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+}
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(26,86,255,.07);
+  border: 1px solid rgba(26,86,255,.18);
+  border-radius: 999px;
+  padding: 6px 14px;
+  margin-bottom: 18px;
+}
+.hero-eyebrow::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent2); flex-shrink: 0;
+  animation: heroPulse 2s ease-in-out infinite;
+}
+@keyframes heroPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,201,122,.5); }
+  50%      { opacity: .6; box-shadow: 0 0 0 5px rgba(0,201,122,0); }
+}
+
+.hero-proof {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin-top: 18px;
+  font-size: .82rem; color: var(--muted);
+}
+.hero-proof span { display: flex; align-items: center; gap: 6px; }
+.hero-proof b { color: var(--text); font-weight: 700; }
+
+/* Hero section: quiet OMR-bubble-sheet texture in the backdrop —
+   a nod to the shading sheets every JAMB/WAEC candidate has filled
+   in, kept faint enough to read as texture rather than pattern. */
+.hero-section {
+  position: relative;
+  overflow: hidden;
+  background-image:
+    radial-gradient(circle, rgba(26,86,255,.10) 1.6px, transparent 1.6px);
+  background-size: 26px 26px;
+  background-position: -4px -4px;
+}
+.hero-section::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(245,247,250,0) 0%, var(--bg) 92%);
+  pointer-events: none;
+}
+.hero-section .container { position: relative; z-index: 1; }
+
+/* Small live-feeling pulse on the CBT preview card's timer, so it
+   reads as an active interface rather than a static screenshot. */
+.hero-timer { position: relative; padding-left: 16px; }
+.hero-timer::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent2);
+  animation: heroPulse 2s ease-in-out infinite;
+}
+
+@media (max-width: 768px) {
+  .hero-headline { font-size: 2.7rem !important; letter-spacing: 0; }
+  .hero-section { background-size: 20px 20px; }
+}
 </style>
 </head>
 <body>
@@ -176,11 +256,17 @@
   <div class="container">
     <div class="hero-grid">
       <div>
+        <div class="hero-eyebrow">Built for JAMB &middot; WAEC &middot; NECO</div>
         <h1 class="hero-headline">ACE YOUR JAMB, WAEC &amp; NECO EXAMS</h1>
         <p class="hero-sub">Master every topic with adaptive CBT prep, expert video lessons, and AI-powered score predictions.</p>
         <div class="hero-ctas">
           <a href="login.html" class="btn btn-primary btn-lg">Start Free Today</a>
           <a href="daily-quiz.html" class="btn btn-outline btn-lg">&#x26A1; Free Daily Quiz</a>
+        </div>
+        <div class="hero-proof">
+          <span><b>7</b> subjects covered</span>
+          <span><b>100+</b> practice questions</span>
+          <span><b>&#x20A6;1,500</b>/month</span>
         </div>
       </div>
       <div class="hero-cbt-card">
