@@ -138,7 +138,7 @@ select, input, textarea { font-family: inherit; }
   border-bottom: 1px solid var(--border); height: 64px;
   display: flex; align-items: center;
 }
-.ue-nav .container { display: flex; align-items: center; justify-content: space-between; height: 100%; }
+.ue-nav .container { display: flex; align-items: center; justify-content: space-between; gap: 28px; height: 100%; }
 .nav-logo { font-family: var(--font-body); font-size: 1.4rem; color: var(--accent); letter-spacing: -.03em; font-weight: 800; text-transform: none; }
 .nav-links { display: flex; gap: 28px; }
 .nav-links a { font-size: .9rem; font-weight: 600; color: var(--muted); transition: color .15s; }
