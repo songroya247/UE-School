@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Disallow: /login.html
+Disallow: /admin-login.html
+Disallow: /admin-dashboard.html
+Disallow: /admin-actions.html
+Disallow: /the-administrator.html
+Disallow: /dashboard.html
+Disallow: /classroom.html
+Disallow: /cbt.html
+Disallow: /tutor.html
+Disallow: /report.html
+Disallow: /study-guides.html
+Disallow: /reset-password.html
+Disallow: /forgot-password.html
+Disallow: /confirm.html
+Disallow: /unsubscribe.html
+Disallow: /thankyou.html
+Disallow: /operator-videos.html
+
+Sitemap: https://school.ultimateedge.info/sitemap.xml
