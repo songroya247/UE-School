@@ -40,7 +40,7 @@ const AUTH_GUARD = (function () {
   const SUPABASE_ANON = cfg.SUPABASE_ANON;
   const LOGIN_PAGE    = cfg.LOGIN_PAGE   || 'login.html';
   const PRICING_PAGE  = cfg.PRICING_PAGE || 'pricing.html';
-  const PREMIUM_PAGES = cfg.PREMIUM_PAGES || ['classroom.html', 'cbt.html'];
+  const PREMIUM_PAGES = cfg.PREMIUM_PAGES || [];
 
   // ── Toast helper (used for premium-redirect messages) ──────────
   function showToast(message, type = 'info', duration = 5000) {
@@ -263,8 +263,7 @@ const AUTH_GUARD = (function () {
 
   // ── Admin gate ─────────────────────────────────────────────────
   function enforceAdminGate(profile) {
-    const ADMIN_ONLY = (cfg.ADMIN_ONLY_PAGES) ||
-      ['admin-dashboard.html', 'admin-actions.html'];
+    const ADMIN_ONLY = (cfg.ADMIN_ONLY_PAGES) || ['the-administrator.html'];
     const page = currentPage();
     if (ADMIN_ONLY.indexOf(page) === -1) return true;
 
