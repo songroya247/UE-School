@@ -20,7 +20,7 @@
          auth-guard.js on the previous load. If we already know the
          user is NOT premium, we redirect to pricing.html BEFORE the
          page renders — no flash of premium content.
-       • PROTECTED_PAGES default now includes admin-dashboard.html.
+       • PROTECTED_PAGES default now includes the-administrator.html.
        • Veil also applies to admin-only pages — the admin role is
          re-checked in auth-guard.js.
 
@@ -46,10 +46,10 @@
   var PRICING_PAGE = cfg.PRICING_PAGE || 'pricing.html';
   var PROTECTED    = cfg.PROTECTED_PAGES || [
     'dashboard.html', 'classroom.html', 'cbt.html', 'report.html',
-    'admin-dashboard.html', 'admin-actions.html'
+    'the-administrator.html'
   ];
-  var PREMIUM      = cfg.PREMIUM_PAGES || ['classroom.html', 'cbt.html'];
-  var ADMIN_ONLY   = cfg.ADMIN_ONLY_PAGES || ['admin-dashboard.html', 'admin-actions.html'];
+  var PREMIUM      = cfg.PREMIUM_PAGES || [];
+  var ADMIN_ONLY   = cfg.ADMIN_ONLY_PAGES || ['the-administrator.html'];
 
   // ── Step 2: Determine which page we are on ───────────────────────
   var currentPage = window.location.pathname.split('/').pop() || 'index.html';
