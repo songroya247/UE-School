@@ -423,7 +423,9 @@ const URL_PARAMS=new URLSearchParams(window.location.search);
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   // AUTH_GUARD.init() boots window.sb from UE_CONFIG, validates session,
-  // checks premium gate (cbt.html is in PREMIUM_PAGES), renders nav + defaulter banner.
+  // renders nav + defaulter banner. cbt.html is NOT in PREMIUM_PAGES —
+  // free users reach this page and get one free session via
+  // canSampleFeature('cbt') in startExam() below.
   const result=await AUTH_GUARD.init();
   if(!result) return; // redirect in progress
 
@@ -619,6 +621,13 @@ async function loadGradeLevel(userId,subject){
 
 // ════════════ START ════════════
 async function startExam(){
+  // Free (non-premium, non-admin) users get UE_CONFIG.FREE_SAMPLE.CBT_PER_ACCOUNT
+  // sessions before every further "Start Session" click bounces to pricing.
+  if (window.AUTH_GUARD && !AUTH_GUARD.canSampleFeature('cbt')) {
+    AUTH_GUARD.bouncePremium('You\'ve used your free CBT session. Upgrade to UE Premium for unlimited practice.');
+    return;
+  }
+
   const mode=document.getElementById('sel-mode').value;
   const subj=document.getElementById('sel-subject').value;
   const topic=document.getElementById('sel-topic').value||null;
@@ -644,6 +653,9 @@ async function startExam(){
     if(startBtn){startBtn.disabled=false;startBtn.textContent='\u25B6 Start Session';}
   }
   if(!QUESTIONS || !QUESTIONS.length){toast('No questions available for this selection. Try another topic.');return;}
+
+  // Only spend the free sample once we know a session will actually start.
+  if (window.AUTH_GUARD) AUTH_GUARD.recordSampleUse('cbt');
 
   sessionConfig={mode,subject:subj,topic,examType,gradeLevel:currentGradeLevel};
   totalTime=scaledSeconds(cfg, QUESTIONS.length); timeLeft=totalTime;
