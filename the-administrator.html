@@ -1170,14 +1170,43 @@ function closeSidebar() {
 // away anyone without a session AND anyone whose profiles.is_admin isn't
 // true (this page is listed in ADMIN_ONLY_PAGES in js/config.js). A
 // resolved, non-null profile here means both checks passed.
-(async () => {
-  const auth = await window.AUTH_GUARD.init();
-  if (!auth) return; // AUTH_GUARD is already redirecting the visitor away
-  sb = window.sb;
-  document.getElementById('sys-role').textContent = '✅ Admin (verified server-side)';
-  await loadAllData();
+//
+// IMPORTANT: AUTH_GUARD.init() can also return null WITHOUT navigating
+// away — e.g. the profile row failed to load (RLS/migration issue). In
+// that case it already lifts its own veil and shows an explanatory
+// toast ("Profile load failed…", "Run SUPABASE_FIX.sql…", etc). Our
+// #boot-veil sits on top of everything (z-index 10000), so it MUST be
+// removed in every non-success path or that toast is invisible and the
+// page looks like it's spinning forever — that was exactly this bug.
+function removeBootVeil() {
   const veil = document.getElementById('boot-veil');
-  if (veil) { veil.classList.add('unlocked'); veil.addEventListener('animationend', () => veil.remove(), { once: true }); }
+  if (!veil) return;
+  veil.classList.add('unlocked');
+  veil.addEventListener('animationend', () => veil.remove(), { once: true });
+  // Belt-and-braces: if the CSS animation somehow never fires (reduced
+  // motion settings, etc.), force removal shortly after regardless.
+  setTimeout(() => veil.remove(), 500);
+}
+function showBootError(msg) {
+  const veil = document.getElementById('boot-veil');
+  if (!veil) { alert(msg); return; }
+  veil.innerHTML =
+    '<p style="color:var(--danger);max-width:320px;text-align:center;padding:0 20px">' + escH(msg) + '</p>' +
+    '<button class="btn btn-accent btn-sm" onclick="location.reload()">↻ Retry</button>';
+}
+
+(async () => {
+  try {
+    const auth = await window.AUTH_GUARD.init();
+    if (!auth) { removeBootVeil(); return; } // AUTH_GUARD already handled it (redirect or toast)
+    sb = window.sb;
+    document.getElementById('sys-role').textContent = '✅ Admin (verified server-side)';
+    await loadAllData();
+    removeBootVeil();
+  } catch (e) {
+    console.error('[admin] boot failed:', e);
+    showBootError('Something went wrong loading the Command Centre: ' + (e?.message || e));
+  }
 })();
 
 // ── Load All Data ────────────────────────────────────────────────────
