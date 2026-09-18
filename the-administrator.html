@@ -5,14 +5,21 @@
      UE School — the-administrator.html
      Unified Command Centre: Dashboard + User Management + Admin Actions
      + Payments + Audit Log + Alerts + System Config
-     Self-contained: all JS inline, loads Supabase SDK from CDN.
+     Mostly self-contained (all JS inline, loads Supabase SDK from CDN)
+     but participates in the site's real auth system: js/config.js +
+     js/head-gatekeeper.js (in <head>) plus js/auth-guard.js (bottom of
+     <body>) gate this page exactly like dashboard.html/cbt.html/etc —
+     a valid session AND profiles.is_admin = true, both re-checked
+     against the database on every load. See ADMIN_ONLY_PAGES in
+     js/config.js. There is no separate PIN or pasted Supabase key.
 ──────────────────────────────────────────────────────────────────── -->
-<!-- Security: PIN gate is the primary access control for this page -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>UE School — The Administrator</title>
 <meta name="robots" content="noindex,nofollow">
+<!-- Security block — same as every other protected/admin page -->
 <script src="js/config.js"></script>
+<script src="js/head-gatekeeper.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Azeret+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -62,66 +69,28 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
 
 /* ═══════════════════════════════════════
-   PIN GATE
+   BOOT VEIL
+   head-gatekeeper.js hides <body> with its own injected <style> until
+   auth-guard.js confirms a valid, admin session. This local veil only
+   covers the gap between that lift and our own data finishing load.
 ═══════════════════════════════════════ */
-#pin-gate {
-  position: fixed; inset: 0;
-  background: var(--bg);
-  z-index: 10000;
+#boot-veil {
+  position: fixed; inset: 0; background: var(--bg); z-index: 10000;
   display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
 }
-#pin-gate.unlocked {
-  animation: gateCollapse .4s cubic-bezier(.4,0,.2,1) forwards;
+#boot-veil .spinner {
+  width: 30px; height: 30px; border: 3px solid var(--border2);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#boot-veil p { font-size: .8rem; color: var(--muted2); }
+#boot-veil.unlocked {
+  animation: gateCollapse .3s cubic-bezier(.4,0,.2,1) forwards;
   pointer-events: none;
 }
-@keyframes gateCollapse {
-  to { opacity: 0; transform: scale(1.03); }
-}
-.pin-wrap {
-  width: 320px; max-width: 92vw;
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 16px;
-  padding: 36px 32px 30px;
-  text-align: center;
-  box-shadow: 0 40px 100px rgba(0,0,0,.7), 0 0 0 1px rgba(245,158,11,.08);
-}
-.pin-brand {
-  font-family: var(--font-head); font-size: 1.2rem; font-weight: 700;
-  letter-spacing: -.03em; margin-bottom: 3px;
-}
-.pin-brand em { color: var(--accent); font-style: normal; }
-.pin-sub { font-size: .75rem; color: var(--muted2); margin-bottom: 28px; }
-.pin-dots {
-  display: flex; gap: 10px; justify-content: center; margin-bottom: 22px;
-}
-.pin-dot {
-  width: 12px; height: 12px; border-radius: 50%;
-  border: 1.5px solid var(--border2); background: transparent;
-  transition: all .12s;
-}
-.pin-dot.filled { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px rgba(245,158,11,.5); }
-.pin-dot.error  { background: var(--danger); border-color: var(--danger); animation: dotShake .3s; }
-@keyframes dotShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} }
-.pin-pad {
-  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
-}
-.pin-key {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px; padding: 13px 0;
-  font-family: var(--font-head); font-size: 1rem; font-weight: 700;
-  color: var(--text); cursor: pointer;
-  transition: all .1s; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.pin-key:hover { background: var(--surface3); border-color: var(--accent); color: var(--accent); }
-.pin-key:active { transform: scale(.93); }
-.pin-key.del { font-size: .78rem; color: var(--muted2); font-family: var(--font-body); font-weight: 600; }
-.pin-key.zero { grid-column: 2; }
-.pin-msg { font-size: .73rem; color: var(--danger); height: 16px; margin-top: 12px; font-weight: 600; }
-.pin-lockout { font-size: .73rem; color: var(--danger); margin-top: 8px; display: none; font-weight: 600; }
+@keyframes gateCollapse { to { opacity: 0; transform: scale(1.02); } }
 
 /* ═══════════════════════════════════════
    LAYOUT
@@ -499,25 +468,6 @@ tr:hover td { background: rgba(255,255,255,.02); }
 #toast.info { border-color: var(--accent2); color: var(--accent2); }
 
 /* ═══════════════════════════════════════
-   CONFIG MODAL
-═══════════════════════════════════════ */
-.modal-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
-  z-index: 300; align-items: center; justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.modal-box {
-  background: var(--surface); border: 1px solid var(--border2);
-  border-radius: 14px; padding: 28px; width: 460px; max-width: 95vw;
-}
-.modal-title { font-family: var(--font-head); font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-.modal-sub { color: var(--muted2); font-size: .8rem; margin-bottom: 20px; }
-.form-row { margin-bottom: 14px; }
-.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.modal-actions { display: flex; gap: 10px; margin-top: 6px; }
-.modal-error { color: var(--danger); font-size: .75rem; margin-top: 8px; display: none; }
-
-/* ═══════════════════════════════════════
    SYSTEM INFO
 ═══════════════════════════════════════ */
 .sys-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
@@ -609,9 +559,6 @@ tr:hover td { background: rgba(255,255,255,.02); }
   /* User table — hide less critical columns on small screens */
   .col-hide-mobile { display: none; }
 
-  /* Pin gate — already responsive via max-width:92vw, good */
-  .pin-key { padding: 15px 0; font-size: 1.1rem; } /* bigger tap targets */
-
   /* iOS zoom prevention — font-size must be >=16px on inputs */
   input[type=text], input[type=email], input[type=number], select, textarea { font-size: 16px; }
 
@@ -641,8 +588,6 @@ tr:hover td { background: rgba(255,255,255,.02); }
   .kpi-value { font-size: 1.2rem; }
   .content { padding: 8px; }
   .topbar { padding: env(safe-area-inset-top) 10px 0; }
-  .pin-wrap { padding: 24px 18px 20px; }
-  .pin-key { padding: 12px 0; font-size: 1rem; }
 }
 
 /* ── sidebar overlay (mobile) ── */
@@ -693,36 +638,14 @@ tr:hover td { background: rgba(255,255,255,.02); }
 <body>
 
 <!-- ══════════════════════════════════════════════
-     PIN GATE
+     BOOT VEIL
+     Real access control is head-gatekeeper.js + auth-guard.js (see
+     <head> and the bottom script block) — this div just covers the
+     moment between that check passing and our own data finishing load.
 ══════════════════════════════════════════════ -->
-<div id="pin-gate">
-  <div class="pin-wrap">
-    <div class="pin-brand">UE School <em>ADMIN</em></div>
-    <div class="pin-sub">Enter your 6-digit PIN to access the Command Centre</div>
-    <div class="pin-dots" id="pin-dots">
-      <div class="pin-dot" id="d0"></div>
-      <div class="pin-dot" id="d1"></div>
-      <div class="pin-dot" id="d2"></div>
-      <div class="pin-dot" id="d3"></div>
-      <div class="pin-dot" id="d4"></div>
-      <div class="pin-dot" id="d5"></div>
-    </div>
-    <div class="pin-pad">
-      <div class="pin-key" onclick="pinPress('1')">1</div>
-      <div class="pin-key" onclick="pinPress('2')">2</div>
-      <div class="pin-key" onclick="pinPress('3')">3</div>
-      <div class="pin-key" onclick="pinPress('4')">4</div>
-      <div class="pin-key" onclick="pinPress('5')">5</div>
-      <div class="pin-key" onclick="pinPress('6')">6</div>
-      <div class="pin-key" onclick="pinPress('7')">7</div>
-      <div class="pin-key" onclick="pinPress('8')">8</div>
-      <div class="pin-key" onclick="pinPress('9')">9</div>
-      <div class="pin-key del" onclick="pinDel()">⌫ Del</div>
-      <div class="pin-key zero" onclick="pinPress('0')">0</div>
-    </div>
-    <div class="pin-msg" id="pin-msg"></div>
-    <div class="pin-lockout" id="pin-lockout">🔒 Locked — try again in <span id="pin-cd">30</span>s</div>
-  </div>
+<div id="boot-veil">
+  <div class="spinner"></div>
+  <p>Loading Command Centre…</p>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -798,7 +721,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <div class="topbar-actions">
         <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
         <button class="btn btn-sm" onclick="exportCSV()" style="display:none" id="btn-export">⬇ CSV</button>
-        <button class="btn btn-accent btn-sm" onclick="showConfig()">⚙ Config</button>
+        <a class="btn btn-ghost btn-sm" href="dashboard.html">← Dashboard</a>
       </div>
     </div>
 
@@ -956,10 +879,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
                 </tr>
               </thead>
               <tbody id="users-tbody">
-                <tr><td colspan="9" class="empty-state">
-                  Connect Supabase to load users.
-                  <br><button class="btn btn-accent btn-sm" style="margin-top:10px" onclick="showConfig()">⚙ Configure</button>
-                </td></tr>
+                <tr><td colspan="9" class="empty-state">Loading users…</td></tr>
               </tbody>
             </table>
           </div>
@@ -1069,27 +989,8 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <div class="view" id="view-config">
         <div class="section-head"><div class="section-title">Config & System</div></div>
 
-        <!-- Connection -->
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-header"><div class="card-title">Supabase Connection</div></div>
-          <div class="card-body">
-            <div class="form-row">
-              <label>Supabase URL</label>
-              <input type="text" id="cfg-url-inline" placeholder="https://xxxx.supabase.co" oninput="document.getElementById('cfg-inline-err').style.display='none'">
-            </div>
-            <div class="form-row">
-              <label>Anon Key</label>
-              <input type="text" id="cfg-key-inline" placeholder="eyJhbGciOiJIUzI1NiIs…" oninput="document.getElementById('cfg-inline-err').style.display='none'">
-            </div>
-            <div style="display:flex;gap:10px;margin-top:6px">
-              <button class="btn btn-accent" onclick="connectInline()">Connect & Reload</button>
-              <button class="btn btn-ghost" onclick="clearConfig()">Clear Saved Credentials</button>
-            </div>
-            <div class="modal-error" id="cfg-inline-err"></div>
-          </div>
-        </div>
-
-        <!-- System info -->
+        <!-- System info (read-only — connection now comes from your own
+             logged-in session, not a pasted key) -->
         <div class="card" style="margin-bottom:16px">
           <div class="card-header"><div class="card-title">System Information</div></div>
           <div class="card-body">
@@ -1129,16 +1030,23 @@ tr:hover td { background: rgba(255,255,255,.02); }
           <div class="card-header"><div class="card-title">Developer Notes</div></div>
           <div class="card-body" style="font-size:.82rem;line-height:1.7;color:var(--muted2)">
             <p style="margin-bottom:10px">
-              <strong style="color:var(--text)">PIN:</strong> Default is <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">482650</code>.
-              To change: open browser console, run<br>
-              <code style="font-family:var(--font-mono);font-size:.75rem;background:var(--surface2);padding:4px 8px;border-radius:4px;display:inline-block;margin:6px 0;color:#93c5fd">
-                crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_PIN'))<br>
-                &nbsp;&nbsp;.then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-              </code>
-              then paste the hash into <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">PIN_HASH</code> in this file.
+              <strong style="color:var(--text)">Access control:</strong> This page has no PIN and no pasted
+              Supabase key anymore. It's gated exactly like every other protected page —
+              <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">js/head-gatekeeper.js</code>
+              blocks rendering until you have a valid session, then
+              <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">js/auth-guard.js</code>
+              re-checks <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">profiles.is_admin</code>
+              against the database before this view ever loads data. Non-admins are bounced to
+              <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">dashboard.html</code>.
             </p>
             <p style="margin-bottom:10px">
-              <strong style="color:var(--text)">Admin Access:</strong> Set <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">is_admin = TRUE</code> on a profiles row in Supabase. Once set, only that account can perform privileged actions through the Edge Function — the PIN gate handles page-level access.
+              <strong style="color:var(--text)">Grant admin access:</strong> Set
+              <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">is_admin = TRUE</code>
+              on a profiles row in Supabase SQL Editor. They sign in at
+              <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">login.html</code>
+              like any student and then simply have access to this page —
+              requires <code style="font-family:var(--font-mono);font-size:.78rem;background:var(--surface2);padding:1px 6px;border-radius:4px">migrations/005_admin.sql</code>
+              (or 001) to have been applied so the RLS "admins read everything" policy exists.
             </p>
             <p>
               <strong style="color:var(--text)">Login as User:</strong> In Supabase Dashboard → Authentication → Users, find the user and click <strong>Send magic link</strong>. Paste that link in an incognito window to log in as them.
@@ -1167,29 +1075,6 @@ tr:hover td { background: rgba(255,255,255,.02); }
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     CONFIG MODAL
-══════════════════════════════════════════════ -->
-<div class="modal-overlay" id="cfg-modal">
-  <div class="modal-box">
-    <div class="modal-title">Connect Supabase</div>
-    <div class="modal-sub">Enter credentials to load live data.</div>
-    <div class="form-row">
-      <label>Supabase Project URL</label>
-      <input id="cfg-url" type="text" placeholder="https://xxxx.supabase.co" oninput="document.getElementById('cfg-modal-err').style.display='none'">
-    </div>
-    <div class="form-row">
-      <label>Anon Key</label>
-      <input id="cfg-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIs…" oninput="document.getElementById('cfg-modal-err').style.display='none'">
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" style="flex:1" onclick="hideCfg()">Cancel</button>
-      <button class="btn btn-accent" style="flex:1" onclick="connectFromModal()">Connect & Load</button>
-    </div>
-    <div class="modal-error" id="cfg-modal-err"></div>
-  </div>
-</div>
-
 <!-- TOAST -->
 <div id="toast"></div>
 
@@ -1197,90 +1082,21 @@ tr:hover td { background: rgba(255,255,255,.02); }
      SCRIPTS
 ══════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<!-- auth-guard.js removed: PIN gate handles access control -->
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/auth-guard.js"></script>
 
 <script>
 'use strict';
 /* ════════════════════════════════════════════════════════════════════
    THE ADMINISTRATOR — Unified Admin Script
    Merges: admin-dashboard.js + admin-actions.js
-   Auth: uses window.UE_CONFIG (from config.js) + PIN gate
+   Auth: js/head-gatekeeper.js (in <head>) + js/auth-guard.js (below)
+   verify a real session AND profiles.is_admin = true against the
+   database before AUTH_GUARD.init() ever resolves. sb === window.sb,
+   the same authenticated client every other protected page uses — no
+   PIN, no pasted Supabase key.
 ════════════════════════════════════════════════════════════════════ */
-
-// ── PIN Config ─────────────────────────────────────────────────────
-// Default PIN: 482650 — CHANGE BEFORE DEPLOYING
-// Generate new hash in console: see Config view for instructions
-const PIN_HASH = 'f9963dcd58cbac9c306e202fc1dcf8fdc8deb974ab93b452aafca77009908d27';
-
-let pinBuf = '', pinAttempts = 0, pinLocked = false, pinTimer = null;
-const PIN_MAX = 5, PIN_LOCKOUT = 30;
-
-async function hashPin(p) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
-  return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
-}
-function pinPress(d) {
-  if (pinLocked || pinBuf.length >= 6) return;
-  pinBuf += d; updateDots();
-  if (pinBuf.length === 6) checkPin();
-}
-function pinDel() { if (!pinLocked) { pinBuf = pinBuf.slice(0,-1); updateDots(); clearPinMsg(); } }
-function updateDots(state) {
-  for (let i=0;i<6;i++) {
-    const el = document.getElementById('d'+i);
-    el.className = 'pin-dot';
-    if (state==='error') el.classList.add('error');
-    else if (i<pinBuf.length) el.classList.add('filled');
-  }
-}
-function clearPinMsg() { document.getElementById('pin-msg').textContent=''; }
-async function checkPin() {
-  const h = await hashPin(pinBuf);
-  if (h === PIN_HASH) {
-    sessionStorage.setItem('ue_adm_unlocked', PIN_HASH);
-    unlock(); return;
-  }
-  pinAttempts++; pinBuf = '';
-  updateDots('error'); setTimeout(()=>updateDots(), 600);
-  const left = PIN_MAX - pinAttempts;
-  if (left <= 0) { startLockout(); return; }
-  document.getElementById('pin-msg').textContent = `Incorrect PIN — ${left} attempt${left!==1?'s':''} left`;
-}
-function startLockout() {
-  pinLocked = true; let s = PIN_LOCKOUT;
-  document.getElementById('pin-lockout').style.display = 'block';
-  document.getElementById('pin-cd').textContent = s;
-  pinTimer = setInterval(()=>{ s--; document.getElementById('pin-cd').textContent=s; if(s<=0){ clearInterval(pinTimer); pinLocked=false; pinAttempts=0; document.getElementById('pin-lockout').style.display='none'; } }, 1000);
-}
-let _keyListenerAdded = false;
-function unlock() {
-  if (pinTimer) { clearInterval(pinTimer); pinTimer=null; } // clear any lockout timer
-  const g = document.getElementById('pin-gate');
-  g.classList.add('unlocked');
-  g.addEventListener('animationend', ()=>g.remove(), {once:true});
-  if (!_keyListenerAdded) {
-    _keyListenerAdded = true;
-    document.addEventListener('keydown', e => {
-      if (document.getElementById('pin-gate')) return; // gate still up, handled below
-      if (e.key>='0'&&e.key<='9') pinPress(e.key);
-      else if (e.key==='Backspace') pinDel();
-    });
-  }
-  bootApp();
-}
-// Check existing session — if PIN already verified this tab session, skip gate
-(async()=>{
-  const tok = sessionStorage.getItem('ue_adm_unlocked');
-  if (tok && tok===PIN_HASH) { unlock(); return; }
-  // Add keyboard listener for PIN entry
-  if (!_keyListenerAdded) {
-    document.addEventListener('keydown', e => {
-      if (!document.getElementById('pin-gate')) return;
-      if (e.key>='0'&&e.key<='9') pinPress(e.key);
-      else if (e.key==='Backspace') pinDel();
-    });
-  }
-})();
 
 // ── App State ──────────────────────────────────────────────────────
 let sb = null;
@@ -1326,7 +1142,7 @@ function nav(id, el) {
   $('#btn-export').style.display = (id==='users') ? 'inline-flex' : 'none';
   // lazy-load view-specific data
   if (id==='payments') { if(sb) loadPaymentsView(); }
-  if (id==='audit') { if(sb) loadAudit(); else document.getElementById('audit-tbody').innerHTML='<tr><td colspan="5" class="empty-state">Connect Supabase first — click ⚙ Config</td></tr>'; }
+  if (id==='audit') { if(sb) loadAudit(); else document.getElementById('audit-tbody').innerHTML='<tr><td colspan="5" class="empty-state">Still connecting…</td></tr>'; }
   if (id==='config') populateConfig();
   closeSidebar();
 }
@@ -1349,70 +1165,20 @@ function closeSidebar() {
 }
 
 // ── Boot ────────────────────────────────────────────────────────────
-async function bootApp() {
-  // Security: PIN gate + Supabase session via connectSb() handles auth.
-  // No external auth-guard needed here.
-
-  // Try auto-connect from saved config
-  const url = localStorage.getItem('ue_admin_url');
-  const key = localStorage.getItem('ue_admin_key');
-  if (url && key) {
-    document.getElementById('cfg-url').value = url;
-    document.getElementById('cfg-key').value = key;
-    document.getElementById('cfg-url-inline').value = url;
-    document.getElementById('cfg-key-inline').value = key;
-    await connectSb(url, key, true);
-  } else {
-    // Use config.js credentials as fallback
-    const cfg = window.UE_CONFIG;
-    if (cfg?.SUPABASE_URL && cfg?.SUPABASE_ANON) {
-      await connectSb(cfg.SUPABASE_URL, cfg.SUPABASE_ANON, true);
-    } else {
-      showConfig();
-    }
-  }
-}
-
-// ── Connect ──────────────────────────────────────────────────────────
-async function connectSb(url, key, silent=false) {
-  try {
-    sb = supabase.createClient(url, key);
-    hideCfg();
-    await loadAllData();
-    // Only persist credentials after a successful data load
-    localStorage.setItem('ue_admin_url', url);
-    localStorage.setItem('ue_admin_key', key);
-  } catch(e) {
-    console.error('[admin] connectSb error:', e);
-    sb = null; // reset client so app knows we're disconnected
-    if (!silent) toast('Connection failed: '+e.message, 'err');
-    else toast('Auto-connect failed — check ⚙ Config', 'err');
-  }
-}
-async function connectFromModal() {
-  const url = $('#cfg-url').value.trim(), key = $('#cfg-key').value.trim();
-  if (!url||!key) { showCfgErr('Both URL and key required.','cfg-modal-err'); return; }
-  await connectSb(url,key,false);
-}
-async function connectInline() {
-  const url = $('#cfg-url-inline').value.trim(), key = $('#cfg-key-inline').value.trim();
-  if (!url||!key) { showCfgErr('Both URL and key required.','cfg-inline-err'); return; }
-  await connectSb(url,key,false);
-}
-function clearConfig() {
-  if (!confirm('Clear saved Supabase credentials? You will need to reconnect.')) return;
-  localStorage.removeItem('ue_admin_url'); localStorage.removeItem('ue_admin_key');
-  sb=null;
-  allUsers=[]; filteredUsers=[];
-  allPayments=[]; filteredPayments=[];
-  uaTarget=null; activeUser=null;
-  // Reset UI to disconnected state
-  document.getElementById('admin-name').textContent='Not connected';
-  document.getElementById('sys-role').textContent='❌ Not connected';
-  showUsersError('Credentials cleared. Click ⚙ Config to reconnect.');
-  toast('Credentials cleared','ok');
-}
-function showCfgErr(msg, id) { const el=$('#'+id); if(el){el.textContent=msg;el.style.display='block';} }
+// By the time this runs, js/head-gatekeeper.js has already kept <body>
+// hidden and js/auth-guard.js's AUTH_GUARD.init() has already redirected
+// away anyone without a session AND anyone whose profiles.is_admin isn't
+// true (this page is listed in ADMIN_ONLY_PAGES in js/config.js). A
+// resolved, non-null profile here means both checks passed.
+(async () => {
+  const auth = await window.AUTH_GUARD.init();
+  if (!auth) return; // AUTH_GUARD is already redirecting the visitor away
+  sb = window.sb;
+  document.getElementById('sys-role').textContent = '✅ Admin (verified server-side)';
+  await loadAllData();
+  const veil = document.getElementById('boot-veil');
+  if (veil) { veil.classList.add('unlocked'); veil.addEventListener('animationend', () => veil.remove(), { once: true }); }
+})();
 
 // ── Load All Data ────────────────────────────────────────────────────
 async function loadAllData() {
@@ -1429,7 +1195,13 @@ async function loadAllData() {
     const { data: profiles, error: pe } = profilesRes;
     const { data: scores, error: se } = scoresRes;
     const { data: pays, error: pye } = paysRes;
-    if (pe) { showUsersError(pe.message); return; }
+    if (pe) {
+      const hint = (pe.code === '42501' || /insufficient_privilege/i.test(pe.message || ''))
+        ? ' Check that migrations/005_admin.sql (or 001) has been applied and that your account has is_admin = true.'
+        : '';
+      showUsersError(pe.message + hint);
+      return;
+    }
     if (se) console.warn('[admin] session_scores fetch error:', se.message);
     if (pye) console.warn('[admin] payments fetch error:', pye.message);
 
@@ -1442,9 +1214,9 @@ async function loadAllData() {
     filteredUsers = [...allUsers];
     filteredPayments = [...allPayments];
 
-    // Set admin name
-    const sessionRes = await sb.auth.getSession();
-    const email = sessionRes?.data?.session?.user?.email || 'Admin';
+    // Admin's own identity — already resolved by AUTH_GUARD.init(), no
+    // extra network round-trip needed.
+    const email = window.UE_USER?.email || 'Admin';
     document.getElementById('admin-name').textContent = email;
     document.getElementById('sys-admin').textContent = email;
 
@@ -1470,7 +1242,7 @@ async function loadAllData() {
   }
 }
 
-function refreshAll() { if(sb) loadAllData(); else showConfig(); }
+function refreshAll() { if (sb) loadAllData(); }
 
 // ── KPIs ─────────────────────────────────────────────────────────────
 function renderKPIs() {
@@ -1538,7 +1310,11 @@ function renderScore(u) {
 }
 function toGrade(a) { if(a>=90)return'A1';if(a>=80)return'B2';if(a>=75)return'B3';if(a>=65)return'C4';if(a>=55)return'C5';if(a>=50)return'C6';if(a>=40)return'D7';if(a>=30)return'E8';return'F9'; }
 
-function examPills(exams=[]) {
+function examPills(exams) {
+  // Default params only cover undefined, not a NULL exam_types column
+  // (older rows added before that column existed) — that null was the
+  // "Cannot read properties of null (reading 'map')" crash.
+  exams = exams || [];
   const map={JAMB:'pill-jamb',WAEC:'pill-waec',NECO:'pill-neco','Post-UTME':'pill-postutme'};
   return exams.map(e=>`<span class="exam-pill ${map[e]||'pill-jamb'}">${e}</span>`).join('');
 }
@@ -1828,7 +1604,7 @@ function openUserActions(uid) {
 async function lookupUser() {
   const email = document.getElementById('ua-email').value.trim();
   if (!email) { toast('Enter an email first','err'); return; }
-  if (!sb) { toast('Connect Supabase first','err'); showConfig(); return; }
+  if (!sb) { toast('Still connecting — try again in a moment','err'); return; }
   const btn = document.getElementById('ua-search-btn');
   btn.disabled=true; btn.textContent='Searching…';
   try {
@@ -1904,10 +1680,10 @@ async function callAdminFn(payload) {
   let token;
   try { const {data}=await sb.auth.getSession(); token=data?.session?.access_token; } catch(_){}
   if (!token){toast('No active session','err');return;}
-  const url=(window.UE_CONFIG?.SUPABASE_URL||localStorage.getItem('ue_admin_url'))+'/functions/v1/admin-action';
+  const url=window.UE_CONFIG.SUPABASE_URL+'/functions/v1/admin-action';
   let res,json;
   try {
-    res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':window.UE_CONFIG?.SUPABASE_ANON||localStorage.getItem('ue_admin_key')},body:JSON.stringify(payload)});
+    res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':window.UE_CONFIG.SUPABASE_ANON},body:JSON.stringify(payload)});
     json=await res.json().catch(()=>({}));
   } catch(e){toast('Network error: '+e.message,'err');return;}
   if (!res.ok||json.error){ const msg = typeof json.error==='string'?json.error:(json.message||json.msg||JSON.stringify(json.error)||`Failed (HTTP ${res.status})`); toast(msg,'err'); return; }
@@ -2008,13 +1784,10 @@ async function loadAudit() {
 
 // ── Config / System ────────────────────────────────────────────────────
 function populateConfig() {
-  const url=localStorage.getItem('ue_admin_url')||window.UE_CONFIG?.SUPABASE_URL||'';
-  const key=localStorage.getItem('ue_admin_key')||window.UE_CONFIG?.SUPABASE_ANON||'';
-  document.getElementById('cfg-url-inline').value=url;
-  document.getElementById('cfg-key-inline').value=key;
-  document.getElementById('sys-url').textContent=url||'—';
-  document.getElementById('sys-users').textContent=allUsers.length||'—';
-  document.getElementById('sys-role').textContent=sb?'✅ Connected':'❌ Not connected';
+  const url = window.UE_CONFIG?.SUPABASE_URL || '';
+  document.getElementById('sys-url').textContent   = url || '—';
+  document.getElementById('sys-users').textContent = allUsers.length || '—';
+  document.getElementById('sys-role').textContent  = sb ? '✅ Admin (verified server-side)' : '❌ Not connected';
 }
 
 // ── CSV Export ─────────────────────────────────────────────────────────
@@ -2034,15 +1807,10 @@ function exportCSV() {
 
 // ── Supabase Console ────────────────────────────────────────────────────
 function openSupabase() {
-  const url=localStorage.getItem('ue_admin_url')||window.UE_CONFIG?.SUPABASE_URL||'';
+  const url = window.UE_CONFIG?.SUPABASE_URL || '';
   const m=url.match(/https:\/\/([^.]+)\.supabase\.co/);
   window.open(m?`https://app.supabase.com/project/${m[1]}`:'https://app.supabase.com','_blank');
 }
-
-// ── Config Modal ────────────────────────────────────────────────────────
-function showConfig() { document.getElementById('cfg-modal').classList.add('open'); }
-function hideCfg()    { document.getElementById('cfg-modal').classList.remove('open'); }
-document.getElementById('cfg-modal').addEventListener('click', e=>{ if(e.target.id==='cfg-modal') hideCfg(); });
 </script>
 </body>
 </html>
