@@ -21,10 +21,52 @@
 
     PROTECTED_PAGES: [
       'dashboard.html', 'classroom.html', 'cbt.html', 'report.html',
-      'admin-dashboard.html', 'admin-actions.html'
+      'the-administrator.html'
     ],
-    PREMIUM_PAGES:    ['classroom.html', 'cbt.html'],
-    ADMIN_ONLY_PAGES: ['admin-dashboard.html', 'admin-actions.html'],
+    // Cleared as of v3.1 — classroom.html / cbt.html are reachable by every
+    // registered user. Gating now happens per-feature via
+    // AUTH_GUARD.canSampleFeature()/bouncePremium() (see js/classroom.js
+    // selectTopic() and startExam() in cbt.html), which lets free users
+    // spend their FREE_SAMPLE allowance before being sent to pricing.html.
+    // Do not re-add classroom.html / cbt.html here — that reinstates a
+    // full-page paywall that pre-empts the free-sample flow entirely.
+    PREMIUM_PAGES:    [],
+    // admin-dashboard.html, the-administrator.html's old PIN-gated
+    // build, admin-actions.html, and admin-login.html have all been
+    // superseded. the-administrator.html is now the single admin
+    // console — same head-gatekeeper.js/auth-guard.js session gate as
+    // every other protected page (no PIN, no pasted Supabase key),
+    // with a full member roster, per-user grant/revoke, payments and
+    // an audit log, all server-verified by the admin-action Edge
+    // Function. Sign in at login.html like any other account; access
+    // requires profiles.is_admin = true (migrations/005_admin.sql or
+    // 001_admin_role_and_phone.sql).
+    ADMIN_ONLY_PAGES: ['the-administrator.html'],
+
+    // ── Free-tier sample allowance ──────────────────────────────────
+    // How many times a registered, non-premium/non-admin user may try
+    // each gated feature before AUTH_GUARD.canSampleFeature() starts
+    // returning false and the page bounces them to pricing.html.
+    // Consumed via AUTH_GUARD.recordSampleUse(feature); see
+    // js/auth-guard.js, js/classroom.js, cbt.html, study-guides.html.
+    FREE_SAMPLE: {
+      VIDEOS_PER_ACCOUNT: 1,
+      CBT_PER_ACCOUNT:    1,
+      GUIDES_PER_ACCOUNT: 1
+    },
+
+    // ── Support ───────────────────────────────────────────────────
+    // International format, digits only. Leave '' to hide the WhatsApp
+    // FAB/button everywhere (contact.html, dashboard.html) and show the
+    // "being set up" fallback message instead.
+    WHATSAPP_SUPPORT_NUMBER:  '2347037426480',
+    WHATSAPP_DEFAULT_MESSAGE: 'Hi UE School support — I need help.',
+
+    // ── 1-on-1 tutor booking ─────────────────────────────────────────
+    // tutor.html redirects here for every registered student (no
+    // premium check). Leave blank to fall back to the hardcoded
+    // staffroom.ultimateedge.info default in tutor.html.
+    TUTOR_BOOKING_URL: 'https://staffroom.ultimateedge.info',
 
     // ── Admin pass-through ────────────────────────────────────────
     // Any account whose `is_admin` column is TRUE in `profiles` is
