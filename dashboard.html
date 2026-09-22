@@ -1120,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (window.UE_NEWS) UE_NEWS.mountStrip('ue-news-strip');
 
   function isPremiumish() {
-    if (!window.AUTH_GUARD || !window.UE_PROFILE) return true; // fail-open
+    if (!window.UE_PROFILE) return true; // fail-open
     return AUTH_GUARD.isPremium(window.UE_PROFILE) || AUTH_GUARD.isAdmin(window.UE_PROFILE);
   }
 
