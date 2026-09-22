@@ -171,7 +171,7 @@ function esc(s) {
     // PDF preview(s). Once spent, the next click bounces them to the
     // pricing page rather than firing the (doomed) signed-URL call,
     // which would otherwise return a 403 from RLS.
-    if (window.AUTH_GUARD && !AUTH_GUARD.canSampleFeature('guide')) {
+    if (!AUTH_GUARD.canSampleFeature('guide')) {
       AUTH_GUARD.bouncePremium(
         'You\'ve already opened your free PDF guide. Upgrade to UE Premium to download every guide.'
       );
@@ -202,7 +202,7 @@ function esc(s) {
 
       if (error || !data || !data.signedUrl) throw (error || new Error('No URL returned'));
       // Spend a free-sample credit only after the URL was issued OK.
-      if (window.AUTH_GUARD) AUTH_GUARD.recordSampleUse('guide');
+      AUTH_GUARD.recordSampleUse('guide');
       window.open(data.signedUrl, '_blank', 'noopener');
     } catch (e) {
       console.error('[study-guides] signed URL failed:', e);
