@@ -1197,7 +1197,7 @@ function showBootError(msg) {
 
 (async () => {
   try {
-    const auth = await window.AUTH_GUARD.init();
+    const auth = await AUTH_GUARD.init();
     if (!auth) { removeBootVeil(); return; } // AUTH_GUARD already handled it (redirect or toast)
     sb = window.sb;
     document.getElementById('sys-role').textContent = '✅ Admin (verified server-side)';
