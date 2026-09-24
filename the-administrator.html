@@ -1670,7 +1670,9 @@ async function loadUaPayments(uid) {
     <td>${fmtMoney(p.amount)}</td>
     <td><span class="badge ${p.status==='success'?'b-good':p.status==='refunded'?'b-purple':p.status==='failed'?'b-danger':'b-warn'}">${escH(p.status)}</span></td>
     <td style="font-size:.72rem">${fmtDateShort(p.paid_at||p.created_at)}</td>
-    <td>${p.status==='success'?`<button class="btn btn-sm btn-warn" onclick="window.__refund('${escH(p.reference)}')">Refund</button>`:''}</td>
+    <td>${p.status==='success'
+      ?`<button class="btn btn-sm btn-warn" onclick="window.__refund('${escH(p.reference)}')">Refund</button>`
+      :`<button class="btn btn-sm btn-accent" onclick="window.__verifyPayment('${escH(p.reference)}')">Verify Now</button>`}</td>
   </tr>`).join('');
   wrap.innerHTML=`<table><thead><tr><th>Reference</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -1700,6 +1702,21 @@ window.__refund = async function(ref) {
   if (!confirm('Mark '+ref+' as refunded and revoke premium?')) return;
   const reason=prompt('Refund reason:','');
   await callAdminFn({action:'mark_refunded',reference:ref,reason:reason||undefined});
+  allPayments = []; // invalidate cache so Payments view re-fetches fresh
+  if (uaTarget) await loadUaPayments(uaTarget.id);
+  loadAudit();
+  await loadAllData(); // refresh KPIs
+};
+window.__verifyPayment = async function(ref) {
+  // Re-checks this reference against Paystack directly and, if it
+  // genuinely succeeded, grants premium and flips the row to
+  // 'success' — recovers a payment that got stuck at 'pending'
+  // because the student's own browser-side verification call never
+  // completed (network blip, site downtime, etc). Safe to click more
+  // than once — already-successful rows are just confirmed, not
+  // re-granted.
+  if (!confirm('Re-check '+ref+' against Paystack and grant premium if it genuinely succeeded?')) return;
+  await callAdminFn({action:'verify_payment',reference:ref});
   allPayments = []; // invalidate cache so Payments view re-fetches fresh
   if (uaTarget) await loadUaPayments(uaTarget.id);
   loadAudit();
@@ -1761,7 +1778,9 @@ function renderPayTable() {
     <td style="font-weight:700">${fmtMoney(p.amount)}</td>
     <td><span class="badge ${p.status==='success'?'b-good':p.status==='pending'?'b-warn':p.status==='refunded'?'b-purple':'b-danger'}">${escH(p.status)}</span></td>
     <td style="font-size:.76rem;color:var(--muted2)">${fmtDateShort(p.paid_at||p.created_at)}</td>
-    <td>${p.status==='success'?`<button class="btn btn-sm btn-warn" onclick="window.__refund('${escH(p.reference)}')">Refund</button>`:''}</td>
+    <td>${p.status==='success'
+      ?`<button class="btn btn-sm btn-warn" onclick="window.__refund('${escH(p.reference)}')">Refund</button>`
+      :`<button class="btn btn-sm btn-accent" onclick="window.__verifyPayment('${escH(p.reference)}')">Verify Now</button>`}</td>
   </tr>`).join('');
   // pagination with ellipsis
   const pages=Math.ceil(filteredPayments.length/PAY_PAGE), pag=$('#pay-pagination');
