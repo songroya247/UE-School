@@ -158,6 +158,11 @@ const PAYMENT = (function () {
   }
 
   /* ── 5. SERVER-SIDE VERIFICATION ──────────────────────────────── */
+  // Returns { success, message?, retryable? }. `retryable` tells the
+  // caller whether it's worth trying again (network blips, the Edge
+  // Function being briefly unreachable, a 5xx) versus a definitive
+  // no (bad amount, reference genuinely not paid) that retrying
+  // would never fix.
   async function verifyWithServer(reference, planKey) {
     try {
       // ALWAYS pull a fresh access token from the SDK. The cached
@@ -172,7 +177,7 @@ const PAYMENT = (function () {
         accessToken = window.UE_USER.access_token;
       }
       if (!accessToken) {
-        return { success: false, message: 'Not signed in. Please log in and try again.' };
+        return { success: false, retryable: true, message: 'Not signed in. Please log in and try again.' };
       }
 
       const res = await fetch(getVerifyUrl(), {
@@ -186,14 +191,40 @@ const PAYMENT = (function () {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        return { success: false, message: err.message || 'Server verification failed.' };
+        // 5xx (server/Paystack-reachability hiccup) is worth retrying;
+        // 4xx (bad amount, unauthorized, reference truly not paid) is not.
+        return {
+          success:   false,
+          retryable: res.status >= 500,
+          message:   err.message || 'Server verification failed.',
+        };
       }
-      return await res.json(); // { success, expiry } or { success: false, message }
+      const body = await res.json(); // { success, expiry } or { success: false, message }
+      if (!body.success) body.retryable = false; // function explicitly said no — retrying won't change that
+      return body;
 
     } catch (err) {
       console.error('[PAYMENT] Network error:', err);
-      return { success: false, message: 'Network error. Please check your connection and try again.' };
+      return { success: false, retryable: true, message: 'Network error. Please check your connection and try again.' };
     }
+  }
+
+  // Retries verifyWithServer up to 3 attempts total (1 initial + 2
+  // retries), with a short growing delay, but only when the failure
+  // is flagged retryable. This is what actually prevents a payment
+  // from getting stuck at 'pending' just because of a momentary
+  // network blip or the verification endpoint being briefly down —
+  // exactly the failure mode that previously required an admin to
+  // manually recover the payment afterward.
+  async function verifyWithRetry(reference, planKey, onAttempt) {
+    const delaysMs = [1500, 3000];
+    let result = await verifyWithServer(reference, planKey);
+    for (let i = 0; i < delaysMs.length && !result.success && result.retryable; i++) {
+      if (onAttempt) onAttempt(i + 2, delaysMs.length + 1); // human-friendly "attempt 2 of 3"
+      await new Promise(r => setTimeout(r, delaysMs[i]));
+      result = await verifyWithServer(reference, planKey);
+    }
+    return result;
   }
 
   /* ── 6. MAIN CHECKOUT ─────────────────────────────────────────────
@@ -277,7 +308,10 @@ const PAYMENT = (function () {
         setButtonLoading(planKey, false);
         showPaymentModal('processing');
 
-        const result = await verifyWithServer(reference, planKey);
+        const result = await verifyWithRetry(reference, planKey, (attempt, total) => {
+          showPaymentModal('processing', null,
+            `Confirming your payment… (attempt ${attempt} of ${total})`);
+        });
 
         if (result.success) {
           // Update local profile cache so nav/banner reflect new status instantly
@@ -297,6 +331,15 @@ const PAYMENT = (function () {
 
           showPaymentModal('success', plan);
           setTimeout(() => { window.location.href = 'thankyou.html?plan=' + planKey; }, 3000);
+        } else if (result.retryable) {
+          // Every retry was exhausted and it's still a transient-looking
+          // failure — Paystack itself may well have taken the payment.
+          // Say so plainly instead of implying it failed outright.
+          showPaymentModal('error', null,
+            'We couldn\'t confirm your payment after a few tries, but if Paystack charged your card, ' +
+            'your payment is safe and recorded — our team can verify and activate it manually. ' +
+            'Contact support with this reference: ' + reference
+          );
         } else {
           showPaymentModal('error', null,
             (result.message || 'Verification failed.') +
@@ -340,7 +383,7 @@ const PAYMENT = (function () {
         <div style="text-align:center;padding:16px 0">
           <div class="pay-spinner-lg"></div>
           <h3 style="font-size:1.3rem;margin:16px 0 8px">Verifying Payment…</h3>
-          <p style="color:#6b7280;font-size:.9rem">Confirming with Paystack. Please don't close this window.</p>
+          <p style="color:#6b7280;font-size:.9rem">${errorMsg || 'Confirming with Paystack. Please don\'t close this window.'}</p>
         </div>`;
 
     } else if (state === 'success') {
